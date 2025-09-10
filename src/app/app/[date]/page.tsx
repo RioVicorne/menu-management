@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 function parseDate(param: string) {
@@ -9,38 +9,67 @@ function parseDate(param: string) {
 	return new Date(y, (m || 1) - 1, d || 1);
 }
 
-export default function DailyPage({ params }: { params: { date: string } }) {
-	const date = useMemo(() => parseDate(params.date), [params.date]);
+export default function DailyPage({ params }: { params: Promise<{ date: string }> }) {
+	// Next.js 15: params is a Promise in Client Components
+	const { date: dateParam } = use(params);
+	const date = useMemo(() => parseDate(dateParam), [dateParam]);
 	const [tab, setTab] = useState<"menu" | "inventory" | "add">("menu");
 
-	const label = date.toLocaleDateString(undefined, {
-		weekday: "long",
-		year: "numeric",
-		month: "long",
-		day: "numeric",
+	// Avoid hydration mismatch: render ISO on server, localize after mount
+	const [label, setLabel] = useState(() => {
+		const y = date.getFullYear();
+		const m = String(date.getMonth() + 1).padStart(2, "0");
+		const dd = String(date.getDate()).padStart(2, "0");
+		return `${y}-${m}-${dd}`;
 	});
+	useEffect(() => {
+		setLabel(
+			date.toLocaleDateString("vi-VN", {
+				weekday: "long",
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+			})
+		);
+	}, [date]);
 
 	// Load today's menu (thuc_don joined with mon_an)
 	type DishRow = { id: string; boi_so: number; ghi_chu: string | null; ma_mon_an: string | null; ten_mon_an: string | null };
 	const [dishes, setDishes] = useState<DishRow[]>([]);
-	const iso = params.date;
+	const iso = dateParam;
 	async function refresh() {
+		// Fetch day menu rows
 		const { data, error } = await supabase
 			.from("thuc_don")
-			.select("id, boi_so, ghi_chu, ma_mon_an, mon_an:ma_mon_an(ten_mon_an)")
+			.select("id, boi_so, ghi_chu, ma_mon_an")
 			.eq("ngay", iso);
 		if (error) {
-			console.error(error);
+			console.error('Load thuc_don failed:', error.message);
 			setDishes([]);
 			return;
 		}
-		const mapped = (data ?? []).map((r: any) => ({
+		const rows = (data ?? []) as Array<{ id: string; boi_so: number; ghi_chu: string | null; ma_mon_an: string | null }>;
+		// Fetch dish names separately to avoid FK embedding issues
+		const ids = Array.from(new Set(rows.map(r => r.ma_mon_an).filter(Boolean))) as string[];
+		const nameMap = new Map<string, string | null>();
+		if (ids.length) {
+			const { data: dishData, error: dishErr } = await supabase
+				.from("mon_an")
+				.select("id, ten_mon_an")
+				.in("id", ids);
+			if (dishErr) {
+				console.error('Load mon_an failed:', dishErr.message);
+			} else {
+				for (const r of dishData ?? []) nameMap.set((r as any).id, (r as any).ten_mon_an ?? null);
+			}
+		}
+		const mapped: DishRow[] = rows.map(r => ({
 			id: r.id,
 			boi_so: r.boi_so,
 			ghi_chu: r.ghi_chu,
 			ma_mon_an: r.ma_mon_an,
-			ten_mon_an: r.mon_an?.ten_mon_an ?? null,
-		})) as DishRow[];
+			ten_mon_an: r.ma_mon_an ? (nameMap.get(r.ma_mon_an) ?? null) : null,
+		}));
 		setDishes(mapped);
 	}
 	useEffect(() => { refresh(); }, [iso]);
@@ -57,7 +86,7 @@ export default function DailyPage({ params }: { params: { date: string } }) {
 		(async () => {
 			const { data, error } = await supabase.from("mon_an").select("id, ten_mon_an").order("ten_mon_an", { ascending: true });
 			if (error) {
-				console.error(error);
+				console.error('Load mon_an list failed:', error.message);
 				setOptions([]);
 				return;
 			}
@@ -179,7 +208,7 @@ export default function DailyPage({ params }: { params: { date: string } }) {
 	return (
 		<div className="py-6 space-y-6">
 			<div className="flex items-center justify-between gap-3">
-				<h1 className="text-xl font-semibold">{label}</h1>
+				<h1 className="text-xl font-semibold" suppressHydrationWarning>{label}</h1>
 				<Link href="/app" className="px-3 py-1 rounded border">Back to Calendar</Link>
 			</div>
 
