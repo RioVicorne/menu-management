@@ -60,7 +60,10 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 			if (dishErr) {
 				console.error('Load mon_an failed:', dishErr.message);
 			} else {
-				for (const r of dishData ?? []) nameMap.set((r as any).id, (r as any).ten_mon_an ?? null);
+				type MonAnName = { id: string; ten_mon_an: string | null };
+				for (const r of (dishData as MonAnName[] | null) ?? []) {
+					nameMap.set(r.id, r.ten_mon_an ?? null);
+				}
 			}
 		}
 		const mapped: DishRow[] = rows.map(r => ({
@@ -72,7 +75,9 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 		}));
 		setDishes(mapped);
 	}
-	useEffect(() => { refresh(); }, [iso]);
+	// Memoize refresh to satisfy react-hooks/exhaustive-deps
+	const refreshMemo = useMemo(() => refresh, [iso]);
+	useEffect(() => { refreshMemo(); }, [refreshMemo]);
 
 	// Add dish flow
 	type MonAn = { id: string; ten_mon_an: string | null };
@@ -181,7 +186,14 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 				.in("id", ids);
 			if (ingErr) { console.error(ingErr); setInventory([]); return; }
 
-			const rows: InventoryRow[] = (ings ?? []).map((ing: any) => {
+			type NguyenLieu = {
+				id: string;
+				ten_nguyen_lieu: string | null;
+				nguon_nhap: string | null;
+				ton_kho_so_luong: number | null;
+				ton_kho_khoi_luong: number | null;
+			};
+			const rows: InventoryRow[] = ((ings as NguyenLieu[] | null) ?? []).map((ing) => {
 				const need = needByIngredient.get(ing.id)!;
 				const stockQty = Number(ing.ton_kho_so_luong ?? 0);
 				const stockWeight = Number(ing.ton_kho_khoi_luong ?? 0);

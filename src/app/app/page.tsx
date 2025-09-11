@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, dateFnsLocalizer, View, Views } from "react-big-calendar";
-import format from "date-fns/format";
-import parse from "date-fns/parse";
-import startOfWeek from "date-fns/startOfWeek";
-import getDay from "date-fns/getDay";
-import enUS from "date-fns/locale/en-US";
+import { useCallback, useState } from "react";
+import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
+import { format } from "date-fns/format";
+import { parse } from "date-fns/parse";
+import { startOfWeek } from "date-fns/startOfWeek";
+import { getDay } from "date-fns/getDay";
+import { enUS } from "date-fns/locale/en-US";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -42,20 +42,23 @@ export default function CalendarDashboardPage() {
 		setEvents(evs);
 	}, []);
 
-	const onRangeChange = useCallback((range: any, view?: View) => {
+	type MonthRange = { start: Date; end: Date };
+	const onRangeChange = useCallback((range: Date[] | MonthRange) => {
 		if (Array.isArray(range)) {
 			const start = range[0];
 			const end = range[range.length - 1];
 			loadRange(start, end);
 			return;
 		}
-		if (range?.start && range?.end) {
-			loadRange(range.start, range.end);
+		if ((range as MonthRange)?.start && (range as MonthRange)?.end) {
+			const r = range as MonthRange;
+			loadRange(r.start, r.end);
 		}
 	}, [loadRange]);
 
-	const onSelectSlot = useCallback((slot: any) => {
-		const d = slot.start as Date;
+	type SlotInfo = { start: Date };
+	const onSelectSlot = useCallback((slot: SlotInfo) => {
+		const d = slot.start;
 		const y = d.getFullYear();
 		const m = String(d.getMonth() + 1).padStart(2, "0");
 		const day = String(d.getDate()).padStart(2, "0");
