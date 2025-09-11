@@ -9,7 +9,6 @@ import { getDay } from "date-fns/getDay";
 import { enUS } from "date-fns/locale/en-US";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const locales = { "en-US": enUS } as const;
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
