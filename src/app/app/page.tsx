@@ -75,7 +75,7 @@ export default function CalendarDashboardPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [lang]);
 
 	type MonthRange = { start: Date; end: Date };
 	const onRangeChange = useCallback((range: Date[] | MonthRange) => {

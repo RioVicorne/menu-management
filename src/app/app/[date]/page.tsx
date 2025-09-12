@@ -204,7 +204,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 				.select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong, don_gia")
 				.in("id", ids);
 			if (ingErr) {
-				console.warn('Load nguyen_lieu failed:', (ingErr as any)?.message ?? ingErr);
+				const maybe = ingErr as { message?: string } | undefined;
+				console.warn('Load nguyen_lieu failed:', maybe?.message ?? String(ingErr));
 				// Fallback: still render needs with unknown price and no stock info
 				const rowsFallback: InventoryRow[] = ids.map((id) => {
 					const need = needByIngredient.get(id)!;
