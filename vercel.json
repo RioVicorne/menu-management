@@ -1,32 +1,3 @@
 {
-  "rewrites": [
-    {
-      "source": "/",
-      "destination": "/app"
-    },
-    {
-      "source": "/ingredients",
-      "destination": "/app/ingredients"
-    },
-    {
-      "source": "/storage", 
-      "destination": "/app/storage"
-    },
-    {
-      "source": "/recipes",
-      "destination": "/app/recipes"
-    },
-    {
-      "source": "/menu",
-      "destination": "/app/menu"
-    },
-    {
-      "source": "/planner",
-      "destination": "/app/planner"
-    },
-    {
-      "source": "/(\\d{4}-\\d{2}-\\d{2})",
-      "destination": "/app/$1"
-    }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }
