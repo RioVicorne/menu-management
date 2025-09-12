@@ -7,11 +7,13 @@ import { parse } from "date-fns/parse";
 import { startOfWeek } from "date-fns/startOfWeek";
 import { getDay } from "date-fns/getDay";
 import { enUS } from "date-fns/locale/en-US";
+import { vi } from "date-fns/locale/vi";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Calendar as CalendarIcon, Plus, ChefHat, Clock, Users, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/i18n";
 
-const locales = { "en-US": enUS } as const;
+const locales = { "en-US": enUS, vi } as const;
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
 interface Event {
@@ -23,6 +25,7 @@ interface Event {
 }
 
 export default function CalendarDashboardPage() {
+	const { t, lang } = useI18n();
 	const router = useRouter();
 	const [events, setEvents] = useState<Event[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -55,8 +58,9 @@ export default function CalendarDashboardPage() {
 			
 			const evs: Event[] = Array.from(map.entries()).map(([iso, count]) => {
 				const d = new Date(iso);
+				const title = lang === 'vi' ? `${count} món` : `${count} dish${count > 1 ? 'es' : ''}`;
 				return { 
-					title: `${count} dish${count > 1 ? 'es' : ''}`, 
+					title, 
 					start: d, 
 					end: d, 
 					allDay: true,
@@ -139,7 +143,7 @@ export default function CalendarDashboardPage() {
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+		<div className="min-h-screen bg-background text-foreground">
 			<div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 				{/* Header Section */}
 				<div className="mb-8">
@@ -150,10 +154,10 @@ export default function CalendarDashboardPage() {
 							</div>
 							<div>
 								<h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-									Menu Calendar
+									{t("menuCalendar")}
 								</h1>
 								<p className="text-gray-600 dark:text-gray-400 mt-1">
-									Plan and manage your daily menus
+									{t("planAndManage")}
 								</p>
 							</div>
 						</div>
@@ -168,7 +172,7 @@ export default function CalendarDashboardPage() {
 							className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
 						>
 							<Plus className="h-4 w-4" />
-							<span>Add Today's Menu</span>
+							<span>{t("addToday")}</span>
 						</button>
 					</div>
 
@@ -180,7 +184,7 @@ export default function CalendarDashboardPage() {
 									<ChefHat className="h-5 w-5 text-green-600 dark:text-green-400" />
 								</div>
 								<div className="ml-4">
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dishes</p>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("totalDishes")}</p>
 									<p className="text-2xl font-bold text-gray-900 dark:text-white">{totalDishes}</p>
 								</div>
 							</div>
@@ -192,7 +196,7 @@ export default function CalendarDashboardPage() {
 									<CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
 								</div>
 								<div className="ml-4">
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Days with Menu</p>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("daysWithMenu")}</p>
 									<p className="text-2xl font-bold text-gray-900 dark:text-white">{events.length}</p>
 								</div>
 							</div>
@@ -204,7 +208,7 @@ export default function CalendarDashboardPage() {
 									<Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
 								</div>
 								<div className="ml-4">
-									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">This Month</p>
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("thisMonth")}</p>
 									<p className="text-2xl font-bold text-gray-900 dark:text-white">
 										{format(currentDate, 'MMMM yyyy')}
 									</p>
@@ -220,7 +224,7 @@ export default function CalendarDashboardPage() {
 						<div className="calendar-loading">
 							<div className="flex flex-col items-center space-y-4">
 								<Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-								<p className="text-gray-600 dark:text-gray-400">Loading calendar...</p>
+								<p className="text-gray-600 dark:text-gray-400">{t("loadingCalendar")}</p>
 							</div>
 						</div>
 					) : events.length === 0 ? (
@@ -228,10 +232,10 @@ export default function CalendarDashboardPage() {
 							<div className="p-8 text-center">
 								<CalendarIcon className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
 								<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-									No menus planned yet
+									{t("emptyTitle")}
 								</h3>
 								<p className="text-gray-600 dark:text-gray-400 mb-6">
-									Start planning your daily menus by clicking on a date or using the "Add Today's Menu" button.
+									{t("emptyDesc")}
 								</p>
 								<button
 									onClick={() => {
@@ -244,7 +248,7 @@ export default function CalendarDashboardPage() {
 									className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
 								>
 									<Plus className="h-4 w-4" />
-									<span>Plan Today's Menu</span>
+									<span>{t("addToday")}</span>
 								</button>
 							</div>
 						</div>
@@ -263,6 +267,19 @@ export default function CalendarDashboardPage() {
 							onSelectEvent={onSelectEvent}
 							onNavigate={onNavigate}
 							eventPropGetter={eventStyleGetter}
+							culture={lang === 'vi' ? 'vi' : 'en-US'}
+							messages={{
+								allDay: lang === 'vi' ? 'Cả ngày' : 'All Day',
+								week: lang === 'vi' ? 'Tuần' : 'Week',
+								work_week: lang === 'vi' ? 'Tuần làm việc' : 'Work Week',
+								day: lang === 'vi' ? 'Ngày' : 'Day',
+								month: lang === 'vi' ? 'Tháng' : 'Month',
+								previous: lang === 'vi' ? 'Trước' : 'Back',
+								next: lang === 'vi' ? 'Sau' : 'Next',
+								today: lang === 'vi' ? 'Hôm nay' : 'Today',
+								agenda: lang === 'vi' ? 'Lịch biểu' : 'Agenda',
+								showMore: (total: number) => (lang === 'vi' ? `+${total} nữa` : `+${total} more`),
+							}}
 							popup
 							showMultiDayTimes
 							step={60}
@@ -282,19 +299,19 @@ export default function CalendarDashboardPage() {
 				{/* Legend */}
 				{events.length > 0 && (
 					<div className="mt-6 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Legend</h3>
+						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{t("legend")}</h3>
 						<div className="flex flex-wrap gap-4">
 							<div className="flex items-center space-x-2">
 								<div className="w-4 h-4 bg-blue-500 rounded"></div>
-								<span className="text-sm text-gray-600 dark:text-gray-400">1-2 dishes</span>
+								<span className="text-sm text-gray-600 dark:text-gray-400">{t("legend12")}</span>
 							</div>
 							<div className="flex items-center space-x-2">
 								<div className="w-4 h-4 bg-amber-500 rounded"></div>
-								<span className="text-sm text-gray-600 dark:text-gray-400">3-4 dishes</span>
+								<span className="text-sm text-gray-600 dark:text-gray-400">{t("legend34")}</span>
 							</div>
 							<div className="flex items-center space-x-2">
 								<div className="w-4 h-4 bg-green-500 rounded"></div>
-								<span className="text-sm text-gray-600 dark:text-gray-400">5+ dishes</span>
+								<span className="text-sm text-gray-600 dark:text-gray-400">{t("legend5plus")}</span>
 							</div>
 						</div>
 					</div>

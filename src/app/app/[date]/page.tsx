@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/components/i18n";
 
 function parseDate(param: string) {
 	const [y, m, d] = param.split("-").map(Number);
@@ -14,6 +15,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	const { date: dateParam } = use(params);
 	const date = useMemo(() => parseDate(dateParam), [dateParam]);
 	const [tab, setTab] = useState<"menu" | "inventory" | "add">("menu");
+	const { t } = useI18n();
 
 	// Avoid hydration mismatch: render ISO on server, localize after mount
 	const [label, setLabel] = useState(() => {
@@ -221,41 +223,41 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 		<div className="py-6 space-y-6">
 			<div className="flex items-center justify-between gap-3">
 				<h1 className="text-xl font-semibold" suppressHydrationWarning>{label}</h1>
-				<Link href="/app" className="px-3 py-1 rounded border">Back to Calendar</Link>
+				<Link href="/app" className="px-3 py-1 rounded border">{t("backToCalendar")}</Link>
 			</div>
 
 			<div className="flex gap-2">
-				<button className={`px-3 py-1 rounded border ${tab==='menu'?'bg-muted':''}`} onClick={() => setTab('menu')}>Today’s Menu</button>
-				<button className={`px-3 py-1 rounded border ${tab==='inventory'?'bg-muted':''}`} onClick={() => setTab('inventory')}>Inventory Management</button>
-				<button className={`px-3 py-1 rounded border ${tab==='add'?'bg-muted':''}`} onClick={() => setTab('add')}>Add New Dish</button>
+				<button className={`px-3 py-1 rounded border ${tab==='menu'?'bg-muted':''}`} onClick={() => setTab('menu')}>{t("todaysMenuTab")}</button>
+				<button className={`px-3 py-1 rounded border ${tab==='inventory'?'bg-muted':''}`} onClick={() => setTab('inventory')}>{t("inventoryTab")}</button>
+				<button className={`px-3 py-1 rounded border ${tab==='add'?'bg-muted':''}`} onClick={() => setTab('add')}>{t("addNewDishTab")}</button>
 			</div>
 
 			{tab === 'menu' && (
 				<section className="space-y-4">
 					<div className="flex items-center justify-between">
-						<h2 className="font-medium">Dishes</h2>
-						<button className="px-3 py-1 rounded border" onClick={() => setTab('add')}>+ Add Dish</button>
+						<h2 className="font-medium">{t("dishes")}</h2>
+						<button className="px-3 py-1 rounded border" onClick={() => setTab('add')}>{t("addDish")}</button>
 					</div>
 					<div className="grid gap-3">
 						{dishes.length === 0 && (
-							<div className="rounded border p-3 text-sm text-muted-foreground">No dishes yet.</div>
+							<div className="rounded border p-3 text-sm text-muted-foreground">{t("noDishesYet")}</div>
 						)}
 						{dishes.map((d) => (
 							<div key={d.id} className="rounded border p-3">
-								<div className="font-medium">{d.ten_mon_an ?? "Unnamed dish"}</div>
-								<div className="text-sm text-muted-foreground">Servings: {d.boi_so} • Notes: {d.ghi_chu ?? "-"}</div>
+								<div className="font-medium">{d.ten_mon_an ?? t("unnamedDish")}</div>
+								<div className="text-sm text-muted-foreground">{t("servingsLabel")}: {d.boi_so} • {t("notesLabel")}: {d.ghi_chu ?? "-"}</div>
 								<div className="flex gap-2 mt-2 items-center">
 									<input type="number" min={1} className="rounded border px-2 py-1 w-24" value={d.boi_so} onChange={(e)=>handleEdit(d.id,{boi_so:Number(e.target.value)||1})} />
-									<input className="rounded border px-2 py-1" placeholder="Notes" value={d.ghi_chu ?? ''} onChange={(e)=>handleEdit(d.id,{ghi_chu:e.target.value})} />
-									<button className="px-2 py-1 rounded border" onClick={()=>handleDelete(d.id)}>Delete</button>
+									<input className="rounded border px-2 py-1" placeholder={t("notesLabel")} value={d.ghi_chu ?? ''} onChange={(e)=>handleEdit(d.id,{ghi_chu:e.target.value})} />
+									<button className="px-2 py-1 rounded border" onClick={()=>handleDelete(d.id)}>{t("delete")}</button>
 								</div>
 							</div>
 						))}
 					</div>
 					<div className="rounded border p-3 flex items-center justify-between">
-						<div className="text-sm">Total dishes: {dishes.length}</div>
-						<div className="text-sm">Total servings: {dishes.reduce((a,b)=>a+(b.boi_so||0),0)}</div>
-						<div className="text-sm">Total calories: 0</div>
+						<div className="text-sm">{t("totalDishesLabel")}: {dishes.length}</div>
+						<div className="text-sm">{t("totalServingsLabel")}: {dishes.reduce((a,b)=>a+(b.boi_so||0),0)}</div>
+						<div className="text-sm">{t("totalCaloriesLabel")}: 0</div>
 					</div>
 				</section>
 			)}
@@ -263,9 +265,9 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 			{tab === 'inventory' && (
 				<section className="space-y-4">
 					<div className="flex items-center justify-between">
-						<h2 className="font-medium">Ingredients for the day</h2>
+						<h2 className="font-medium">{t("ingredientsForDay")}</h2>
 						<div className="flex gap-2 items-center">
-							<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={filterLowOnly} onChange={(e)=>setFilterLowOnly(e.target.checked)} /> Show Low/Out only</label>
+							<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={filterLowOnly} onChange={(e)=>setFilterLowOnly(e.target.checked)} /> {t("showLowOnly")}</label>
 						</div>
 					</div>
 					<div className="grid gap-3">
@@ -273,34 +275,34 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 							<div key={row.ma_nguyen_lieu} className="rounded border p-3 flex items-center justify-between">
 								<div>
 									<div className="font-medium">{row.ten_nguyen_lieu ?? row.ma_nguyen_lieu}</div>
-									<div className="text-xs text-muted-foreground">{row.nguon_nhap ?? 'Unknown source'}</div>
-									<div className="text-xs text-muted-foreground">Qty need {row.need_qty} / stock {row.stock_qty} • Weight need {row.need_weight} / stock {row.stock_weight}</div>
+									<div className="text-xs text-muted-foreground">{row.nguon_nhap ?? t("unknownSource")}</div>
+									<div className="text-xs text-muted-foreground">{t("qtyWeightNeedStock").replace('{need}', String(row.need_qty)).replace('{stock}', String(row.stock_qty)).replace('{wneed}', String(row.need_weight)).replace('{wstock}', String(row.stock_weight))}</div>
 								</div>
 								<div className={`text-xs px-2 py-1 rounded ${row.status==='out' ? 'bg-red-500/20 text-red-700 dark:text-red-300' : row.status==='low' ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300' : 'bg-green-500/20 text-green-700 dark:text-green-300'}`}>
-									{row.status === 'in' ? 'In Stock' : row.status === 'low' ? 'Low' : 'Out of Stock'}
+									{row.status === 'in' ? t("inStock") : row.status === 'low' ? t("low") : t("outOfStock")}
 								</div>
 							</div>
 						))}
-						{inventory.length===0 && (<div className="rounded border p-3 text-sm text-muted-foreground">No ingredients required.</div>)}
+						{inventory.length===0 && (<div className="rounded border p-3 text-sm text-muted-foreground">{t("noIngredients")}</div>)}
 					</div>
-					<div className="rounded border p-3 text-sm">Alerts: {inventory.some(i=>i.status!=='in')? 'Attention needed' : 'All good'}</div>
+					<div className="rounded border p-3 text-sm">{t("alerts")}: {inventory.some(i=>i.status!=='in')? t("attentionNeeded") : t("allGood")}</div>
 				</section>
 			)}
 
 			{tab === 'add' && (
 				<section className="space-y-4">
-					<h2 className="font-medium">Add New Dish</h2>
+					<h2 className="font-medium">{t("addNewDishTab")}</h2>
 					<div className="grid gap-3 max-w-md">
 						<select className="rounded border p-2" value={selected} onChange={(e)=>setSelected(e.target.value)}>
-							<option value="">Select a dish</option>
+							<option value="">{t("selectDish")}</option>
 							{options.map(o => (
 								<option key={o.id} value={o.id}>{o.ten_mon_an ?? o.id}</option>
 							))}
 						</select>
-						<input type="number" min={1} className="rounded border p-2" placeholder="Servings (multiplier)" value={multiplier} onChange={(e)=>setMultiplier(Number(e.target.value)||1)} />
-						<input className="rounded border p-2" placeholder="Notes" value={note} onChange={(e)=>setNote(e.target.value)} />
-						<div className="rounded border p-3 text-sm text-muted-foreground">Ingredient breakdown and calories preview</div>
-						<button className="px-3 py-1 rounded border" disabled={saving || !selected} onClick={handleAdd}>{saving?"Adding...":"Add to Menu"}</button>
+						<input type="number" min={1} className="rounded border p-2" placeholder={t("servingsMultiplier")} value={multiplier} onChange={(e)=>setMultiplier(Number(e.target.value)||1)} />
+						<input className="rounded border p-2" placeholder={t("notesLabel")} value={note} onChange={(e)=>setNote(e.target.value)} />
+						<div className="rounded border p-3 text-sm text-muted-foreground">{t("ingredientsPreview")}</div>
+						<button className="px-3 py-1 rounded border" disabled={saving || !selected} onClick={handleAdd}>{saving?t("adding"):t("addToMenu")}</button>
 					</div>
 				</section>
 			)}
