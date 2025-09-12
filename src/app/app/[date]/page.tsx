@@ -16,6 +16,11 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	const date = useMemo(() => parseDate(dateParam), [dateParam]);
 	const [tab, setTab] = useState<"menu" | "inventory" | "add">("menu");
 	const { t } = useI18n();
+	const [showCalories, setShowCalories] = useState(false);
+	const [showShopping, setShowShopping] = useState(false);
+	const [showRestock, setShowRestock] = useState(false);
+	const [monthPlanLoading, setMonthPlanLoading] = useState(false);
+	const [monthPlan, setMonthPlan] = useState<Array<{ supplier: string; total: number; items: Array<{ id: string; name: string | null; need_qty: number; need_weight: number; unit_price: number; cost: number }> }>>([]);
 
 	// Avoid hydration mismatch: render ISO on server, localize after mount
 	const [label, setLabel] = useState(() => {
@@ -150,10 +155,12 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 		need_weight: number; // kg or unit weight based on schema
 		stock_qty: number; // nguyen_lieu.ton_kho_so_luong
 		stock_weight: number; // nguyen_lieu.ton_kho_khoi_luong
+		unit_price: number; // best-effort extracted
 		status: "in" | "low" | "out";
 	};
 	const [filterLowOnly, setFilterLowOnly] = useState(false);
 	const [inventory, setInventory] = useState<InventoryRow[]>([]);
+	const [totalCalories, setTotalCalories] = useState<number>(0);
 
 	useEffect(() => {
 		(async () => {
@@ -161,13 +168,15 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 			const dishIds = dishes.map(d => d.ma_mon_an).filter(Boolean) as string[];
 			const { data: comps, error: compErr } = await supabase
 				.from("thanh_phan")
-				.select("ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu")
+				.select("ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, luong_calo")
 				.in("ma_mon_an", dishIds);
 			if (compErr) { console.error(compErr); setInventory([]); return; }
 
 			// Sum requirements scaled by servings
 			const needByIngredient = new Map<string, { need_qty: number; need_weight: number }>();
+			let caloriesTotal = 0;
 			for (const comp of comps ?? []) {
+				if (!comp.ma_nguyen_lieu) { continue; }
 				const forDish = dishes.find(d => d.ma_mon_an === comp.ma_mon_an);
 				const basePeople = comp.so_nguoi_an ?? 1;
 				const factor = (forDish?.boi_so ?? 1) / (basePeople || 1);
@@ -178,15 +187,37 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 					need_qty: prev.need_qty + addQty,
 					need_weight: prev.need_weight + addWeight,
 				});
+				const calo = Number((comp as any).luong_calo ?? 0);
+				if (!Number.isNaN(calo)) caloriesTotal += calo * factor;
 			}
 
-			const ids = Array.from(needByIngredient.keys());
+			const ids = Array.from(needByIngredient.keys()).filter(Boolean);
 			if (ids.length === 0) { setInventory([]); return; }
 			const { data: ings, error: ingErr } = await supabase
 				.from("nguyen_lieu")
-				.select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong")
+				.select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong, don_gia")
 				.in("id", ids);
-			if (ingErr) { console.error(ingErr); setInventory([]); return; }
+			if (ingErr) {
+				console.warn('Load nguyen_lieu failed:', (ingErr as any)?.message ?? ingErr);
+				// Fallback: still render needs with unknown price and no stock info
+				const rowsFallback: InventoryRow[] = ids.map((id) => {
+					const need = needByIngredient.get(id)!;
+					return {
+						ma_nguyen_lieu: id,
+						ten_nguyen_lieu: null,
+						nguon_nhap: null,
+						need_qty: Number(need.need_qty.toFixed(2)),
+						need_weight: Number(need.need_weight.toFixed(2)),
+						stock_qty: 0,
+						stock_weight: 0,
+						unit_price: 0,
+						status: "in",
+					};
+				});
+				setInventory(rowsFallback);
+				setTotalCalories(Math.round(caloriesTotal));
+				return;
+			}
 
 			type NguyenLieu = {
 				id: string;
@@ -194,6 +225,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 				nguon_nhap: string | null;
 				ton_kho_so_luong: number | null;
 				ton_kho_khoi_luong: number | null;
+				don_gia?: number | null;
 			};
 			const rows: InventoryRow[] = ((ings as NguyenLieu[] | null) ?? []).map((ing) => {
 				const need = needByIngredient.get(ing.id)!;
@@ -204,6 +236,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 				let status: InventoryRow["status"] = "in";
 				if (qtyOk < 0 || weightOk < 0) status = "out";
 				else if (qtyOk < 1 && weightOk < 0.1) status = "low"; // heuristic threshold
+				const unitPrice = Number(ing.don_gia ?? 0);
 				return {
 					ma_nguyen_lieu: ing.id,
 					ten_nguyen_lieu: ing.ten_nguyen_lieu,
@@ -212,24 +245,205 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 					need_weight: Number(need.need_weight.toFixed(2)),
 					stock_qty: stockQty,
 					stock_weight: stockWeight,
+					unit_price: unitPrice,
 					status,
 				};
 			});
 			setInventory(rows);
+			setTotalCalories(Math.round(caloriesTotal));
 		})();
 	}, [dishes]);
 
+	// Calculate today's total calories if available on mon_an table
+	useEffect(() => {
+		(async () => {
+			if (dishes.length === 0) { setTotalCalories(0); return; }
+			const ids = dishes.map(d=>d.ma_mon_an).filter(Boolean) as string[];
+			if (ids.length === 0) { setTotalCalories(0); return; }
+			const { data } = await supabase
+				.from("mon_an")
+				.select("id, calo, calories, kcal")
+				.in("id", ids);
+			const map = new Map<string, number>();
+			for (const r of (data as any[] | null) ?? []) {
+				const val = Number((r as any).calo ?? (r as any).calories ?? (r as any).kcal ?? 0);
+				map.set(r.id, isNaN(val) ? 0 : val);
+			}
+			let total = 0;
+			for (const d of dishes) {
+				const per = map.get(d.ma_mon_an || "") ?? 0;
+				total += per * (d.boi_so || 1);
+			}
+			setTotalCalories(Math.round(total));
+		})();
+	}, [dishes, supabase]);
+
 	return (
-		<div className="py-6 space-y-6">
+		<div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
 			<div className="flex items-center justify-between gap-3">
 				<h1 className="text-xl font-semibold" suppressHydrationWarning>{label}</h1>
-				<Link href="/app" className="px-3 py-1 rounded border">{t("backToCalendar")}</Link>
+				<Link href="/app" className="inline-flex items-center px-3 py-2 rounded-lg border border-border bg-background hover:bg-muted transition-colors">{t("backToCalendar")}</Link>
 			</div>
 
+			<div className="flex flex-wrap gap-2">
+				<button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white dark:bg-slate-800 hover:bg-muted shadow-sm transition" onClick={()=>setShowCalories((v)=>!v)}>{t("whatToEatToday")}</button>
+				<button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white dark:bg-slate-800 hover:bg-muted shadow-sm transition" onClick={()=>setShowShopping((v)=>!v)}>{t("shoppingListToday")}</button>
+				<button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white dark:bg-slate-800 hover:bg-muted shadow-sm transition" onClick={async()=>{
+					setShowRestock(true);
+					setMonthPlanLoading(true);
+					try {
+						// Calculate first/last day of current month
+						const start = new Date(date.getFullYear(), date.getMonth(), 1);
+						const end = new Date(date.getFullYear(), date.getMonth()+1, 0);
+						const from = start.toISOString().slice(0,10);
+						const to = end.toISOString().slice(0,10);
+						// Load all thuc_don in month
+						const { data: td } = await supabase
+							.from('thuc_don')
+							.select('ngay, ma_mon_an, boi_so')
+							.gte('ngay', from)
+							.lte('ngay', to);
+						const byDish = new Map<string, number>();
+						for (const r of (td as any[] ?? [])) {
+							const key = String(r.ma_mon_an);
+							byDish.set(key, (byDish.get(key) ?? 0) + Number(r.boi_so ?? 1));
+						}
+						const dishIds = Array.from(byDish.keys());
+						if (dishIds.length === 0) { setMonthPlan([]); return; }
+						// Fetch components for all dishes
+						const { data: comps } = await supabase
+							.from('thanh_phan')
+							.select('ma_mon_an, ma_nguyen_lieu, so_nguoi_an, so_luong_nguyen_lieu, khoi_luong_nguyen_lieu')
+							.in('ma_mon_an', dishIds);
+						const needByIng = new Map<string, { qty: number; weight: number }>();
+						for (const c of (comps as any[] ?? [])) {
+							const servings = byDish.get(String(c.ma_mon_an)) ?? 0;
+							const base = Number(c.so_nguoi_an ?? 1) || 1;
+							const factor = servings / base;
+							const addQty = (Number(c.so_luong_nguyen_lieu ?? 0) || 0) * factor;
+							const addWeight = (Number(c.khoi_luong_nguyen_lieu ?? 0) || 0) * factor;
+							const prev = needByIng.get(String(c.ma_nguyen_lieu)) ?? { qty: 0, weight: 0 };
+							needByIng.set(String(c.ma_nguyen_lieu), { qty: prev.qty + addQty, weight: prev.weight + addWeight });
+						}
+						const ingIds = Array.from(needByIng.keys());
+						const { data: ings } = await supabase
+							.from('nguyen_lieu')
+							.select('id, ten_nguyen_lieu, nguon_nhap, don_gia')
+							.in('id', ingIds);
+						const groups = new Map<string, { total: number; items: Array<{ id:string; name:string|null; need_qty:number; need_weight:number; unit_price:number; cost:number }> }>();
+						for (const ing of (ings as any[] ?? [])) {
+							const need = needByIng.get(String(ing.id)) ?? { qty: 0, weight: 0 };
+							const unit = Number(ing.don_gia ?? 0);
+							const cost = unit * (need.weight > 0 ? need.weight : need.qty);
+							const sup = String(ing.nguon_nhap ?? 'Khác');
+							const g = groups.get(sup) ?? { total: 0, items: [] };
+							g.items.push({ id: String(ing.id), name: ing.ten_nguyen_lieu ?? null, need_qty: Number(need.qty.toFixed(2)), need_weight: Number(need.weight.toFixed(2)), unit_price: unit, cost });
+							g.total += cost;
+							groups.set(sup, g);
+						}
+						setMonthPlan(Array.from(groups.entries()).map(([supplier, g])=>({ supplier, total: g.total, items: g.items })));
+					} finally {
+						setMonthPlanLoading(false);
+					}
+				}}>{t("restockPlanMonth")}</button>
+			</div>
+
+			{showCalories && (
+				<div className="rounded-xl border border-border p-4 bg-white dark:bg-slate-800 shadow-sm">
+					<div className="font-semibold mb-1">{t("todayCalories")}</div>
+					<div className="text-3xl font-bold">{totalCalories.toLocaleString()}</div>
+					<div className="text-sm text-muted-foreground mt-1">(Tính theo luong_calo trong bảng thanh_phan)</div>
+				</div>
+			)}
+
+			{showShopping && (
+				<div className="rounded-xl border border-border p-4 bg-white dark:bg-slate-800 shadow-sm">
+					<h3 className="text-lg font-semibold mb-3">{t("shoppingListToday")}</h3>
+					<div className="overflow-x-auto">
+						<table className="w-full text-sm">
+							<thead>
+								<tr className="text-left bg-muted/50">
+									<th className="py-1 pr-3">{t("ingredientsForDay")}</th>
+									<th className="py-1 pr-3">{t("quantity")}</th>
+									<th className="py-1 pr-3">{t("weight")}</th>
+									<th className="py-1 pr-3">{t("price")}</th>
+									<th className="py-1 pr-3">{t("total")}</th>
+								</tr>
+							</thead>
+							<tbody>
+								{inventory.map((row, idx)=>{
+									const unit = row.unit_price || 0;
+									const cost = unit * (row.need_weight > 0 ? row.need_weight : row.need_qty);
+									return (
+										<tr key={row.ma_nguyen_lieu} className={idx % 2 ? "bg-muted/30" : ""}>
+											<td className="py-1 pr-3">{row.ten_nguyen_lieu ?? row.ma_nguyen_lieu}</td>
+											<td className="py-1 pr-3">{row.need_qty}</td>
+											<td className="py-1 pr-3">{row.need_weight}</td>
+											<td className="py-1 pr-3">{unit ? unit.toLocaleString() : "Chưa nhập/cố định đơn giá"}</td>
+											<td className="py-1 pr-3">{cost.toLocaleString()}</td>
+										</tr>
+									);
+								})}
+							</tbody>
+						</table>
+					</div>
+					<div className="text-right font-semibold mt-3">{t("total")}: {inventory.reduce((s, r)=> s + (r.unit_price||0) * (r.need_weight>0? r.need_weight : r.need_qty), 0).toLocaleString()}</div>
+					<div className="text-xs text-muted-foreground mt-1">(Đơn giá lấy từ nguyen_lieu.don_gia)</div>
+				</div>
+			)}
+
+			{showRestock && (
+				<div className="rounded-xl border border-border p-4 bg-white dark:bg-slate-800 shadow-sm">
+					<h3 className="text-lg font-semibold mb-2">{t("restockPlanMonth")}</h3>
+					<div className="text-sm mb-2">Báo cáo tổng hợp cho toàn bộ tháng hiện tại, nhóm theo nhà cung cấp.</div>
+					{monthPlanLoading ? (
+						<div className="text-sm text-muted-foreground">Đang tổng hợp...</div>
+					) : monthPlan.length === 0 ? (
+						<div className="text-sm text-muted-foreground">Chưa có dữ liệu trong tháng.</div>
+					) : (
+						<div className="space-y-4">
+							{monthPlan.map(group => (
+								<div key={group.supplier} className="rounded-lg border border-border">
+									<div className="px-3 py-2 border-b border-border font-semibold flex items-center justify-between">
+										<span>{group.supplier}</span>
+										<span>{t("total")}: {group.total.toLocaleString()}</span>
+									</div>
+									<div className="overflow-x-auto">
+										<table className="w-full text-sm">
+											<thead>
+												<tr className="text-left bg-muted/50">
+													<th className="py-1 pr-3">{t("ingredientsForDay")}</th>
+													<th className="py-1 pr-3">{t("quantity")}</th>
+													<th className="py-1 pr-3">{t("weight")}</th>
+													<th className="py-1 pr-3">{t("price")}</th>
+													<th className="py-1 pr-3">{t("total")}</th>
+											</tr>
+										</thead>
+										<tbody>
+											{group.items.map((it, idx) => (
+												<tr key={it.id} className={idx % 2 ? "bg-muted/30" : ""}>
+													<td className="py-1 pr-3">{it.name ?? it.id}</td>
+													<td className="py-1 pr-3">{it.need_qty}</td>
+													<td className="py-1 pr-3">{it.need_weight}</td>
+													<td className="py-1 pr-3">{it.unit_price ? it.unit_price.toLocaleString() : "Chưa nhập/cố định đơn giá"}</td>
+													<td className="py-1 pr-3">{it.cost.toLocaleString()}</td>
+												</tr>
+											))}
+										</tbody>
+										</table>
+									</div>
+								</div>
+							))}
+							<div className="text-right font-semibold">Tổng cộng: {monthPlan.reduce((s,g)=> s+g.total,0).toLocaleString()}</div>
+						</div>
+					)}
+				</div>
+			)}
+
 			<div className="flex gap-2">
-				<button className={`px-3 py-1 rounded border ${tab==='menu'?'bg-muted':''}`} onClick={() => setTab('menu')}>{t("todaysMenuTab")}</button>
-				<button className={`px-3 py-1 rounded border ${tab==='inventory'?'bg-muted':''}`} onClick={() => setTab('inventory')}>{t("inventoryTab")}</button>
-				<button className={`px-3 py-1 rounded border ${tab==='add'?'bg-muted':''}`} onClick={() => setTab('add')}>{t("addNewDishTab")}</button>
+				<button className={`inline-flex items-center px-3 py-2 rounded-lg border border-border hover:bg-muted transition ${tab==='menu'?'bg-muted':''}`} onClick={() => setTab('menu')}>{t("todaysMenuTab")}</button>
+				<button className={`inline-flex items-center px-3 py-2 rounded-lg border border-border hover:bg-muted transition ${tab==='inventory'?'bg-muted':''}`} onClick={() => setTab('inventory')}>{t("inventoryTab")}</button>
+				<button className={`inline-flex items-center px-3 py-2 rounded-lg border border-border hover:bg-muted transition ${tab==='add'?'bg-muted':''}`} onClick={() => setTab('add')}>{t("addNewDishTab")}</button>
 			</div>
 
 			{tab === 'menu' && (
@@ -240,24 +454,24 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 					</div>
 					<div className="grid gap-3">
 						{dishes.length === 0 && (
-							<div className="rounded border p-3 text-sm text-muted-foreground">{t("noDishesYet")}</div>
+							<div className="rounded-xl border border-border p-3 text-sm text-muted-foreground bg-white dark:bg-slate-800 shadow-sm">{t("noDishesYet")}</div>
 						)}
 						{dishes.map((d) => (
-							<div key={d.id} className="rounded border p-3">
+							<div key={d.id} className="rounded-xl border border-border p-4 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition">
 								<div className="font-medium">{d.ten_mon_an ?? t("unnamedDish")}</div>
 								<div className="text-sm text-muted-foreground">{t("servingsLabel")}: {d.boi_so} • {t("notesLabel")}: {d.ghi_chu ?? "-"}</div>
 								<div className="flex gap-2 mt-2 items-center">
-									<input type="number" min={1} className="rounded border px-2 py-1 w-24" value={d.boi_so} onChange={(e)=>handleEdit(d.id,{boi_so:Number(e.target.value)||1})} />
-									<input className="rounded border px-2 py-1" placeholder={t("notesLabel")} value={d.ghi_chu ?? ''} onChange={(e)=>handleEdit(d.id,{ghi_chu:e.target.value})} />
-									<button className="px-2 py-1 rounded border" onClick={()=>handleDelete(d.id)}>{t("delete")}</button>
+									<input type="number" min={1} className="rounded-lg border border-border px-3 py-2 w-24 bg-background focus:outline-none focus:ring-2 focus:ring-blue-500" value={d.boi_so} onChange={(e)=>handleEdit(d.id,{boi_so:Number(e.target.value)||1})} />
+									<input className="rounded-lg border border-border px-3 py-2 bg-background flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder={t("notesLabel")} value={d.ghi_chu ?? ''} onChange={(e)=>handleEdit(d.id,{ghi_chu:e.target.value})} />
+									<button className="inline-flex items-center px-3 py-2 rounded-lg border border-border hover:bg-muted transition" onClick={()=>handleDelete(d.id)}>{t("delete")}</button>
 								</div>
 							</div>
 						))}
 					</div>
-					<div className="rounded border p-3 flex items-center justify-between">
+					<div className="rounded-xl border border-border bg-white dark:bg-slate-800 shadow-sm p-3 flex items-center justify-between">
 						<div className="text-sm">{t("totalDishesLabel")}: {dishes.length}</div>
 						<div className="text-sm">{t("totalServingsLabel")}: {dishes.reduce((a,b)=>a+(b.boi_so||0),0)}</div>
-						<div className="text-sm">{t("totalCaloriesLabel")}: 0</div>
+						<div className="text-sm">{t("totalCaloriesLabel")}: {totalCalories.toLocaleString()}</div>
 					</div>
 				</section>
 			)}

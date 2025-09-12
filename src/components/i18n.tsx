@@ -7,7 +7,7 @@ type Language = "en" | "vi";
 type Dictionary = Record<string, { en: string; vi: string }>;
 
 const dictionary: Dictionary = {
-  appTitle: { en: "Menu Planner", vi: "Trình lập thực đơn" },
+  appTitle: { en: "Menu", vi: "Thực đơn" },
   calendar: { en: "Calendar", vi: "Lịch" },
   ingredients: { en: "Ingredients", vi: "Nguyên liệu" },
   storage: { en: "Storage", vi: "Kho" },
@@ -25,7 +25,7 @@ const dictionary: Dictionary = {
   legend12: { en: "1-2 dishes", vi: "1-2 món" },
   legend34: { en: "3-4 dishes", vi: "3-4 món" },
   legend5plus: { en: "5+ dishes", vi: "5+ món" },
-  backToCalendar: { en: "Back to Calendar", vi: "Về lịch" },
+  backToCalendar: { en: "Back to Calendar", vi: "Trở ra" },
   todaysMenuTab: { en: "Today’s Menu", vi: "Thực đơn hôm nay" },
   inventoryTab: { en: "Inventory Management", vi: "Quản lý kho" },
   addNewDishTab: { en: "Add New Dish", vi: "Thêm món" },
@@ -55,6 +55,16 @@ const dictionary: Dictionary = {
   ingredientsPreview: { en: "Ingredient breakdown and calories preview", vi: "Thành phần và ước tính calo" },
   addToMenu: { en: "Add to Menu", vi: "Thêm vào thực đơn" },
   adding: { en: "Adding...", vi: "Đang thêm..." },
+  whatToEatToday: { en: "What to eat today", vi: "Hôm nay ăn gì" },
+  todayCalories: { en: "Today's total calories", vi: "Tổng calo hôm nay" },
+  shoppingListToday: { en: "Today's shopping list", vi: "Hôm nay cần đi chợ gì" },
+  restockPlanMonth: { en: "Monthly restock plan", vi: "Kế hoạch nhập kho tháng này" },
+  view: { en: "View", vi: "Xem" },
+  close: { en: "Close", vi: "Đóng" },
+  quantity: { en: "Quantity", vi: "Số lượng" },
+  weight: { en: "Weight", vi: "Khối lượng" },
+  price: { en: "Price", vi: "Giá" },
+  total: { en: "Total", vi: "Tổng" },
 };
 
 type I18nContextValue = {
