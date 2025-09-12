@@ -10,7 +10,7 @@ import { enUS } from "date-fns/locale/en-US";
 import { vi } from "date-fns/locale/vi";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Calendar as CalendarIcon, Plus, ChefHat, Clock, Users, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, ChefHat, Users, Loader2 } from "lucide-react";
 import { useI18n } from "@/components/i18n";
 
 const locales = { "en-US": enUS, vi } as const;

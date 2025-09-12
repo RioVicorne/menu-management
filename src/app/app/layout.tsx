@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, ChefHat, Package, Utensils, Home } from "lucide-react";
+import { Calendar, ChefHat, Package, Utensils } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LangToggle } from "@/components/lang-toggle";
 import { useI18n } from "@/components/i18n";

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/components/i18n";
 
@@ -44,7 +44,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	type DishRow = { id: string; boi_so: number; ghi_chu: string | null; ma_mon_an: string | null; ten_mon_an: string | null };
 	const [dishes, setDishes] = useState<DishRow[]>([]);
 	const iso = dateParam;
-	async function refresh() {
+	const refresh = useCallback(async () => {
 		// Fetch day menu rows
 		const { data, error } = await supabase
 			.from("thuc_don")
@@ -81,10 +81,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 			ten_mon_an: r.ma_mon_an ? (nameMap.get(r.ma_mon_an) ?? null) : null,
 		}));
 		setDishes(mapped);
-	}
-	// Memoize refresh to satisfy react-hooks/exhaustive-deps
-	const refreshMemo = useMemo(() => refresh, [iso]);
-	useEffect(() => { refreshMemo(); }, [refreshMemo]);
+	}, [iso]);
+	useEffect(() => { refresh(); }, [refresh]);
 
 	// Add dish flow
 	type MonAn = { id: string; ten_mon_an: string | null };
@@ -175,7 +173,15 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 			// Sum requirements scaled by servings
 			const needByIngredient = new Map<string, { need_qty: number; need_weight: number }>();
 			let caloriesTotal = 0;
-			for (const comp of comps ?? []) {
+			type CompRow = {
+				ma_mon_an: string | null;
+				ma_nguyen_lieu: string | null;
+				so_nguoi_an: number | null;
+				khoi_luong_nguyen_lieu: number | null;
+				so_luong_nguyen_lieu: number | null;
+				luong_calo?: number | null;
+			};
+			for (const comp of (comps as CompRow[] | null) ?? []) {
 				if (!comp.ma_nguyen_lieu) { continue; }
 				const forDish = dishes.find(d => d.ma_mon_an === comp.ma_mon_an);
 				const basePeople = comp.so_nguoi_an ?? 1;
@@ -187,7 +193,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 					need_qty: prev.need_qty + addQty,
 					need_weight: prev.need_weight + addWeight,
 				});
-				const calo = Number((comp as any).luong_calo ?? 0);
+				const calo = Number(comp.luong_calo ?? 0);
 				if (!Number.isNaN(calo)) caloriesTotal += calo * factor;
 			}
 
@@ -265,9 +271,10 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 				.select("id, calo, calories, kcal")
 				.in("id", ids);
 			const map = new Map<string, number>();
-			for (const r of (data as any[] | null) ?? []) {
-				const val = Number((r as any).calo ?? (r as any).calories ?? (r as any).kcal ?? 0);
-				map.set(r.id, isNaN(val) ? 0 : val);
+			type CaloriesRow = { id: string; calo?: number | null; calories?: number | null; kcal?: number | null };
+			for (const r of (data as CaloriesRow[] | null) ?? []) {
+				const val = Number(r.calo ?? r.calories ?? r.kcal ?? 0);
+				map.set(r.id, Number.isNaN(val) ? 0 : val);
 			}
 			let total = 0;
 			for (const d of dishes) {
@@ -276,7 +283,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 			}
 			setTotalCalories(Math.round(total));
 		})();
-	}, [dishes, supabase]);
+	}, [dishes]);
 
 	return (
 		<div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
@@ -304,7 +311,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 							.gte('ngay', from)
 							.lte('ngay', to);
 						const byDish = new Map<string, number>();
-						for (const r of (td as any[] ?? [])) {
+						type TDRow = { ma_mon_an: string | null; boi_so: number | null };
+						for (const r of (td as TDRow[] | null) ?? []) {
 							const key = String(r.ma_mon_an);
 							byDish.set(key, (byDish.get(key) ?? 0) + Number(r.boi_so ?? 1));
 						}
@@ -316,7 +324,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 							.select('ma_mon_an, ma_nguyen_lieu, so_nguoi_an, so_luong_nguyen_lieu, khoi_luong_nguyen_lieu')
 							.in('ma_mon_an', dishIds);
 						const needByIng = new Map<string, { qty: number; weight: number }>();
-						for (const c of (comps as any[] ?? [])) {
+						type CompAllRow = { ma_mon_an: string | null; ma_nguyen_lieu: string | null; so_nguoi_an: number | null; so_luong_nguyen_lieu: number | null; khoi_luong_nguyen_lieu: number | null };
+						for (const c of (comps as CompAllRow[] | null) ?? []) {
 							const servings = byDish.get(String(c.ma_mon_an)) ?? 0;
 							const base = Number(c.so_nguoi_an ?? 1) || 1;
 							const factor = servings / base;
@@ -331,7 +340,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 							.select('id, ten_nguyen_lieu, nguon_nhap, don_gia')
 							.in('id', ingIds);
 						const groups = new Map<string, { total: number; items: Array<{ id:string; name:string|null; need_qty:number; need_weight:number; unit_price:number; cost:number }> }>();
-						for (const ing of (ings as any[] ?? [])) {
+						type IngRow = { id: string; ten_nguyen_lieu: string | null; nguon_nhap: string | null; don_gia?: number | null };
+						for (const ing of (ings as IngRow[] | null) ?? []) {
 							const need = needByIng.get(String(ing.id)) ?? { qty: 0, weight: 0 };
 							const unit = Number(ing.don_gia ?? 0);
 							const cost = unit * (need.weight > 0 ? need.weight : need.qty);
