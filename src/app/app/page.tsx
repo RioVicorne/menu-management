@@ -19,6 +19,8 @@ export default function CalendarDashboardPage() {
 	const router = useRouter();
 	const [events, setEvents] = useState<Event[]>([]);
 
+
+
 	const loadRange = useCallback(async (start: Date, end: Date) => {
 		const from = start.toISOString().slice(0, 10);
 		const to = end.toISOString().slice(0, 10);
@@ -64,21 +66,32 @@ export default function CalendarDashboardPage() {
 		router.push(`/app/${y}-${m}-${day}`);
 	}, [router]);
 
+	const onSelectEvent = useCallback((event: Event) => {
+		const d = event.start;
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, "0");
+		const day = String(d.getDate()).padStart(2, "0");
+		router.push(`/app/${y}-${m}-${day}`);
+	}, [router]);
+
 	return (
-		<div className="py-6">
+		<div className="py-6 mx-auto max-w-6xl px-4">
 			<h1 className="text-2xl font-semibold mb-4">Monthly Menu</h1>
-			<Calendar
-				localizer={localizer}
-				views={[Views.MONTH]}
-				defaultView={Views.MONTH}
-				selectable
-				events={events}
-				startAccessor="start"
-				endAccessor="end"
-				style={{ height: 700 }}
-				onRangeChange={onRangeChange}
-				onSelectSlot={onSelectSlot}
-			/>
+			<div className="rounded border overflow-hidden bg-background">
+				<Calendar
+					localizer={localizer}
+					views={[Views.MONTH]}
+					defaultView={Views.MONTH}
+					selectable
+					events={events}
+					startAccessor="start"
+					endAccessor="end"
+					style={{ height: "72vh", minHeight: 520 }}
+					onRangeChange={onRangeChange}
+					onSelectSlot={onSelectSlot}
+					onSelectEvent={onSelectEvent}
+				/>
+			</div>
 		</div>
 	);
 }
