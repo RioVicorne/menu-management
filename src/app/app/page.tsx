@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
 import { format } from "date-fns/format";
 import { parse } from "date-fns/parse";
@@ -9,38 +9,68 @@ import { getDay } from "date-fns/getDay";
 import { enUS } from "date-fns/locale/en-US";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { Calendar as CalendarIcon, Plus, ChefHat, Clock, Users, Loader2 } from "lucide-react";
 
 const locales = { "en-US": enUS } as const;
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 
-type Event = { title: string; start: Date; end: Date; allDay?: boolean };
+interface Event {
+	title: string;
+	start: Date;
+	end: Date;
+	allDay: boolean;
+	count?: number;
+}
 
 export default function CalendarDashboardPage() {
 	const router = useRouter();
 	const [events, setEvents] = useState<Event[]>([]);
-
-
+	const [loading, setLoading] = useState(false);
+	const [currentDate, setCurrentDate] = useState(new Date());
+	const [totalDishes, setTotalDishes] = useState(0);
 
 	const loadRange = useCallback(async (start: Date, end: Date) => {
-		const from = start.toISOString().slice(0, 10);
-		const to = end.toISOString().slice(0, 10);
-		const { data, error } = await supabase
-			.from("thuc_don")
-			.select("ngay")
-			.gte("ngay", from)
-			.lte("ngay", to);
-		if (error) { console.error(error); setEvents([]); return; }
-		// Count per day and create all-day events
-		const map = new Map<string, number>();
-		for (const row of data ?? []) {
-			const k = String(row.ngay);
-			map.set(k, (map.get(k) ?? 0) + 1);
+		setLoading(true);
+		try {
+			const from = start.toISOString().slice(0, 10);
+			const to = end.toISOString().slice(0, 10);
+			const { data, error } = await supabase
+				.from("thuc_don")
+				.select("ngay")
+				.gte("ngay", from)
+				.lte("ngay", to);
+			
+			if (error) { 
+				console.error(error); 
+				setEvents([]); 
+				return; 
+			}
+			
+			// Count per day and create all-day events
+			const map = new Map<string, number>();
+			for (const row of data ?? []) {
+				const k = String(row.ngay);
+				map.set(k, (map.get(k) ?? 0) + 1);
+			}
+			
+			const evs: Event[] = Array.from(map.entries()).map(([iso, count]) => {
+				const d = new Date(iso);
+				return { 
+					title: `${count} dish${count > 1 ? 'es' : ''}`, 
+					start: d, 
+					end: d, 
+					allDay: true,
+					count 
+				};
+			});
+			setEvents(evs);
+			setTotalDishes(evs.reduce((sum, event) => sum + (event.count || 0), 0));
+		} catch (error) {
+			console.error("Error loading events:", error);
+			setEvents([]);
+		} finally {
+			setLoading(false);
 		}
-		const evs: Event[] = Array.from(map.entries()).map(([iso, count]) => {
-			const d = new Date(iso);
-			return { title: `${count} dishes`, start: d, end: d, allDay: true };
-		});
-		setEvents(evs);
 	}, []);
 
 	type MonthRange = { start: Date; end: Date };
@@ -49,11 +79,8 @@ export default function CalendarDashboardPage() {
 			const start = range[0];
 			const end = range[range.length - 1];
 			loadRange(start, end);
-			return;
-		}
-		if ((range as MonthRange)?.start && (range as MonthRange)?.end) {
-			const r = range as MonthRange;
-			loadRange(r.start, r.end);
+		} else {
+			loadRange(range.start, range.end);
 		}
 	}, [loadRange]);
 
@@ -74,26 +101,205 @@ export default function CalendarDashboardPage() {
 		router.push(`/app/${y}-${m}-${day}`);
 	}, [router]);
 
+	const onNavigate = useCallback((newDate: Date) => {
+		setCurrentDate(newDate);
+	}, []);
+
+	// Load initial data
+	useEffect(() => {
+		const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+		const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+		loadRange(start, end);
+	}, [currentDate, loadRange]);
+
+	const eventStyleGetter = (event: Event) => {
+		const count = event.count || 0;
+		let backgroundColor = '#3b82f6';
+		
+		if (count >= 5) {
+			backgroundColor = '#10b981'; // Green for many dishes
+		} else if (count >= 3) {
+			backgroundColor = '#f59e0b'; // Orange for moderate dishes
+		} else if (count >= 1) {
+			backgroundColor = '#3b82f6'; // Blue for few dishes
+		}
+
+		return {
+			style: {
+				backgroundColor,
+				borderRadius: '6px',
+				opacity: 0.9,
+				color: 'white',
+				border: 'none',
+				display: 'block',
+				fontSize: '0.75rem',
+				fontWeight: '500',
+			}
+		};
+	};
+
 	return (
-		<div className="py-6 mx-auto max-w-6xl px-4">
-			<h1 className="text-2xl font-semibold mb-4">Monthly Menu</h1>
-			<div className="rounded border overflow-hidden bg-background">
-				<Calendar
-					localizer={localizer}
-					views={[Views.MONTH]}
-					defaultView={Views.MONTH}
-					selectable
-					events={events}
-					startAccessor="start"
-					endAccessor="end"
-					style={{ height: "72vh", minHeight: 520 }}
-					onRangeChange={onRangeChange}
-					onSelectSlot={onSelectSlot}
-					onSelectEvent={onSelectEvent}
-				/>
+		<div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+			<div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+				{/* Header Section */}
+				<div className="mb-8">
+					<div className="flex items-center justify-between mb-6">
+						<div className="flex items-center space-x-3">
+							<div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+								<CalendarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+							</div>
+							<div>
+								<h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+									Menu Calendar
+								</h1>
+								<p className="text-gray-600 dark:text-gray-400 mt-1">
+									Plan and manage your daily menus
+								</p>
+							</div>
+						</div>
+						<button
+							onClick={() => {
+								const today = new Date();
+								const y = today.getFullYear();
+								const m = String(today.getMonth() + 1).padStart(2, "0");
+								const d = String(today.getDate()).padStart(2, "0");
+								router.push(`/app/${y}-${m}-${d}`);
+							}}
+							className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
+						>
+							<Plus className="h-4 w-4" />
+							<span>Add Today's Menu</span>
+						</button>
+					</div>
+
+					{/* Stats Cards */}
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+						<div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+							<div className="flex items-center">
+								<div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+									<ChefHat className="h-5 w-5 text-green-600 dark:text-green-400" />
+								</div>
+								<div className="ml-4">
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Dishes</p>
+									<p className="text-2xl font-bold text-gray-900 dark:text-white">{totalDishes}</p>
+								</div>
+							</div>
+						</div>
+						
+						<div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+							<div className="flex items-center">
+								<div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+									<CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+								</div>
+								<div className="ml-4">
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">Days with Menu</p>
+									<p className="text-2xl font-bold text-gray-900 dark:text-white">{events.length}</p>
+								</div>
+							</div>
+						</div>
+
+						<div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+							<div className="flex items-center">
+								<div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+									<Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+								</div>
+								<div className="ml-4">
+									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">This Month</p>
+									<p className="text-2xl font-bold text-gray-900 dark:text-white">
+										{format(currentDate, 'MMMM yyyy')}
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Calendar Section */}
+				<div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
+					{loading ? (
+						<div className="calendar-loading">
+							<div className="flex flex-col items-center space-y-4">
+								<Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+								<p className="text-gray-600 dark:text-gray-400">Loading calendar...</p>
+							</div>
+						</div>
+					) : events.length === 0 ? (
+						<div className="calendar-empty">
+							<div className="p-8 text-center">
+								<CalendarIcon className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+								<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+									No menus planned yet
+								</h3>
+								<p className="text-gray-600 dark:text-gray-400 mb-6">
+									Start planning your daily menus by clicking on a date or using the "Add Today's Menu" button.
+								</p>
+								<button
+									onClick={() => {
+										const today = new Date();
+										const y = today.getFullYear();
+										const m = String(today.getMonth() + 1).padStart(2, "0");
+										const d = String(today.getDate()).padStart(2, "0");
+										router.push(`/app/${y}-${m}-${d}`);
+									}}
+									className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
+								>
+									<Plus className="h-4 w-4" />
+									<span>Plan Today's Menu</span>
+								</button>
+							</div>
+						</div>
+					) : (
+						<Calendar
+							localizer={localizer}
+							views={[Views.MONTH]}
+							defaultView={Views.MONTH}
+							selectable
+							events={events}
+							startAccessor="start"
+							endAccessor="end"
+							style={{ height: "72vh", minHeight: 520 }}
+							onRangeChange={onRangeChange}
+							onSelectSlot={onSelectSlot}
+							onSelectEvent={onSelectEvent}
+							onNavigate={onNavigate}
+							eventPropGetter={eventStyleGetter}
+							popup
+							showMultiDayTimes
+							step={60}
+							timeslots={1}
+							components={{
+								event: ({ event }: { event: Event }) => (
+									<div className="flex items-center space-x-1">
+										<ChefHat className="h-3 w-3" />
+										<span className="truncate">{event.title}</span>
+									</div>
+								),
+							}}
+						/>
+					)}
+				</div>
+
+				{/* Legend */}
+				{events.length > 0 && (
+					<div className="mt-6 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Legend</h3>
+						<div className="flex flex-wrap gap-4">
+							<div className="flex items-center space-x-2">
+								<div className="w-4 h-4 bg-blue-500 rounded"></div>
+								<span className="text-sm text-gray-600 dark:text-gray-400">1-2 dishes</span>
+							</div>
+							<div className="flex items-center space-x-2">
+								<div className="w-4 h-4 bg-amber-500 rounded"></div>
+								<span className="text-sm text-gray-600 dark:text-gray-400">3-4 dishes</span>
+							</div>
+							<div className="flex items-center space-x-2">
+								<div className="w-4 h-4 bg-green-500 rounded"></div>
+								<span className="text-sm text-gray-600 dark:text-gray-400">5+ dishes</span>
+							</div>
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 	);
 }
-
-
