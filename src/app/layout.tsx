@@ -1,7 +1,7 @@
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../globals.css";
 
-import Link from "next/link";
+// import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/components/i18n";
 import type { Metadata } from "next";
@@ -27,7 +27,7 @@ const geistSans = Geist({
 export default function AppSectionLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className="min-h-dvh bg-background text-foreground">
+			<body className={`min-h-dvh bg-background text-foreground ${geistSans.variable} ${geistMono.variable} antialiased`}>
 				<LanguageProvider>
 					<ThemeProvider>
 						<div className="min-h-dvh bg-background text-foreground">

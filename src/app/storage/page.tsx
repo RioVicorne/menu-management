@@ -25,7 +25,8 @@ export default function StoragePage() {
         .select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong, don_gia")
         .order("ten_nguyen_lieu", { ascending: true });
       if (error) {
-        console.warn('Load nguyen_lieu failed:', (error as any)?.message ?? error);
+        const maybe = error as { message?: string } | undefined;
+        console.warn('Load nguyen_lieu failed:', maybe?.message ?? String(error));
         setRows([]);
       } else {
         setRows(((data as Ingredient[] | null) ?? []) as Ingredient[]);
