@@ -6,6 +6,7 @@ import { Languages } from "lucide-react";
 export function LangToggle() {
   const { lang, setLang } = useI18n();
   const next = lang === "en" ? "vi" : "en";
+  
   return (
     <button
       type="button"

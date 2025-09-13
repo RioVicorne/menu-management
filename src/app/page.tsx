@@ -12,6 +12,10 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Calendar as CalendarIcon, Plus, ChefHat, Users, Loader2 } from "lucide-react";
 import { useI18n } from "@/components/i18n";
+import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
+import { getCalendarData } from "@/lib/api";
+import { HydrationBoundary } from "@/components/hydration-boundary";
+import MockDataNotice from "@/components/mock-data-notice";
 
 const locales = { "en-US": enUS, vi } as const;
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
@@ -37,6 +41,20 @@ export default function CalendarDashboardPage() {
 		try {
 			const from = start.toISOString().slice(0, 10);
 			const to = end.toISOString().slice(0, 10);
+			
+			if (!supabase) {
+				// Use API function when Supabase is not available
+				const data = await getCalendarData(from, to);
+				setEvents(data.map(item => ({
+					start: new Date(item.date),
+					end: new Date(item.date),
+					title: `${item.dishCount} dishes`,
+					count: item.dishCount,
+					allDay: true
+				})));
+				return;
+			}
+			
 			const { data, error } = await supabase
 				.from("thuc_don")
 				.select("ngay")
@@ -94,7 +112,7 @@ export default function CalendarDashboardPage() {
 		const y = d.getFullYear();
 		const m = String(d.getMonth() + 1).padStart(2, "0");
 		const day = String(d.getDate()).padStart(2, "0");
-		router.push(`/app/${y}-${m}-${day}`);
+		router.push(`/${y}-${m}-${day}`);
 	}, [router]);
 
 	const onSelectEvent = useCallback((event: Event) => {
@@ -102,7 +120,7 @@ export default function CalendarDashboardPage() {
 		const y = d.getFullYear();
 		const m = String(d.getMonth() + 1).padStart(2, "0");
 		const day = String(d.getDate()).padStart(2, "0");
-		router.push(`/app/${y}-${m}-${day}`);
+		router.push(`/${y}-${m}-${day}`);
 	}, [router]);
 
 	const onNavigate = useCallback((newDate: Date) => {
@@ -145,6 +163,9 @@ export default function CalendarDashboardPage() {
 	return (
 		<div className="min-h-screen bg-background text-foreground">
 			<div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+				{/* Mock Data Notice */}
+				<MockDataNotice />
+				
 				{/* Header Section */}
 				<div className="mb-8">
 					<div className="flex items-center justify-between mb-6">
@@ -167,7 +188,7 @@ export default function CalendarDashboardPage() {
 								const y = today.getFullYear();
 								const m = String(today.getMonth() + 1).padStart(2, "0");
 								const d = String(today.getDate()).padStart(2, "0");
-								router.push(`/app/${y}-${m}-${d}`);
+								router.push(`/${y}-${m}-${d}`);
 							}}
 							className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
 						>
@@ -210,7 +231,7 @@ export default function CalendarDashboardPage() {
 								<div className="ml-4">
 									<p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("thisMonth")}</p>
 									<p className="text-2xl font-bold text-gray-900 dark:text-white">
-										{format(currentDate, 'MMMM yyyy')}
+										{format(currentDate, 'MMMM yyyy', { locale: lang === 'vi' ? vi : enUS })}
 									</p>
 								</div>
 							</div>
@@ -219,82 +240,29 @@ export default function CalendarDashboardPage() {
 				</div>
 
 				{/* Calendar Section */}
-				<div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-					{loading ? (
-						<div className="calendar-loading">
-							<div className="flex flex-col items-center space-y-4">
-								<Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-								<p className="text-gray-600 dark:text-gray-400">{t("loadingCalendar")}</p>
-							</div>
+				<HydrationBoundary fallback={
+					<div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+						<div className="flex items-center justify-center h-96">
+							<Loader2 className="h-8 w-8 animate-spin text-blue-600" />
 						</div>
-					) : events.length === 0 ? (
-						<div className="calendar-empty">
-							<div className="p-8 text-center">
-								<CalendarIcon className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-								<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-									{t("emptyTitle")}
-								</h3>
-								<p className="text-gray-600 dark:text-gray-400 mb-6">
-									{t("emptyDesc")}
-								</p>
-								<button
-									onClick={() => {
-										const today = new Date();
-										const y = today.getFullYear();
-										const m = String(today.getMonth() + 1).padStart(2, "0");
-										const d = String(today.getDate()).padStart(2, "0");
-										router.push(`/app/${y}-${m}-${d}`);
-									}}
-									className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
-								>
-									<Plus className="h-4 w-4" />
-									<span>{t("addToday")}</span>
-								</button>
-							</div>
-						</div>
-					) : (
-						<Calendar
-							localizer={localizer}
-							views={[Views.MONTH]}
-							defaultView={Views.MONTH}
-							selectable
-							events={events}
-							startAccessor="start"
-							endAccessor="end"
-							style={{ height: "72vh", minHeight: 520 }}
-							onRangeChange={onRangeChange}
-							onSelectSlot={onSelectSlot}
-							onSelectEvent={onSelectEvent}
-							onNavigate={onNavigate}
-							eventPropGetter={eventStyleGetter}
-							culture={lang === 'vi' ? 'vi' : 'en-US'}
-							messages={{
-								allDay: lang === 'vi' ? 'Cả ngày' : 'All Day',
-								week: lang === 'vi' ? 'Tuần' : 'Week',
-								work_week: lang === 'vi' ? 'Tuần làm việc' : 'Work Week',
-								day: lang === 'vi' ? 'Ngày' : 'Day',
-								month: lang === 'vi' ? 'Tháng' : 'Month',
-								previous: lang === 'vi' ? 'Trước' : 'Back',
-								next: lang === 'vi' ? 'Sau' : 'Next',
-								today: lang === 'vi' ? 'Hôm nay' : 'Today',
-								agenda: lang === 'vi' ? 'Lịch biểu' : 'Agenda',
-								showMore: (total: number) => (lang === 'vi' ? `+${total} nữa` : `+${total} more`),
-							}}
-							popup
-							showMultiDayTimes
-							step={60}
-							timeslots={1}
-							components={{
-								event: ({ event }: { event: Event }) => (
-									<div className="flex items-center space-x-1">
-										<ChefHat className="h-3 w-3" />
-										<span className="truncate">{event.title}</span>
-									</div>
-								),
-							}}
-						/>
-					)}
-				</div>
+					</div>
+				}>
+					<MonthlyCalendar 
+						menuData={events.map(event => ({
+							date: event.start.toISOString().split('T')[0],
+							dishCount: event.count || 0,
+							totalCalories: (event.count || 0) * 300, // Mock calories
+							totalServings: (event.count || 0) * 2 // Mock servings
+						}))}
+						onDateClick={(date) => {
+							const d = new Date(date);
+							const y = d.getFullYear();
+							const m = String(d.getMonth() + 1).padStart(2, "0");
+							const day = String(d.getDate()).padStart(2, "0");
+							router.push(`/menu/${y}-${m}-${day}`);
+						}}
+					/>
+				</HydrationBoundary>
 
 				{/* Legend */}
 				{events.length > 0 && (

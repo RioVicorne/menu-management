@@ -6,7 +6,18 @@ import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/components/i18n";
 
 function parseDate(param: string) {
+	// Handle invalid date parameters
+	if (!param || param === "app" || !param.includes("-")) {
+		return new Date(); // Return today's date as fallback
+	}
+	
 	const [y, m, d] = param.split("-").map(Number);
+	
+	// Validate the parsed numbers
+	if (isNaN(y) || isNaN(m) || isNaN(d) || y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) {
+		return new Date(); // Return today's date as fallback
+	}
+	
 	return new Date(y, (m || 1) - 1, d || 1);
 }
 
@@ -14,6 +25,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	// Next.js 15: params is a Promise in Client Components
 	const { date: dateParam } = use(params);
 	const date = useMemo(() => parseDate(dateParam), [dateParam]);
+	
 	const [tab, setTab] = useState<"menu" | "inventory" | "add">("menu");
 	const { t } = useI18n();
 	const [showCalories, setShowCalories] = useState(false);
@@ -43,45 +55,56 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	// Load today's menu (thuc_don joined with mon_an)
 	type DishRow = { id: string; boi_so: number; ghi_chu: string | null; ma_mon_an: string | null; ten_mon_an: string | null };
 	const [dishes, setDishes] = useState<DishRow[]>([]);
-	const iso = dateParam;
+	const iso = date.toISOString().slice(0, 10); // Convert date to YYYY-MM-DD format
 	const refresh = useCallback(async () => {
-		// Fetch day menu rows
-		const { data, error } = await supabase
-			.from("thuc_don")
-			.select("id, boi_so, ghi_chu, ma_mon_an")
-			.eq("ngay", iso);
-		if (error) {
-			console.error('Load thuc_don failed:', error.message);
+		if (!supabase) {
+			// Mock mode - return empty array since we're not persisting data
 			setDishes([]);
 			return;
 		}
-		const rows = (data ?? []) as Array<{ id: string; boi_so: number; ghi_chu: string | null; ma_mon_an: string | null }>;
-		// Fetch dish names separately to avoid FK embedding issues
-		const ids = Array.from(new Set(rows.map(r => r.ma_mon_an).filter(Boolean))) as string[];
-		const nameMap = new Map<string, string | null>();
-		if (ids.length) {
-			const { data: dishData, error: dishErr } = await supabase
-				.from("mon_an")
-				.select("id, ten_mon_an")
-				.in("id", ids);
-			if (dishErr) {
-				console.error('Load mon_an failed:', dishErr.message);
-			} else {
-				type MonAnName = { id: string; ten_mon_an: string | null };
-				for (const r of (dishData as MonAnName[] | null) ?? []) {
-					nameMap.set(r.id, r.ten_mon_an ?? null);
+
+		try {
+			// Fetch day menu rows
+			const { data, error } = await supabase
+				.from("thuc_don")
+				.select("id, boi_so, ghi_chu, ma_mon_an")
+				.eq("ngay", iso);
+			if (error) {
+				console.error('Load thuc_don failed:', error.message);
+				setDishes([]);
+				return;
+			}
+			const rows = (data ?? []) as Array<{ id: string; boi_so: number; ghi_chu: string | null; ma_mon_an: string | null }>;
+			// Fetch dish names separately to avoid FK embedding issues
+			const ids = Array.from(new Set(rows.map(r => r.ma_mon_an).filter(Boolean))) as string[];
+			const nameMap = new Map<string, string | null>();
+			if (ids.length) {
+				const { data: dishData, error: dishErr } = await supabase
+					.from("mon_an")
+					.select("id, ten_mon_an")
+					.in("id", ids);
+				if (dishErr) {
+					console.error('Load mon_an failed:', dishErr.message);
+				} else {
+					type MonAnName = { id: string; ten_mon_an: string | null };
+					for (const r of (dishData as MonAnName[] | null) ?? []) {
+						nameMap.set(r.id, r.ten_mon_an ?? null);
+					}
 				}
 			}
+			const mapped: DishRow[] = rows.map(r => ({
+				id: r.id,
+				boi_so: r.boi_so,
+				ghi_chu: r.ghi_chu,
+				ma_mon_an: r.ma_mon_an,
+				ten_mon_an: r.ma_mon_an ? (nameMap.get(r.ma_mon_an) ?? null) : null,
+			}));
+			setDishes(mapped);
+		} catch (err) {
+			console.warn('Database connection failed (running in mock mode):', err);
+			setDishes([]);
 		}
-		const mapped: DishRow[] = rows.map(r => ({
-			id: r.id,
-			boi_so: r.boi_so,
-			ghi_chu: r.ghi_chu,
-			ma_mon_an: r.ma_mon_an,
-			ten_mon_an: r.ma_mon_an ? (nameMap.get(r.ma_mon_an) ?? null) : null,
-		}));
-		setDishes(mapped);
-	}, [iso]);
+	}, [date]);
 	useEffect(() => { refresh(); }, [refresh]);
 
 	// Add dish flow
@@ -94,13 +117,31 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 
 	useEffect(() => {
 		(async () => {
-			const { data, error } = await supabase.from("mon_an").select("id, ten_mon_an").order("ten_mon_an", { ascending: true });
-			if (error) {
-				console.error('Load mon_an list failed:', error.message);
-				setOptions([]);
+			if (!supabase) {
+				// Mock mode - use mock dishes
+				const mockDishes = [
+					{ id: '1', ten_mon_an: 'Cơm tấm sườn nướng' },
+					{ id: '2', ten_mon_an: 'Phở bò' },
+					{ id: '3', ten_mon_an: 'Bún bò Huế' },
+					{ id: '4', ten_mon_an: 'Bánh mì pate' },
+					{ id: '5', ten_mon_an: 'Chả cá Lã Vọng' },
+				];
+				setOptions(mockDishes);
 				return;
 			}
-			setOptions((data ?? []) as MonAn[]);
+
+			try {
+				const { data, error } = await supabase.from("mon_an").select("id, ten_mon_an").order("ten_mon_an", { ascending: true });
+				if (error) {
+					console.error('Load mon_an list failed:', error.message);
+					setOptions([]);
+					return;
+				}
+				setOptions((data ?? []) as MonAn[]);
+			} catch (err) {
+				console.warn('Database connection failed (running in mock mode):', err);
+				setOptions([]);
+			}
 		})();
 	}, []);
 
@@ -108,11 +149,24 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 		if (!selected || multiplier <= 0) return;
 		setSaving(true);
 		try {
-			const { error } = await supabase
-				.from("thuc_don")
-				.insert({ ngay: iso, ma_mon_an: selected, boi_so: multiplier, ghi_chu: note });
-			if (error) throw error;
-			await refresh();
+			if (!supabase) {
+				// Mock mode - add to local state
+				const selectedDish = options.find(opt => opt.id === selected);
+				const newDish: DishRow = {
+					id: Date.now().toString(),
+					boi_so: multiplier,
+					ghi_chu: note || null,
+					ma_mon_an: selected,
+					ten_mon_an: selectedDish?.ten_mon_an || 'Unknown dish'
+				};
+				setDishes(prev => [...prev, newDish]);
+			} else {
+				const { error } = await supabase
+					.from("thuc_don")
+					.insert({ ngay: iso, ma_mon_an: selected, boi_so: multiplier, ghi_chu: note });
+				if (error) throw error;
+				await refresh();
+			}
 			setSelected("");
 			setMultiplier(1);
 			setNote("");
@@ -125,6 +179,12 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	}
 
 	async function handleDelete(id: string) {
+		if (!supabase) {
+			// Mock mode - just update local state
+			setDishes((d) => d.filter((x) => x.id !== id));
+			return;
+		}
+
 		const prev = dishes;
 		setDishes((d) => d.filter((x) => x.id !== id));
 		const { error } = await supabase.from("thuc_don").delete().eq("id", id);
@@ -135,6 +195,12 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	}
 
 	async function handleEdit(id: string, updates: Partial<Pick<DishRow, "boi_so" | "ghi_chu">>) {
+		if (!supabase) {
+			// Mock mode - just update local state
+			setDishes((d) => d.map((x) => (x.id === id ? { ...x, ...updates } : x)));
+			return;
+		}
+
 		const prev = dishes;
 		setDishes((d) => d.map((x) => (x.id === id ? { ...x, ...updates } : x)));
 		const { error } = await supabase.from("thuc_don").update(updates).eq("id", id);
@@ -163,6 +229,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	useEffect(() => {
 		(async () => {
 			if (dishes.length === 0) { setInventory([]); return; }
+			if (!supabase) { setInventory([]); return; }
+			
 			const dishIds = dishes.map(d => d.ma_mon_an).filter(Boolean) as string[];
 			const { data: comps, error: compErr } = await supabase
 				.from("thanh_phan")
@@ -199,7 +267,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 
 			const ids = Array.from(needByIngredient.keys()).filter(Boolean);
 			if (ids.length === 0) { setInventory([]); return; }
-			const { data: ings, error: ingErr } = await supabase
+			const { data: ings, error: ingErr } = await supabase!
 				.from("nguyen_lieu")
 				.select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong, don_gia")
 				.in("id", ids);
@@ -265,6 +333,8 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 	useEffect(() => {
 		(async () => {
 			if (dishes.length === 0) { setTotalCalories(0); return; }
+			if (!supabase) { setTotalCalories(0); return; }
+			
 			const ids = dishes.map(d=>d.ma_mon_an).filter(Boolean) as string[];
 			if (ids.length === 0) { setTotalCalories(0); return; }
 			const { data } = await supabase
@@ -300,6 +370,11 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 					setShowRestock(true);
 					setMonthPlanLoading(true);
 					try {
+						if (!supabase) {
+							setMonthPlan([]);
+							return;
+						}
+						
 						// Calculate first/last day of current month
 						const start = new Date(date.getFullYear(), date.getMonth(), 1);
 						const end = new Date(date.getFullYear(), date.getMonth()+1, 0);
@@ -320,7 +395,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 						const dishIds = Array.from(byDish.keys());
 						if (dishIds.length === 0) { setMonthPlan([]); return; }
 						// Fetch components for all dishes
-						const { data: comps } = await supabase
+						const { data: comps } = await supabase!
 							.from('thanh_phan')
 							.select('ma_mon_an, ma_nguyen_lieu, so_nguoi_an, so_luong_nguyen_lieu, khoi_luong_nguyen_lieu')
 							.in('ma_mon_an', dishIds);
@@ -336,7 +411,7 @@ export default function DailyPage({ params }: { params: Promise<{ date: string }
 							needByIng.set(String(c.ma_nguyen_lieu), { qty: prev.qty + addQty, weight: prev.weight + addWeight });
 						}
 						const ingIds = Array.from(needByIng.keys());
-						const { data: ings } = await supabase
+						const { data: ings } = await supabase!
 							.from('nguyen_lieu')
 							.select('id, ten_nguyen_lieu, nguon_nhap, don_gia')
 							.in('id', ingIds);
