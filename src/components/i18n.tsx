@@ -36,7 +36,7 @@ const dictionary: Dictionary = {
   inventoryTab: { en: "Inventory Management", vi: "Quản lý kho" },
   addNewDishTab: { en: "Add New Dish", vi: "Thêm món" },
   dishes: { en: "Dishes", vi: "Món ăn" },
-  addDish: { en: "+ Add Dish", vi: "+ Thêm món" },
+  addDish: { en: "Add Dish", vi: "Thêm món" },
   noDishesYet: { en: "No dishes yet.", vi: "Chưa có món." },
   unnamedDish: { en: "Unnamed dish", vi: "Món chưa đặt tên" },
   servingsLabel: { en: "Servings", vi: "Khẩu phần" },

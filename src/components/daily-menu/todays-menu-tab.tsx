@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Plus,
   Edit2,
@@ -20,7 +20,7 @@ interface TodaysMenuTabProps {
 
 export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
   const { t } = useI18n();
-  const { dishes, loading, error, updateDish, removeDish } = useMenu();
+  const { dishes, loading, error, updateDish, removeDish} = useMenu();
   const [editingDish, setEditingDish] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     servings?: number;
@@ -37,15 +37,15 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     0,
   ); // Mock calories
 
-  const handleEdit = (dish: any) => {
+  const handleEdit = useCallback((dish: any) => {
     setEditingDish(dish.id);
     setEditForm({
       servings: dish.boi_so,
       notes: dish.ghi_chu || "",
     });
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (editingDish) {
       try {
         await updateDish(editingDish, editForm);
@@ -55,20 +55,20 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         console.error("Error updating dish:", error);
       }
     }
-  };
+  }, [editingDish, editForm, updateDish]);
 
-  const handleDelete = async (dishId: string) => {
+  const handleDelete = useCallback(async (dishId: string) => {
     try {
       await removeDish(dishId);
     } catch (error) {
       console.error("Error deleting dish:", error);
     }
-  };
+  }, [removeDish]);
 
-  const handleAddDish = () => {
+  const handleAddDish = useCallback(async () => {
     console.log("handleAddDish called");
     onAddDish?.();
-  };
+  }, [onAddDish,]);
 
   return (
     <div className="space-y-6">

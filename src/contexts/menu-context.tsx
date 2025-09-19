@@ -65,13 +65,13 @@ export function MenuProvider({
   // Add a dish to the menu
   const addDish = async (dishId: string, servings: number, notes?: string) => {
     try {
-      const newMenuItem = await addDishToMenu(
+      await addDishToMenu(
         dishId,
         selectedDate,
         servings,
         notes,
       );
-      setDishes((prev) => [...prev, newMenuItem]);
+      await refreshMenu();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to add dish";
@@ -87,13 +87,11 @@ export function MenuProvider({
     updates: { servings?: number; notes?: string },
   ) => {
     try {
-      const updatedMenuItem = await updateMenuItem(id, {
+       await updateMenuItem(id, {
         boi_so: updates.servings,
         ghi_chu: updates.notes,
       });
-      setDishes((prev) =>
-        prev.map((dish) => (dish.id === id ? updatedMenuItem : dish)),
-      );
+      await refreshMenu();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to update dish";
@@ -107,7 +105,7 @@ export function MenuProvider({
   const removeDish = async (id: string) => {
     try {
       await deleteMenuItem(id);
-      setDishes((prev) => prev.filter((dish) => dish.id !== id));
+      await refreshMenu();
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to remove dish";
