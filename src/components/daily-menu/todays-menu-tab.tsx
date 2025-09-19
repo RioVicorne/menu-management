@@ -1,9 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, ChefHat, Users, Zap, StickyNote, Loader2 } from 'lucide-react';
-import { useI18n } from '../i18n';
-import { useMenu } from '@/contexts/menu-context';
+import React, { useState } from "react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  ChefHat,
+  Users,
+  Zap,
+  StickyNote,
+  Loader2,
+} from "lucide-react";
+import { useI18n } from "../i18n";
+import { useMenu } from "@/contexts/menu-context";
 
 interface TodaysMenuTabProps {
   onAddDish?: () => void;
@@ -13,17 +22,26 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
   const { t } = useI18n();
   const { dishes, loading, error, updateDish, removeDish } = useMenu();
   const [editingDish, setEditingDish] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{ servings?: number; notes?: string }>({});
+  const [editForm, setEditForm] = useState<{
+    servings?: number;
+    notes?: string;
+  }>({});
 
   const totalDishes = dishes.length;
-  const totalServings = dishes.reduce((sum, dish) => sum + (dish.boi_so || 0), 0);
-  const totalCalories = dishes.reduce((sum, dish) => sum + ((dish.boi_so || 0) * 300), 0); // Mock calories
+  const totalServings = dishes.reduce(
+    (sum, dish) => sum + (dish.boi_so || 0),
+    0,
+  );
+  const totalCalories = dishes.reduce(
+    (sum, dish) => sum + (dish.boi_so || 0) * 300,
+    0,
+  ); // Mock calories
 
   const handleEdit = (dish: any) => {
     setEditingDish(dish.id);
     setEditForm({
       servings: dish.boi_so,
-      notes: dish.ghi_chu || ''
+      notes: dish.ghi_chu || "",
     });
   };
 
@@ -34,7 +52,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         setEditingDish(null);
         setEditForm({});
       } catch (error) {
-        console.error('Error updating dish:', error);
+        console.error("Error updating dish:", error);
       }
     }
   };
@@ -43,12 +61,12 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     try {
       await removeDish(dishId);
     } catch (error) {
-      console.error('Error deleting dish:', error);
+      console.error("Error deleting dish:", error);
     }
   };
 
   const handleAddDish = () => {
-    console.log('handleAddDish called');
+    console.log("handleAddDish called");
     onAddDish?.();
   };
 
@@ -62,8 +80,12 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
               <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("totalDishesLabel")}</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalDishes}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {t("totalDishesLabel")}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {totalDishes}
+              </p>
             </div>
           </div>
         </div>
@@ -74,8 +96,12 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
               <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("totalServingsLabel")}</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalServings}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {t("totalServingsLabel")}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {totalServings}
+              </p>
             </div>
           </div>
         </div>
@@ -86,8 +112,12 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
               <Zap className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("totalCaloriesLabel")}</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalCalories.toLocaleString()}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                {t("totalCaloriesLabel")}
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {totalCalories.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
@@ -97,7 +127,9 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t("dishes")}</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {t("dishes")}
+            </h2>
             <button
               onClick={handleAddDish}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -111,7 +143,9 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         {loading ? (
           <div className="p-8 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">Loading dishes...</p>
+            <p className="text-gray-500 dark:text-gray-400">
+              Loading dishes...
+            </p>
           </div>
         ) : error ? (
           <div className="p-8 text-center">
@@ -122,11 +156,16 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             {dishes.length === 0 ? (
               <div className="p-8 text-center">
                 <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">{t("noDishesYet")}</p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {t("noDishesYet")}
+                </p>
               </div>
             ) : (
               dishes.map((dish) => (
-                <div key={dish.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div
+                  key={dish.id}
+                  className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
                   {editingDish === dish.id ? (
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,8 +175,13 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                           </label>
                           <input
                             type="number"
-                            value={editForm.servings || ''}
-                            onChange={(e) => setEditForm({...editForm, servings: parseInt(e.target.value) || 0})}
+                            value={editForm.servings || ""}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                servings: parseInt(e.target.value) || 0,
+                              })
+                            }
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                           />
                         </div>
@@ -147,8 +191,13 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                           </label>
                           <input
                             type="text"
-                            value={editForm.notes || ''}
-                            onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                            value={editForm.notes || ""}
+                            onChange={(e) =>
+                              setEditForm({
+                                ...editForm,
+                                notes: e.target.value,
+                              })
+                            }
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                           />
                         </div>
@@ -182,7 +231,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                             {dish.boi_so || 0} {t("servingsLabel")}
                           </span>
                         </div>
-                        
+
                         <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center space-x-1">
                             <Zap className="h-4 w-4" />

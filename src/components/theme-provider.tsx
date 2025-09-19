@@ -12,11 +12,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       enableColorScheme
       disableTransitionOnChange
     >
-      <div suppressHydrationWarning>
-        {children}
-      </div>
+      <div suppressHydrationWarning>{children}</div>
     </NextThemesProvider>
   );
 }
-
-

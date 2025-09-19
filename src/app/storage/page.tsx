@@ -1,9 +1,23 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { createClient } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/components/i18n";
-import { Card, CardContent, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Input, LoadingSpinner, EmptyState } from "@/components/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Input,
+  LoadingSpinner,
+  EmptyState,
+} from "@/components/ui";
 import { Search, Package, DollarSign, Scale, Hash } from "lucide-react";
 
 interface Ingredient {
@@ -21,8 +35,6 @@ export default function StoragePage() {
   const [q, setQ] = useState("");
   const { t } = useI18n();
 
-  const supabase = createClient();
-
   useEffect(() => {
     fetchData();
   }, []);
@@ -30,9 +42,36 @@ export default function StoragePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+
+      if (!supabase) {
+        console.warn("Supabase client not available. Using mock data mode.");
+        // Mock data for development when Supabase is not configured
+        setRows([
+          {
+            id: "1",
+            ten_nguyen_lieu: "Thịt bò",
+            nguon_nhap: "Nhà cung cấp A",
+            ton_kho_so_luong: 50,
+            ton_kho_khoi_luong: 25.5,
+            don_gia: 150000,
+          },
+          {
+            id: "2",
+            ten_nguyen_lieu: "Rau xanh",
+            nguon_nhap: "Nhà cung cấp B",
+            ton_kho_so_luong: 100,
+            ton_kho_khoi_luong: 15.2,
+            don_gia: 25000,
+          },
+        ]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("nguyen_lieu")
-        .select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong, don_gia");
+        .select(
+          "id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong, don_gia",
+        );
 
       if (error) {
         console.error("Error fetching ingredients:", error);
@@ -50,9 +89,10 @@ export default function StoragePage() {
 
   const filtered = useMemo(() => {
     if (!q) return rows;
-    return rows.filter((row) =>
-      row.ten_nguyen_lieu.toLowerCase().includes(q.toLowerCase()) ||
-      row.nguon_nhap.toLowerCase().includes(q.toLowerCase())
+    return rows.filter(
+      (row) =>
+        row.ten_nguyen_lieu.toLowerCase().includes(q.toLowerCase()) ||
+        row.nguon_nhap.toLowerCase().includes(q.toLowerCase()),
     );
   }, [rows, q]);
 
@@ -95,9 +135,15 @@ export default function StoragePage() {
                 <TableRow>
                   <TableHead>{t("storage.ingredient")}</TableHead>
                   <TableHead>{t("storage.supplier")}</TableHead>
-                  <TableHead className="text-right">{t("storage.quantity")}</TableHead>
-                  <TableHead className="text-right">{t("storage.weight")}</TableHead>
-                  <TableHead className="text-right">{t("storage.price")}</TableHead>
+                  <TableHead className="text-right">
+                    {t("storage.quantity")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {t("storage.weight")}
+                  </TableHead>
+                  <TableHead className="text-right">
+                    {t("storage.price")}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -106,9 +152,7 @@ export default function StoragePage() {
                     <TableCell className="font-medium">
                       {row.ten_nguyen_lieu}
                     </TableCell>
-                    <TableCell>
-                      {row.nguon_nhap}
-                    </TableCell>
+                    <TableCell>{row.nguon_nhap}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end space-x-1">
                         <Hash className="h-4 w-4 text-muted-foreground" />
@@ -125,7 +169,9 @@ export default function StoragePage() {
                       <div className="flex items-center justify-end space-x-1">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          {row.don_gia ? `${row.don_gia.toLocaleString()}đ` : t("storage.noPrice")}
+                          {row.don_gia
+                            ? `${row.don_gia.toLocaleString()}đ`
+                            : t("storage.noPrice")}
                         </span>
                       </div>
                     </TableCell>

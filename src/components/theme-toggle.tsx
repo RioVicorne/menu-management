@@ -12,7 +12,8 @@ export function ThemeToggle() {
 
   if (!mounted) return null;
 
-  const isDark = (theme === "dark") || (theme === "system" && resolvedTheme === "dark");
+  const isDark =
+    theme === "dark" || (theme === "system" && resolvedTheme === "dark");
 
   return (
     <button
@@ -25,5 +26,3 @@ export function ThemeToggle() {
     </button>
   );
 }
-
-

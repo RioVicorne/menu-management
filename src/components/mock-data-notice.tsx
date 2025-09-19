@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle } from "lucide-react";
 
 export default function MockDataNotice() {
   return (
@@ -12,10 +12,10 @@ export default function MockDataNotice() {
             Running in Mock Data Mode
           </p>
           <p className="text-yellow-700 dark:text-yellow-300 mt-1">
-            Supabase is not configured. Data will not persist between sessions. 
-            <a 
-              href="/SUPABASE_SETUP.md" 
-              target="_blank" 
+            Supabase is not configured. Data will not persist between sessions.
+            <a
+              href="/SUPABASE_SETUP.md"
+              target="_blank"
               className="underline hover:no-underline ml-1"
             >
               Setup Supabase →
