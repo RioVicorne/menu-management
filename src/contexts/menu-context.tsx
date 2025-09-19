@@ -65,12 +65,7 @@ export function MenuProvider({
   // Add a dish to the menu
   const addDish = async (dishId: string, servings: number, notes?: string) => {
     try {
-      await addDishToMenu(
-        dishId,
-        selectedDate,
-        servings,
-        notes,
-      );
+      await addDishToMenu(dishId, selectedDate, servings, notes);
       await refreshMenu();
     } catch (err) {
       const errorMessage =
@@ -87,7 +82,7 @@ export function MenuProvider({
     updates: { servings?: number; notes?: string },
   ) => {
     try {
-       await updateMenuItem(id, {
+      await updateMenuItem(id, {
         boi_so: updates.servings,
         ghi_chu: updates.notes,
       });

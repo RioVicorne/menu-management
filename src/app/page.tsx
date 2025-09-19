@@ -21,7 +21,6 @@ import { useI18n } from "@/components/i18n";
 import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
 import { getCalendarData } from "@/lib/api";
 import { HydrationBoundary } from "@/components/hydration-boundary";
-import MockDataNotice from "@/components/mock-data-notice";
 
 const locales = { "en-US": enUS, vi } as const;
 const localizer = dateFnsLocalizer({
@@ -200,9 +199,6 @@ export default function CalendarDashboardPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Mock Data Notice */}
-        <MockDataNotice />
-
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -219,19 +215,6 @@ export default function CalendarDashboardPage() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                const today = new Date();
-                const y = today.getFullYear();
-                const m = String(today.getMonth() + 1).padStart(2, "0");
-                const d = String(today.getDate()).padStart(2, "0");
-                router.push(`/${y}-${m}-${d}`);
-              }}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-medium"
-            >
-              <Plus className="h-4 w-4" />
-              <span>{t("addToday")}</span>
-            </button>
           </div>
 
           {/* Stats Cards */}

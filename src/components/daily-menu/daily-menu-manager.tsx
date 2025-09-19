@@ -8,7 +8,6 @@ import { MenuProvider, useMenu } from "@/contexts/menu-context";
 import TodaysMenuTab from "./todays-menu-tab";
 import InventoryTab from "./inventory-tab";
 import AddDishTab from "./add-dish-tab";
-import ErrorDisplay from "../error-display";
 
 interface DailyMenuManagerProps {
   selectedDate: string;
@@ -39,9 +38,6 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Error Display */}
-      <ErrorDisplay error={error} />
-
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -102,9 +98,10 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
         {/* Tab Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === "menu" && (
-            <TodaysMenuTab onAddDish={() =>{
-              setActiveTab("add-dish");
-            }}
+            <TodaysMenuTab
+              onAddDish={() => {
+                setActiveTab("add-dish");
+              }}
             />
           )}
           {activeTab === "inventory" && <InventoryTab />}

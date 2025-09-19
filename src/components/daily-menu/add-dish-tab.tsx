@@ -69,7 +69,9 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
     }
   };
 
-  const totalCalories = selectedDish ? selectedDish?.calories || 0 * servings : 0;
+  const totalCalories = selectedDish
+    ? selectedDish?.calories || 0 * servings
+    : 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

@@ -94,7 +94,10 @@ const dictionary: Dictionary = {
 type I18nContextValue = {
   lang: Language;
   setLang: (l: Language) => void;
-  t: (key: keyof typeof dictionary, params?: Record<string, string | number>) => string;
+  t: (
+    key: keyof typeof dictionary,
+    params?: Record<string, string | number>,
+  ) => string;
 };
 
 const I18nContext = React.createContext<I18nContextValue | null>(null);
@@ -121,7 +124,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [lang, isHydrated]);
 
   const t = React.useCallback(
-    (key: keyof typeof dictionary, params?: Record<string, string | number>) => {
+    (
+      key: keyof typeof dictionary,
+      params?: Record<string, string | number>,
+    ) => {
       // Always use English during SSR and initial hydration
       const currentLang = isHydrated ? lang : "en";
       const entry = dictionary[key];

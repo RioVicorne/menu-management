@@ -20,7 +20,7 @@ interface TodaysMenuTabProps {
 
 export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
   const { t } = useI18n();
-  const { dishes, loading, error, updateDish, removeDish} = useMenu();
+  const { dishes, loading, error, updateDish, removeDish } = useMenu();
   const [editingDish, setEditingDish] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     servings?: number;
@@ -57,18 +57,21 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     }
   }, [editingDish, editForm, updateDish]);
 
-  const handleDelete = useCallback(async (dishId: string) => {
-    try {
-      await removeDish(dishId);
-    } catch (error) {
-      console.error("Error deleting dish:", error);
-    }
-  }, [removeDish]);
+  const handleDelete = useCallback(
+    async (dishId: string) => {
+      try {
+        await removeDish(dishId);
+      } catch (error) {
+        console.error("Error deleting dish:", error);
+      }
+    },
+    [removeDish],
+  );
 
   const handleAddDish = useCallback(async () => {
     console.log("handleAddDish called");
     onAddDish?.();
-  }, [onAddDish,]);
+  }, [onAddDish]);
 
   return (
     <div className="space-y-6">
