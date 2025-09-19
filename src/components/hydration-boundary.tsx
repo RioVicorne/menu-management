@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface HydrationBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
-export function HydrationBoundary({ children, fallback = null }: HydrationBoundaryProps) {
+export function HydrationBoundary({ children, fallback }: HydrationBoundaryProps) {
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -18,5 +18,5 @@ export function HydrationBoundary({ children, fallback = null }: HydrationBounda
     return <>{fallback}</>;
   }
 
-  return <div suppressHydrationWarning>{children}</div>;
+  return <>{children}</>;
 }

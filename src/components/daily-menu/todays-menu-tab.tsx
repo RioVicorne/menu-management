@@ -176,7 +176,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                            {(dish as any).mon_an?.ten_mon_an || t("unnamedDish")}
+                            {dish.ten_mon_an || t("unnamedDish")}
                           </h3>
                           <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
                             {dish.boi_so || 0} {t("servingsLabel")}
