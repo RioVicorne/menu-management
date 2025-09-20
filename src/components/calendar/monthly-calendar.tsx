@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, ChefHat } from "lucide-react";
-import { useI18n } from "../i18n";
 import Link from "next/link";
 
 interface MenuData {
@@ -21,7 +20,6 @@ export function MonthlyCalendar({
   menuData = [],
   onDateClick,
 }: MonthlyCalendarProps) {
-  const { t } = useI18n();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const today = new Date();
@@ -118,7 +116,7 @@ export function MonthlyCalendar({
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>{t("addToday")}</span>
+          <span>Thêm thực đơn hôm nay</span>
         </Link>
       </div>
 
@@ -200,7 +198,7 @@ export function MonthlyCalendar({
         <div className="flex items-center space-x-2">
           <div className="w-4 h-4 rounded border-2 border-green-200 bg-green-50 dark:bg-green-900/20"></div>
           <span className="text-gray-600 dark:text-gray-400">
-            {t("legend12")}
+            1-2 món
           </span>
         </div>
         <div className="flex items-center space-x-2">

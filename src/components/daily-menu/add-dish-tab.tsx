@@ -12,7 +12,6 @@ import {
   CheckCircle,
   RotateCcw,
 } from "lucide-react";
-import { useI18n } from "../i18n";
 import { useMenu } from "@/contexts/menu-context";
 import { getDishes, Dish } from "@/lib/api";
 
@@ -27,7 +26,6 @@ interface AddDishTabProps {
 }
 
 export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
-  const { t } = useI18n();
   const { addDish, dishes: currentMenuDishes, updateDish } = useMenu();
   const [availableDishes, setAvailableDishes] = useState<Dish[]>([]);
   const [selectedDishes, setSelectedDishes] = useState<SelectedDishItem[]>([]);
@@ -187,10 +185,10 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          {t("whatToEatToday")}
+          Hôm nay ăn gì
         </h2>
         <p className="text-gray-600 dark:text-gray-400">
-          {"Select a dish and customize it for today's menu"}
+          {"Chọn món và tùy chỉnh cho thực đơn hôm nay"}
         </p>
       </div>
 
@@ -218,7 +216,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                     className="flex items-center space-x-1 px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    <span>Clear All</span>
+                    <span>Xóa tất cả</span>
                   </button>
                 </div>
 
@@ -242,7 +240,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                               )}
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Vietnamese dish
+                              Món Việt Nam
                             </p>
                           </div>
                           <button
@@ -261,7 +259,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                           <div>
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                               <Users className="h-3 w-3 inline mr-1" />
-                              Servings
+                              Khẩu phần
                             </label>
                             <input
                               type="number"
@@ -278,7 +276,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                           <div>
                             <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                               <StickyNote className="h-3 w-3 inline mr-1" />
-                              Notes
+                              Ghi chú
                             </label>
                             <input
                               type="text"
@@ -286,7 +284,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                               onChange={(e) => {
                                 updateDishSettings(index, item.servings, e.target.value);
                               }}
-                              placeholder="Special notes..."
+                              placeholder="Ghi chú đặc biệt..."
                               className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                             />
                           </div>
@@ -393,14 +391,14 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         <div className="space-y-4 order-2 lg:order-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
             <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <span>{t("selectDish")}</span>
+            <span>Chọn món</span>
           </h3>
 
           {loading ? (
             <div className="p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400">
-                Loading dishes...
+                Đang tải món ăn...
               </p>
             </div>
           ) : (
@@ -435,7 +433,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                           )}
                         </div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          Vietnamese dish
+                          Món Việt Nam
                         </p>
                         {isSelected && selectedItem && (
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">

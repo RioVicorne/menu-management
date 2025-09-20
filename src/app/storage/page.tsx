@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { useI18n } from "@/components/i18n";
 import {
   Card,
   CardContent,
@@ -33,7 +32,6 @@ export default function StoragePage() {
   const [rows, setRows] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
-  const { t } = useI18n();
 
   useEffect(() => {
     fetchData();
@@ -109,7 +107,7 @@ export default function StoragePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground flex items-center space-x-2">
           <Package className="h-8 w-8" />
-          <span>{t("storage.title")}</span>
+          <span>Quản lý kho</span>
         </h1>
       </div>
 
@@ -120,7 +118,7 @@ export default function StoragePage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 type="text"
-                placeholder={t("storage.search")}
+                placeholder="Tìm kiếm nguyên liệu..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 className="pl-10"
@@ -133,16 +131,16 @@ export default function StoragePage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("storage.ingredient")}</TableHead>
-                  <TableHead>{t("storage.supplier")}</TableHead>
+                  <TableHead>Nguyên liệu</TableHead>
+                  <TableHead>Nhà cung cấp</TableHead>
                   <TableHead className="text-right">
-                    {t("storage.quantity")}
+                    Số lượng
                   </TableHead>
                   <TableHead className="text-right">
-                    {t("storage.weight")}
+                    Khối lượng
                   </TableHead>
                   <TableHead className="text-right">
-                    {t("storage.price")}
+                    Giá
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -171,7 +169,7 @@ export default function StoragePage() {
                         <span>
                           {row.don_gia
                             ? `${row.don_gia.toLocaleString()}đ`
-                            : t("storage.noPrice")}
+                            : "Chưa có giá"}
                         </span>
                       </div>
                     </TableCell>
@@ -182,7 +180,7 @@ export default function StoragePage() {
           ) : (
             <EmptyState
               icon={<Package className="h-12 w-12" />}
-              title={q ? t("storage.noResults") : t("storage.empty")}
+              title={q ? "Không tìm thấy kết quả" : "Kho trống"}
             />
           )}
         </CardContent>

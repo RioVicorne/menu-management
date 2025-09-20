@@ -1,11 +1,7 @@
 "use client";
 
 import { Link, ChefHat, Calendar, Utensils, Package } from "lucide-react";
-import { useI18n } from "../i18n";
-import { LangToggle } from "../lang-toggle";
-
 export default function AppHeader() {
-  const { t } = useI18n();
   return (
     <header className="sticky top-0 z-30 bg-background border-b border-border shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -21,7 +17,7 @@ export default function AppHeader() {
               className="text-xl font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
               suppressHydrationWarning={true}
             >
-              {t("appTitle")}
+              Thực đơn
             </span>
           </Link>
 
@@ -31,28 +27,28 @@ export default function AppHeader() {
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <Calendar className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>{t("calendar")}</span>
+              <span suppressHydrationWarning={true}>Lịch</span>
             </Link>
             <Link
               href="/ingredients"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <Utensils className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>{t("ingredients")}</span>
+              <span suppressHydrationWarning={true}>Nguyên liệu</span>
             </Link>
             <Link
               href="/storage"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <Package className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>{t("storage")}</span>
+              <span suppressHydrationWarning={true}>Kho</span>
             </Link>
             <Link
               href="/recipes"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <ChefHat className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>{t("recipes")}</span>
+              <span suppressHydrationWarning={true}>Công thức</span>
             </Link>
           </nav>
 
@@ -75,7 +71,6 @@ export default function AppHeader() {
                 </svg>
               </button>
             </div>
-            <LangToggle />
           </div>
         </div>
       </div>

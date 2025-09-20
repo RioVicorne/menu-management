@@ -103,35 +103,14 @@ type I18nContextValue = {
 const I18nContext = React.createContext<I18nContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = React.useState<Language>("en");
-  const [isHydrated, setIsHydrated] = React.useState(false);
-
-  React.useEffect(() => {
-    // Mark as hydrated and load saved language
-    setIsHydrated(true);
-    const saved = window.localStorage.getItem("lang");
-    if (saved === "vi" || saved === "en") {
-      setLang(saved as Language);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (isHydrated) {
-      try {
-        window.localStorage.setItem("lang", lang);
-      } catch {}
-    }
-  }, [lang, isHydrated]);
-
   const t = React.useCallback(
     (
       key: keyof typeof dictionary,
       params?: Record<string, string | number>,
     ) => {
-      // Always use English during SSR and initial hydration
-      const currentLang = isHydrated ? lang : "en";
+      // Always use Vietnamese
       const entry = dictionary[key];
-      let text = entry ? entry[currentLang] : String(key);
+      let text = entry ? entry.vi : String(key);
       if (params) {
         for (const [k, v] of Object.entries(params)) {
           const rx = new RegExp(`\\{${k}\\}`, "g");
@@ -140,12 +119,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       }
       return text;
     },
-    [lang, isHydrated],
+    [],
   );
 
   // Always render, but suppress hydration warnings
   return (
-    <I18nContext.Provider value={{ lang, setLang, t }}>
+    <I18nContext.Provider value={{ lang: "vi", setLang: () => {}, t }}>
       <div suppressHydrationWarning>{children}</div>
     </I18nContext.Provider>
   );

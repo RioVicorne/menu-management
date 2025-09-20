@@ -8,7 +8,6 @@ import {
   XCircle,
   Filter,
 } from "lucide-react";
-import { useI18n } from "../i18n";
 
 interface Ingredient {
   id: string;
@@ -23,7 +22,6 @@ interface Ingredient {
 }
 
 export default function InventoryTab() {
-  const { t } = useI18n();
   const [showLowOnly, setShowLowOnly] = useState(false);
 
   const [ingredients] = useState<Ingredient[]>([
@@ -124,11 +122,11 @@ export default function InventoryTab() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "in-stock":
-        return t("inStock");
+        return "Đủ hàng";
       case "low":
-        return t("low");
+        return "Sắp hết";
       case "out-of-stock":
-        return t("outOfStock");
+        return "Hết hàng";
       default:
         return "Unknown";
     }
@@ -152,7 +150,7 @@ export default function InventoryTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t("ingredientsForDay")}
+            Nguyên liệu trong ngày
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
             {`${filteredIngredients.length} ingredients required for today's menu`}
@@ -168,7 +166,7 @@ export default function InventoryTab() {
               className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              {t("showLowOnly")}
+              Chỉ hiển thị thiếu/hết
             </span>
           </label>
         </div>
@@ -193,7 +191,7 @@ export default function InventoryTab() {
           <div className="p-8 text-center">
             <Package className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
             <p className="text-gray-500 dark:text-gray-400">
-              {t("noIngredients")}
+              Không cần nguyên liệu.
             </p>
           </div>
         ) : (
@@ -225,7 +223,7 @@ export default function InventoryTab() {
                       </div>
 
                       <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        Source: {ingredient.source || t("unknownSource")}
+                        Source: {ingredient.source || "Nguồn chưa rõ"}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -233,15 +231,10 @@ export default function InventoryTab() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
                             <span className="font-medium text-gray-700 dark:text-gray-300">
-                              Quantity
+                              Số lượng
                             </span>
                             <span className="text-gray-600 dark:text-gray-400">
-                              {t("qtyWeightNeedStock", {
-                                need: `${ingredient.quantityNeeded} ${ingredient.unit}`,
-                                stock: `${ingredient.quantityInStock} ${ingredient.unit}`,
-                                wneed: `${ingredient.weightNeeded} ${ingredient.weightUnit}`,
-                                wstock: `${ingredient.weightInStock} ${ingredient.weightUnit}`,
-                              })}
+                              SL cần {ingredient.quantityNeeded} {ingredient.unit} / tồn {ingredient.quantityInStock} {ingredient.unit} • KL cần {ingredient.weightNeeded} {ingredient.weightUnit} / tồn {ingredient.weightInStock} {ingredient.weightUnit}
                             </span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">

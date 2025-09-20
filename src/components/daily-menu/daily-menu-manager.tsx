@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { ArrowLeft, Calendar, Utensils, Package, Plus } from "lucide-react";
-import { useI18n } from "../i18n";
 import Link from "next/link";
 import { MenuProvider, useMenu } from "@/contexts/menu-context";
 import TodaysMenuTab from "./todays-menu-tab";
@@ -16,13 +15,12 @@ interface DailyMenuManagerProps {
 type TabType = "menu" | "inventory" | "add-dish";
 
 function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
-  const { t } = useI18n();
   const { error } = useMenu();
   const [activeTab, setActiveTab] = useState<TabType>("menu");
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("vi-VN", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -31,9 +29,9 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   };
 
   const tabs = [
-    { id: "menu" as TabType, label: t("todaysMenuTab"), icon: Utensils },
-    { id: "inventory" as TabType, label: t("inventoryTab"), icon: Package },
-    { id: "add-dish" as TabType, label: t("addNewDishTab"), icon: Plus },
+    { id: "menu" as TabType, label: "Thực đơn hôm nay", icon: Utensils },
+    { id: "inventory" as TabType, label: "Quản lý kho", icon: Package },
+    { id: "add-dish" as TabType, label: "Thêm món", icon: Plus },
   ];
 
   return (
@@ -50,7 +48,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
                 >
                   <ArrowLeft className="h-5 w-5" />
                   <span className="text-sm font-medium">
-                    {t("backToCalendar")}
+                    Trở ra
                   </span>
                 </Link>
 

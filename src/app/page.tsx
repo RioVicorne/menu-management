@@ -17,12 +17,11 @@ import {
   Users,
   Loader2,
 } from "lucide-react";
-import { useI18n } from "@/components/i18n";
 import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
 import { getCalendarData } from "@/lib/api";
 import { HydrationBoundary } from "@/components/hydration-boundary";
 
-const locales = { "en-US": enUS, vi } as const;
+const locales = { vi } as const;
 const localizer = dateFnsLocalizer({
   format,
   parse,
@@ -40,7 +39,6 @@ interface Event {
 }
 
 export default function CalendarDashboardPage() {
-  const { t, lang } = useI18n();
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,10 +98,7 @@ export default function CalendarDashboardPage() {
 
         const evs: Event[] = Array.from(map.entries()).map(([iso, count]) => {
           const d = new Date(iso);
-          const title =
-            lang === "vi"
-              ? `${count} món`
-              : `${count} dish${count > 1 ? "es" : ""}`;
+          const title = `${count} món`;
           return {
             title,
             start: d,
@@ -121,7 +116,7 @@ export default function CalendarDashboardPage() {
         setLoading(false);
       }
     },
-    [lang],
+    [],
   );
 
   type MonthRange = { start: Date; end: Date };
@@ -218,10 +213,10 @@ export default function CalendarDashboardPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {t("menuCalendar")}
+                  Lịch thực đơn
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  {t("planAndManage")}
+                  Lập kế hoạch và quản lý thực đơn hằng ngày
                 </p>
               </div>
             </div>
@@ -236,7 +231,7 @@ export default function CalendarDashboardPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {t("totalDishes")}
+                    Tổng món
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {totalDishes}
@@ -252,7 +247,7 @@ export default function CalendarDashboardPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {t("daysWithMenu")}
+                    Ngày có thực đơn
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {events.length}
@@ -268,11 +263,11 @@ export default function CalendarDashboardPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {t("thisMonth")}
+                    Tháng này
                   </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {format(currentDate, "MMMM yyyy", {
-                      locale: lang === "vi" ? vi : enUS,
+                      locale: vi,
                     })}
                   </p>
                 </div>
@@ -312,25 +307,25 @@ export default function CalendarDashboardPage() {
         {events.length > 0 && (
           <div className="mt-6 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              {t("legend")}
+              Chú thích
             </h3>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 bg-blue-500 rounded"></div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {t("legend12")}
+                  1-2 món
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 bg-amber-500 rounded"></div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {t("legend34")}
+                  3-4 món
                 </span>
               </div>
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 bg-green-500 rounded"></div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {t("legend5plus")}
+                  5+ món
                 </span>
               </div>
             </div>

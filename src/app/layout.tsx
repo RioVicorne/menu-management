@@ -29,7 +29,7 @@ export default function AppSectionLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="vi" suppressHydrationWarning>
       <body
         className={`min-h-dvh bg-background text-foreground ${geistSans.variable} ${geistMono.variable} antialiased`}
       >

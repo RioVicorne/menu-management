@@ -11,7 +11,6 @@ import {
   StickyNote,
   Loader2,
 } from "lucide-react";
-import { useI18n } from "../i18n";
 import { useMenu } from "@/contexts/menu-context";
 
 interface TodaysMenuTabProps {
@@ -19,7 +18,6 @@ interface TodaysMenuTabProps {
 }
 
 export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
-  const { t } = useI18n();
   const { dishes, loading, error, updateDish, removeDish } = useMenu();
   const [editingDish, setEditingDish] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -84,7 +82,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {t("totalDishesLabel")}
+                Tổng món
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {totalDishes}
@@ -100,7 +98,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {t("totalServingsLabel")}
+                Tổng khẩu phần
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {totalServings}
@@ -116,7 +114,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                {t("totalCaloriesLabel")}
+                Tổng calo
               </p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {totalCalories.toLocaleString()}
@@ -131,14 +129,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {t("dishes")}
+              Món ăn
             </h2>
             <button
               onClick={handleAddDish}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               <Plus className="h-4 w-4" />
-              <span>{t("addDish")}</span>
+              <span>Thêm món</span>
             </button>
           </div>
         </div>
@@ -160,7 +158,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
               <div className="p-8 text-center">
                 <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400">
-                  {t("noDishesYet")}
+                  Chưa có món.
                 </p>
               </div>
             ) : (
@@ -228,10 +226,10 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
                           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                            {dish.ten_mon_an || t("unnamedDish")}
+                            {dish.ten_mon_an || "Món chưa đặt tên"}
                           </h3>
                           <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
-                            {dish.boi_so || 0} {t("servingsLabel")}
+                            {dish.boi_so || 0} Khẩu phần
                           </span>
                         </div>
 
