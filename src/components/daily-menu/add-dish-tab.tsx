@@ -200,13 +200,13 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customization & Preview - Show first on mobile */}
-        <div className="space-y-6 order-1 lg:order-2">
+        <div className="space-y-4 order-2 lg:order-2">
           {selectedDishes.length > 0 ? (
             <>
               {/* Selected Dishes List */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Món đã chọn ({selectedDishes.length})
@@ -296,7 +296,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
               </div>
 
               {/* Preview */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Tổng quan menu
                 </h3>
@@ -387,8 +387,8 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           )}
         </div>
 
-        {/* Dish Selection - Show second on mobile */}
-        <div className="space-y-4 order-2 lg:order-1">
+        {/* Dish Selection - Show first on mobile */}
+        <div className="space-y-4 order-1 lg:order-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
             <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <span>Chọn món</span>
@@ -402,7 +402,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {availableDishes.map((dish) => {
                 const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
                 const selectedItem = selectedDishes.find(item => item.dish.id === dish.id);

@@ -10,6 +10,9 @@ import {
   Zap,
   StickyNote,
   Loader2,
+  CheckSquare,
+  Square,
+  X,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
 
@@ -24,6 +27,9 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     servings?: number;
     notes?: string;
   }>({});
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [selectedDishes, setSelectedDishes] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const totalDishes = dishes.length;
   const totalServings = dishes.reduce(
@@ -65,6 +71,50 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     },
     [removeDish],
   );
+
+  // Delete mode functions
+  const toggleDeleteMode = useCallback(() => {
+    setDeleteMode(!deleteMode);
+    setSelectedDishes(new Set());
+  }, [deleteMode]);
+
+  const toggleSelectDish = useCallback((dishId: string) => {
+    setSelectedDishes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(dishId)) {
+        newSet.delete(dishId);
+      } else {
+        newSet.add(dishId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllDishes = useCallback(() => {
+    setSelectedDishes(new Set(dishes.map(dish => dish.id)));
+  }, [dishes]);
+
+  const deselectAllDishes = useCallback(() => {
+    setSelectedDishes(new Set());
+  }, []);
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedDishes.size === 0) return;
+    
+    try {
+      setIsDeleting(true);
+      // Xóa tất cả cùng lúc với Promise.all
+      await Promise.all(
+        Array.from(selectedDishes).map(dishId => removeDish(dishId))
+      );
+      setSelectedDishes(new Set());
+      setDeleteMode(false);
+    } catch (error) {
+      console.error("Error deleting dishes:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedDishes, removeDish]);
 
   const handleAddDish = useCallback(async () => {
     console.log("handleAddDish called");
@@ -131,13 +181,27 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Món ăn
             </h2>
-            <button
-              onClick={handleAddDish}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm món</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleAddDish}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Thêm món</span>
+              </button>
+              
+              <button
+                onClick={toggleDeleteMode}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  deleteMode 
+                    ? "bg-red-600 hover:bg-red-700 text-white" 
+                    : "bg-gray-600 hover:bg-gray-700 text-white"
+                }`}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{deleteMode ? "Hủy xóa" : "Xóa món"}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -153,7 +217,51 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             <p className="text-red-500 dark:text-red-400">{error}</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <>
+            {/* Delete Mode Controls */}
+            {deleteMode && dishes.length > 0 && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm font-medium text-red-800 dark:text-red-200">
+                      Chế độ xóa - Đã chọn {selectedDishes.size}/{dishes.length} món
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={selectAllDishes}
+                        disabled={isDeleting}
+                        className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded"
+                      >
+                        Chọn tất cả
+                      </button>
+                      <button
+                        onClick={deselectAllDishes}
+                        disabled={isDeleting}
+                        className="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded"
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleDeleteSelected}
+                    disabled={selectedDishes.size === 0 || isDeleting}
+                    className="flex items-center space-x-2 px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded text-sm"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                    <span>
+                      {isDeleting ? `Đang xóa ${selectedDishes.size} món...` : `Xóa đã chọn (${selectedDishes.size})`}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {dishes.length === 0 ? (
               <div className="p-8 text-center">
                 <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -225,7 +333,26 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                          {/* Checkbox for delete mode */}
+                          {deleteMode && (
+                            <button
+                              onClick={() => toggleSelectDish(dish.id)}
+                              disabled={isDeleting}
+                              className="flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {selectedDishes.has(dish.id) ? (
+                                <CheckSquare className="h-5 w-5 text-red-600" />
+                              ) : (
+                                <Square className="h-5 w-5 text-gray-400 hover:text-red-600" />
+                              )}
+                            </button>
+                          )}
+                          
+                          <h3 className={`text-lg font-medium ${
+                            deleteMode && selectedDishes.has(dish.id) 
+                              ? "text-red-600 line-through" 
+                              : "text-gray-900 dark:text-white"
+                          }`}>
                             {dish.ten_mon_an || "Món chưa đặt tên"}
                           </h3>
                           <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
@@ -247,26 +374,29 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(dish)}
-                          className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(dish.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      {!deleteMode && (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEdit(dish)}
+                            className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(dish.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               ))
             )}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
