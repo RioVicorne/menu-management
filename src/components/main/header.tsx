@@ -13,13 +13,13 @@ export default function AppHeader() {
           <Link href="/" className="flex items-center space-x-2 group">
             <div
               className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors"
-              suppressHydrationWarning
+              suppressHydrationWarning={true}
             >
               <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <span
               className="text-xl font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-              suppressHydrationWarning
+              suppressHydrationWarning={true}
             >
               {t("appTitle")}
             </span>
@@ -31,28 +31,28 @@ export default function AppHeader() {
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <Calendar className="h-4 w-4" />
-              <span suppressHydrationWarning>{t("calendar")}</span>
+              <span suppressHydrationWarning={true}>{t("calendar")}</span>
             </Link>
             <Link
               href="/ingredients"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <Utensils className="h-4 w-4" />
-              <span suppressHydrationWarning>{t("ingredients")}</span>
+              <span suppressHydrationWarning={true}>{t("ingredients")}</span>
             </Link>
             <Link
               href="/storage"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <Package className="h-4 w-4" />
-              <span suppressHydrationWarning>{t("storage")}</span>
+              <span suppressHydrationWarning={true}>{t("storage")}</span>
             </Link>
             <Link
               href="/recipes"
               className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
             >
               <ChefHat className="h-4 w-4" />
-              <span suppressHydrationWarning>{t("recipes")}</span>
+              <span suppressHydrationWarning={true}>{t("recipes")}</span>
             </Link>
           </nav>
 

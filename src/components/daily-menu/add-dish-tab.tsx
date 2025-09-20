@@ -9,10 +9,18 @@ import {
   Zap,
   Package,
   Loader2,
+  CheckCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useI18n } from "../i18n";
 import { useMenu } from "@/contexts/menu-context";
 import { getDishes, Dish } from "@/lib/api";
+
+interface SelectedDishItem {
+  dish: Dish;
+  servings: number;
+  notes: string;
+}
 
 interface AddDishTabProps {
   onDishAdded?: () => void;
@@ -20,13 +28,15 @@ interface AddDishTabProps {
 
 export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   const { t } = useI18n();
-  const { addDish } = useMenu();
+  const { addDish, dishes: currentMenuDishes, updateDish } = useMenu();
   const [availableDishes, setAvailableDishes] = useState<Dish[]>([]);
-  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
-  const [servings, setServings] = useState(1);
-  const [notes, setNotes] = useState("");
+  const [selectedDishes, setSelectedDishes] = useState<SelectedDishItem[]>([]);
+  const [currentServings, setCurrentServings] = useState(1);
+  const [currentNotes, setCurrentNotes] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Load available dishes from database
   useEffect(() => {
@@ -46,32 +56,131 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   }, []);
 
   const handleDishSelect = (dish: Dish) => {
-    setSelectedDish(dish);
+    // Check if dish is already selected
+    const existingIndex = selectedDishes.findIndex(item => item.dish.id === dish.id);
+    
+    if (existingIndex >= 0) {
+      // If dish is already selected, remove it (toggle off)
+      setSelectedDishes(prev => prev.filter((_, index) => index !== existingIndex));
+    } else {
+      // If dish is not selected, add it (toggle on)
+      const newDishItem: SelectedDishItem = {
+        dish,
+        servings: currentServings,
+        notes: currentNotes
+      };
+      setSelectedDishes(prev => [...prev, newDishItem]);
+    }
+  };
+
+  const updateDishSettings = (index: number, servings: number, notes: string) => {
+    setSelectedDishes(prev => 
+      prev.map((item, idx) => 
+        idx === index 
+          ? { ...item, servings, notes }
+          : item
+      )
+    );
+  };
+
+  const removeDishFromSelection = (dishId: string) => {
+    setSelectedDishes(prev => prev.filter(item => item.dish.id !== dishId));
+  };
+
+  // Helper function to check if dish exists in current menu and merge if needed
+  const addOrUpdateDishInMenu = async (dishId: string, servings: number, notes?: string) => {
+    // Check if dish already exists in current menu
+    const existingMenuItem = currentMenuDishes.find(item => item.ma_mon_an === dishId);
+    
+    if (existingMenuItem) {
+      // If dish exists, update its servings and merge notes
+      const newServings = existingMenuItem.boi_so + servings;
+      const newNotes = existingMenuItem.ghi_chu 
+        ? `${existingMenuItem.ghi_chu}; ${notes}`.replace(/^; /, '').replace(/; $/, '')
+        : notes;
+      
+      await updateDish(existingMenuItem.id, {
+        servings: newServings,
+        notes: newNotes
+      });
+      
+      return { action: 'updated', servings: newServings, originalServings: existingMenuItem.boi_so };
+    } else {
+      // If dish doesn't exist, add new dish
+      await addDish(dishId, servings, notes);
+      return { action: 'added', servings };
+    }
   };
 
   const handleAddToMenu = async () => {
-    if (!selectedDish) return;
+    if (selectedDishes.length === 0) return;
 
     setIsAdding(true);
 
     try {
-      await addDish(selectedDish.id, servings, notes);
-      onDishAdded?.();
+      // Process all selected dishes
+      const results = [];
+      const addedDishes = [];
+      const updatedDishes = [];
+      
+      for (const item of selectedDishes) {
+        const result = await addOrUpdateDishInMenu(item.dish.id, item.servings, item.notes);
+        results.push({ dish: item.dish, result });
+        
+        if (result.action === 'added') {
+          addedDishes.push(item.dish.ten_mon_an);
+        } else {
+          updatedDishes.push({
+            name: item.dish.ten_mon_an,
+            newServings: result.servings,
+            addedServings: item.servings
+          });
+        }
+      }
+      
+      // Create success message
+      let successMsg = "";
+      if (addedDishes.length > 0) {
+        successMsg += `${addedDishes.length} món mới đã được thêm: ${addedDishes.join(", ")}`;
+      }
+      if (updatedDishes.length > 0) {
+        const updateMsg = updatedDishes.map(d => 
+          `${d.name} (${d.addedServings} khẩu phần → ${d.newServings} khẩu phần)`
+        ).join(", ");
+        if (successMsg) successMsg += "\n";
+        successMsg += `${updatedDishes.length} món đã được cập nhật: ${updateMsg}`;
+      }
+      
+      setSuccessMessage(successMsg);
+      setShowSuccess(true);
+      
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 5000);
 
-      // Reset form
-      setSelectedDish(null);
-      setServings(1);
-      setNotes("");
+      // Clear selection and notify parent component
+      setSelectedDishes([]);
+      setCurrentServings(1);
+      setCurrentNotes("");
+      onDishAdded?.();
     } catch (error) {
-      console.error("Error adding dish to menu:", error);
+      console.error("Error adding dishes to menu:", error);
     } finally {
       setIsAdding(false);
     }
   };
 
-  const totalCalories = selectedDish
-    ? selectedDish?.calories || 0 * servings
-    : 0;
+  const handleClearForm = () => {
+    setSelectedDishes([]);
+    setCurrentServings(1);
+    setCurrentNotes("");
+    setShowSuccess(false);
+  };
+
+  const totalCalories = selectedDishes.reduce((total, item) => {
+    return total + ((item.dish.calories || 0) * item.servings);
+  }, 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -85,9 +194,203 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </p>
       </div>
 
+      {/* Success Message */}
+      {showSuccess && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center space-x-3">
+          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+          <p className="text-green-800 dark:text-green-200 font-medium">{successMessage}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Dish Selection */}
-        <div className="space-y-4">
+        {/* Customization & Preview - Show first on mobile */}
+        <div className="space-y-6 order-1 lg:order-2">
+          {selectedDishes.length > 0 ? (
+            <>
+              {/* Selected Dishes List */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Món đã chọn ({selectedDishes.length})
+                  </h3>
+                  <button
+                    onClick={handleClearForm}
+                    className="flex items-center space-x-1 px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    <span>Clear All</span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedDishes.map((item, index) => {
+                    const duplicateCount = selectedDishes.filter(i => i.dish.id === item.dish.id).length;
+                    const isDuplicate = duplicateCount > 1;
+                    
+                    return (
+                      <div key={`${item.dish.id}-${index}`} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <h4 className="font-medium text-gray-900 dark:text-white">
+                                {item.dish.ten_mon_an}
+                              </h4>
+                              {isDuplicate && (
+                                <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 text-xs rounded-full">
+                                  #{index + 1}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Vietnamese dish
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const itemIndex = selectedDishes.findIndex(i => i === item);
+                              setSelectedDishes(prev => prev.filter((_, idx) => idx !== itemIndex));
+                            }}
+                            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            title="Xóa món khỏi danh sách"
+                          >
+                            <Package className="h-4 w-4" />
+                          </button>
+                        </div>
+                      
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              <Users className="h-3 w-3 inline mr-1" />
+                              Servings
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={item.servings}
+                              onChange={(e) => {
+                                const newServings = parseInt(e.target.value) || 1;
+                                updateDishSettings(index, newServings, item.notes);
+                              }}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              <StickyNote className="h-3 w-3 inline mr-1" />
+                              Notes
+                            </label>
+                            <input
+                              type="text"
+                              value={item.notes}
+                              onChange={(e) => {
+                                updateDishSettings(index, item.servings, e.target.value);
+                              }}
+                              placeholder="Special notes..."
+                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Tổng quan menu
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Số món đã chọn
+                    </span>
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {selectedDishes.length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Tổng khẩu phần
+                    </span>
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {selectedDishes.reduce((total, item) => total + item.servings, 0)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Tổng calories
+                    </span>
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                      {totalCalories.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                      Danh sách món:
+                    </span>
+                    <div className="space-y-1">
+                      {selectedDishes.map((item, index) => (
+                        <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm">
+                          <span className="text-gray-900 dark:text-white">
+                            {item.dish.ten_mon_an}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            x{item.servings}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Button */}
+              <div className="space-y-3">
+                <button
+                  onClick={handleAddToMenu}
+                  disabled={isAdding}
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium"
+                >
+                  {isAdding ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                      <span>Đang thêm {selectedDishes.length} món...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span>Thêm {selectedDishes.length} món vào menu</span>
+                    </>
+                  )}
+                </button>
+                
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  💡 Nhấn vào món để chọn/bỏ chọn. Mỗi món chỉ có thể chọn một lần
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-8 text-center">
+              <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
+                Chọn các món từ danh sách bên phải để tùy chỉnh và thêm vào menu
+              </p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                Bạn có thể chọn nhiều món cùng lúc. Nhấn vào món để chọn/bỏ chọn
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Dish Selection - Show second on mobile */}
+        <div className="space-y-4 order-2 lg:order-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
             <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <span>{t("selectDish")}</span>
@@ -102,171 +405,48 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              {availableDishes.map((dish) => (
-                <div
-                  key={dish.id}
-                  onClick={() => handleDishSelect(dish)}
-                  className={`
-                    p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md
-                    ${
-                      selectedDish?.id === dish.id
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                    }
-                  `}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        {dish.ten_mon_an}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Vietnamese dish
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Customization & Preview */}
-        <div className="space-y-6">
-          {selectedDish ? (
-            <>
-              {/* Customization Form */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Customize Your Dish
-                </h3>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      <Users className="h-4 w-4 inline mr-2" />
-                      {t("servingsMultiplier")}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={servings}
-                      onChange={(e) =>
-                        setServings(parseInt(e.target.value) || 1)
+              {availableDishes.map((dish) => {
+                const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
+                const selectedItem = selectedDishes.find(item => item.dish.id === dish.id);
+                
+                return (
+                  <div
+                    key={dish.id}
+                    onClick={() => handleDishSelect(dish)}
+                    className={`
+                      p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+                      ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                       }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      <StickyNote className="h-4 w-4 inline mr-2" />
-                      {t("notesLabel")}
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Add any special notes or modifications..."
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  {t("ingredientsPreview")}
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Dish
-                    </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {selectedDish.ten_mon_an}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Servings
-                    </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {servings}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Total Calories
-                    </span>
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                      {totalCalories.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                      Ingredients needed:
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedDish.ingredients?.map((ingredient, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded-full"
-                        >
-                          {ingredient}
-                        </span>
-                      )) || (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          No ingredients available
-                        </span>
-                      )}
+                    `}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-medium text-gray-900 dark:text-white">
+                            {dish.ten_mon_an}
+                          </h4>
+                          {isSelected && (
+                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded-full">
+                              Đã chọn
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          Vietnamese dish
+                        </p>
+                        {isSelected && selectedItem && (
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            {selectedItem.servings} khẩu phần{selectedItem.notes && ` • ${selectedItem.notes}`}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-
-                  {notes && (
-                    <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
-                        Notes:
-                      </span>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {notes}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Add Button */}
-              <button
-                onClick={handleAddToMenu}
-                disabled={isAdding}
-                className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium"
-              >
-                {isAdding ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    <span>{t("adding")}</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    <span>{t("addToMenu")}</span>
-                  </>
-                )}
-              </button>
-            </>
-          ) : (
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-8 text-center">
-              <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
-                Select a dish from the list to customize and add to your menu
-              </p>
+                );
+              })}
             </div>
           )}
         </div>

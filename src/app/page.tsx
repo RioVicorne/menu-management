@@ -76,8 +76,18 @@ export default function CalendarDashboardPage() {
           .lte("ngay", to);
 
         if (error) {
-          console.error(error);
-          setEvents([]);
+          console.error("Database error:", error);
+          // Fallback to API function when database fails
+          const data = await getCalendarData(from, to);
+          setEvents(
+            data.map((item) => ({
+              start: new Date(item.date),
+              end: new Date(item.date),
+              title: `${item.dishCount} dishes`,
+              count: item.dishCount,
+              allDay: true,
+            })),
+          );
           return;
         }
 

@@ -8,6 +8,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
     "Supabase environment variables are not set. Using mock data mode.",
   );
+  console.log("URL:", supabaseUrl);
+  console.log("Key:", supabaseAnonKey ? "Present" : "Missing");
 }
 
 export const supabase =
