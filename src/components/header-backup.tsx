@@ -106,14 +106,7 @@ export default function Header({ className = "" }: HeaderProps) {
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  {/* Mobile: Show label only for active tab, Desktop: Show all labels */}
-                  <span className={`${
-                    isActive 
-                      ? "inline" // Always show label for active tab
-                      : "hidden lg:inline" // Only show label for inactive tabs on large screens
-                  }`}>
-                    {tab.label}
-                  </span>
+                  <span className="hidden sm:inline">{tab.label}</span>
                 </button>
               );
             })}
