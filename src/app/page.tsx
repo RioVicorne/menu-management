@@ -1,366 +1,185 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
-import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
-import { format } from "date-fns/format";
-import { parse } from "date-fns/parse";
-import { startOfWeek } from "date-fns/startOfWeek";
-import { getDay } from "date-fns/getDay";
-import { enUS } from "date-fns/locale/en-US";
-import { vi } from "date-fns/locale/vi";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import {
   Calendar as CalendarIcon,
-  Plus,
+  Package,
   ChefHat,
+  Menu,
+  ArrowRight,
+  BarChart3,
   Users,
-  Loader2,
+  Clock,
 } from "lucide-react";
-import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
-import { getCalendarData } from "@/lib/api";
-import { HydrationBoundary } from "@/components/hydration-boundary";
-import InventoryTab from "@/components/daily-menu/inventory-tab";
 
-const locales = { vi } as const;
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
-interface Event {
-  title: string;
-  start: Date;
-  end: Date;
-  allDay: boolean;
-  count?: number;
-}
-
-export default function CalendarDashboardPage() {
+export default function HomePage() {
   const router = useRouter();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [totalDishes, setTotalDishes] = useState(0);
-  const [activeTab, setActiveTab] = useState<'calendar' | 'inventory'>('calendar');
 
-  const loadRange = useCallback(
-    async (start: Date, end: Date) => {
-      setLoading(true);
-      try {
-        const from = start.toISOString().slice(0, 10);
-        const to = end.toISOString().slice(0, 10);
-
-        if (!supabase) {
-          // Use API function when Supabase is not available
-          const data = await getCalendarData(from, to);
-          setEvents(
-            data.map((item) => ({
-              start: new Date(item.date),
-              end: new Date(item.date),
-              title: `${item.dishCount} dishes`,
-              count: item.dishCount,
-              allDay: true,
-            })),
-          );
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("thuc_don")
-          .select("ngay")
-          .gte("ngay", from)
-          .lte("ngay", to);
-
-        if (error) {
-          console.error("Database error:", error);
-          // Fallback to API function when database fails
-          const data = await getCalendarData(from, to);
-          setEvents(
-            data.map((item) => ({
-              start: new Date(item.date),
-              end: new Date(item.date),
-              title: `${item.dishCount} dishes`,
-              count: item.dishCount,
-              allDay: true,
-            })),
-          );
-          return;
-        }
-
-        // Count per day and create all-day events
-        const map = new Map<string, number>();
-        for (const row of data ?? []) {
-          const k = String(row.ngay);
-          map.set(k, (map.get(k) ?? 0) + 1);
-        }
-
-        const evs: Event[] = Array.from(map.entries()).map(([iso, count]) => {
-          const d = new Date(iso);
-          const title = `${count} món`;
-          return {
-            title,
-            start: d,
-            end: d,
-            allDay: true,
-            count,
-          };
-        });
-        setEvents(evs);
-        setTotalDishes(evs.reduce((sum, event) => sum + (event.count || 0), 0));
-      } catch (error) {
-        console.error("Error loading events:", error);
-        setEvents([]);
-      } finally {
-        setLoading(false);
-      }
+  const features = [
+    {
+      icon: Menu,
+      title: "Quản lý thực đơn",
+      description: "Lập kế hoạch thực đơn theo ngày, tuần, tháng với giao diện lịch trực quan",
+      color: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+      action: () => router.push("/menu"),
     },
-    [],
-  );
-
-  type MonthRange = { start: Date; end: Date };
-  const onRangeChange = useCallback(
-    (range: Date[] | MonthRange) => {
-      if (Array.isArray(range)) {
-        const start = range[0];
-        const end = range[range.length - 1];
-        loadRange(start, end);
-      } else {
-        loadRange(range.start, range.end);
-      }
+    {
+      icon: Package,
+      title: "Quản lý kho",
+      description: "Theo dõi tồn kho nguyên liệu, cảnh báo hết hàng và quản lý nhập xuất",
+      color: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
+      action: () => router.push("/storage"),
     },
-    [loadRange],
-  );
-
-  type SlotInfo = { start: Date };
-  const onSelectSlot = useCallback(
-    (slot: SlotInfo) => {
-      const d = slot.start;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      router.push(`/${y}-${m}-${day}`);
+    {
+      icon: ChefHat,
+      title: "Quản lý nguyên liệu",
+      description: "Thêm, chỉnh sửa thông tin nguyên liệu và phân loại theo danh mục",
+      color: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+      action: () => router.push("/ingredients"),
     },
-    [router],
-  );
+  ];
 
-  const onSelectEvent = useCallback(
-    (event: Event) => {
-      const d = event.start;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      router.push(`/${y}-${m}-${day}`);
+  const stats = [
+    {
+      icon: Menu,
+      label: "Thực đơn đã lập",
+      value: "0",
+      color: "text-blue-600 dark:text-blue-400",
     },
-    [router],
-  );
-
-  const onNavigate = useCallback((newDate: Date) => {
-    setCurrentDate(newDate);
-  }, []);
-
-  // Load initial data
-  useEffect(() => {
-    const start = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      1,
-    );
-    const end = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1,
-      0,
-    );
-    loadRange(start, end);
-  }, [currentDate, loadRange]);
-
-  const eventStyleGetter = (event: Event) => {
-    const count = event.count || 0;
-    let backgroundColor = "#3b82f6";
-
-    if (count >= 5) {
-      backgroundColor = "#10b981"; // Green for many dishes
-    } else if (count >= 3) {
-      backgroundColor = "#f59e0b"; // Orange for moderate dishes
-    } else if (count >= 1) {
-      backgroundColor = "#3b82f6"; // Blue for few dishes
-    }
-
-    return {
-      style: {
-        backgroundColor,
-        borderRadius: "6px",
-        opacity: 0.9,
-        color: "white",
-        border: "none",
-        display: "block",
-        fontSize: "0.75rem",
-        fontWeight: "500",
-      },
-    };
-  };
+    {
+      icon: Package,
+      label: "Nguyên liệu trong kho",
+      value: "0",
+      color: "text-green-600 dark:text-green-400",
+    },
+    {
+      icon: ChefHat,
+      label: "Loại nguyên liệu",
+      value: "0",
+      color: "text-purple-600 dark:text-purple-400",
+    },
+    {
+      icon: BarChart3,
+      label: "Thống kê tháng này",
+      value: "0",
+      color: "text-orange-600 dark:text-orange-400",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <CalendarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Trang chủ
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Lập kế hoạch thực đơn và quản lý kho
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center mb-6">
+            <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-2xl">
+              <ChefHat className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Chào mừng đến với Menu Management
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+            Hệ thống quản lý thực đơn và kho nguyên liệu toàn diện, giúp bạn lập kế hoạch và quản lý hiệu quả
+          </p>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          {stats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={index}
+                className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700 text-center"
+              >
+                <div className="flex items-center justify-center mb-3">
+                  <div className={`p-2 rounded-lg ${stat.color.replace('text-', 'bg-').replace('dark:text-', 'dark:bg-')}`}>
+                    <Icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                  {stat.value}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {stat.label}
                 </p>
               </div>
-            </div>
-          </div>
+            );
+          })}
+        </div>
 
-          {/* Tab Navigation */}
-          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'calendar'
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Lịch thực đơn
-            </button>
-            <button
-              onClick={() => setActiveTab('inventory')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'inventory'
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Quản lý kho
-            </button>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <ChefHat className="h-5 w-5 text-green-600 dark:text-green-400" />
+        {/* Features Grid */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+            Tính năng chính
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((feature, index) => {
+              const Icon = feature.icon;
+              return (
+                <div
+                  key={index}
+                  className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700 hover:shadow-md transition-shadow cursor-pointer group"
+                  onClick={feature.action}
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className={`p-3 rounded-lg ${feature.color}`}>
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        {feature.description}
+                      </p>
+                      <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                        <span>Khám phá ngay</span>
+                        <ArrowRight className="h-4 w-4 ml-1" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Tổng món
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {totalDishes}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Ngày có thực đơn
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {events.length}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Tháng này
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {format(currentDate, "MMMM yyyy", {
-                      locale: vi,
-                    })}
-                  </p>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Content Section */}
-        {activeTab === 'calendar' ? (
-          <HydrationBoundary
-            fallback={
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center justify-center h-96">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-              </div>
-            }
-          >
-            <MonthlyCalendar
-              menuData={events.map((event) => ({
-                date: event.start.toISOString().split("T")[0],
-                dishCount: event.count || 0,
-                totalCalories: (event.count || 0) * 300, // Mock calories
-                totalServings: (event.count || 0) * 2, // Mock servings
-              }))}
-              onDateClick={(date) => {
-                const d = new Date(date);
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, "0");
-                const day = String(d.getDate()).padStart(2, "0");
-                router.push(`/menu/${y}-${m}-${day}`);
-              }}
-            />
-          </HydrationBoundary>
-        ) : (
-          <InventoryTab />
-        )}
-
-        {/* Legend */}
-        {events.length > 0 && (
-          <div className="mt-6 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Chú thích
-            </h3>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  1-2 món
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-amber-500 rounded"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  3-4 món
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-green-500 rounded"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  5+ món
-                </span>
-              </div>
+        {/* Quick Actions */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl p-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Bắt đầu ngay hôm nay
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">
+              Chọn một trong các tùy chọn bên dưới để bắt đầu quản lý thực đơn của bạn
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => router.push("/menu")}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                <Menu className="h-5 w-5" />
+                <span>Xem lịch thực đơn</span>
+              </button>
+              <button
+                onClick={() => router.push("/storage")}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                <Package className="h-5 w-5" />
+                <span>Quản lý kho</span>
+              </button>
+              <button
+                onClick={() => router.push("/ingredients")}
+                className="flex items-center justify-center space-x-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium"
+              >
+                <ChefHat className="h-5 w-5" />
+                <span>Quản lý nguyên liệu</span>
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

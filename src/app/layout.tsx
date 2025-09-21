@@ -4,9 +4,9 @@ import "../globals.css";
 // import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/components/i18n";
+import { Header } from "@/components";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import AppHeader from "@/components/main/header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +36,7 @@ export default function AppSectionLayout({
         <LanguageProvider>
           <ThemeProvider>
             <div className="min-h-dvh bg-background text-foreground">
-              <AppHeader />
+              <Header />
               <main className="flex-1">{children}</main>
             </div>
           </ThemeProvider>
