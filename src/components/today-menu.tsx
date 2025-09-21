@@ -108,12 +108,13 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             const data = await getCalendarData(todayString, todayString);
             if (data && data.length > 0) {
               const todayData = data[0];
+              const dishCount = Number(todayData.dishCount || 0);
               setMenuData({
                 date: todayString,
-                totalDishes: todayData.dishCount,
-                totalCalories: todayData.dishCount * 300,
-                totalServings: todayData.dishCount * 2,
-                dishes: Array.from({ length: todayData.dishCount }, (_, i) => ({
+                totalDishes: dishCount,
+                totalCalories: dishCount * 300,
+                totalServings: dishCount * 2,
+                dishes: Array.from({ length: dishCount }, (_, i) => ({
                   id: `dish-${i + 1}`,
                   name: `Món ăn ${i + 1}`,
                   calories: 300,
