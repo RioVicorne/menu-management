@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Calendar, Utensils, Package, Plus } from "lucide-react";
 import Link from "next/link";
 import { MenuProvider, useMenu } from "@/contexts/menu-context";
@@ -16,7 +17,16 @@ type TabType = "menu" | "inventory" | "add-dish";
 
 function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   const { error } = useMenu();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("menu");
+
+  // Check for tab parameter in URL
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && ["menu", "inventory", "add-dish"].includes(tab)) {
+      setActiveTab(tab as TabType);
+    }
+  }, [searchParams]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
