@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Package,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Filter,
+  Loader2,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface Ingredient {
   id: string;
@@ -23,69 +25,87 @@ interface Ingredient {
 
 export default function InventoryTab() {
   const [showLowOnly, setShowLowOnly] = useState(false);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [ingredients] = useState<Ingredient[]>([
-    {
-      id: "1",
-      name: "Beef",
-      source: "Local Butcher",
-      quantityNeeded: 2,
-      quantityInStock: 5,
-      weightNeeded: 1.5,
-      weightInStock: 3.2,
-      unit: "kg",
-      weightUnit: "kg",
-    },
-    {
-      id: "2",
-      name: "Rice Noodles",
-      source: "Asian Market",
-      quantityNeeded: 4,
-      quantityInStock: 2,
-      weightNeeded: 0.8,
-      weightInStock: 0.4,
-      unit: "packages",
-      weightUnit: "kg",
-    },
-    {
-      id: "3",
-      name: "Spring Roll Wrappers",
-      source: "Unknown source",
-      quantityNeeded: 1,
-      quantityInStock: 0,
-      weightNeeded: 0.2,
-      weightInStock: 0,
-      unit: "packages",
-      weightUnit: "kg",
-    },
-    {
-      id: "4",
-      name: "Fresh Vegetables",
-      source: "Farmers Market",
-      quantityNeeded: 3,
-      quantityInStock: 8,
-      weightNeeded: 2.0,
-      weightInStock: 5.5,
-      unit: "kg",
-      weightUnit: "kg",
-    },
-    {
-      id: "5",
-      name: "Soy Sauce",
-      source: "Grocery Store",
-      quantityNeeded: 1,
-      quantityInStock: 1,
-      weightNeeded: 0.5,
-      weightInStock: 0.3,
-      unit: "bottles",
-      weightUnit: "L",
-    },
-  ]);
+  // Fetch ingredients from Supabase
+  useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (!supabase) {
+          throw new Error("Supabase client not available");
+        }
+
+        // Query ingredients from Supabase
+        const { data, error: queryError } = await supabase
+          .from("nguyen_lieu")
+          .select("*")
+          .order("ten_nguyen_lieu", { ascending: true });
+
+        if (queryError) {
+          console.error("Supabase query error:", queryError);
+          throw new Error(`Database error: ${queryError.message || 'Unknown database error'}`);
+        }
+
+        if (!data) {
+          throw new Error("No data returned from database");
+        }
+
+        // Transform data to match our interface
+        const transformedData: Ingredient[] = (data || []).map((item: any) => ({
+          id: item.id,
+          name: item.ten_nguyen_lieu || "Unknown",
+          source: item.nguon_nhap || "Nguồn chưa rõ",
+          quantityNeeded: item.so_luong_nguyen_lieu || 0,
+          quantityInStock: item.ton_kho_so_luong || 0,
+          weightNeeded: item.khoi_luong_nguyen_lieu || 0,
+          weightInStock: item.ton_kho_khoi_luong || 0,
+          unit: "kg", // Default unit
+          weightUnit: "kg", // Default weight unit
+        }));
+
+        setIngredients(transformedData);
+      } catch (err) {
+        console.error("Error fetching ingredients:", err);
+        console.error("Error details:", {
+          message: err instanceof Error ? err.message : 'Unknown error',
+          name: err instanceof Error ? err.name : 'Unknown',
+          stack: err instanceof Error ? err.stack : undefined,
+          error: err
+        });
+        
+        // Check if it's a database connection error
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch ingredients";
+        const isConnectionError = errorMessage.includes("Database error") || 
+                                 errorMessage.includes("Supabase client not available");
+        
+        if (isConnectionError) {
+          setError("Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra kết nối mạng.");
+        } else {
+          setError(errorMessage);
+        }
+        
+        // Fallback to empty array
+        setIngredients([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchIngredients();
+  }, []);
 
   const getStockStatus = (ingredient: Ingredient) => {
-    const quantityRatio =
-      ingredient.quantityInStock / ingredient.quantityNeeded;
-    const weightRatio = ingredient.weightInStock / ingredient.weightNeeded;
+    // Use default values if needed quantities are 0
+    const quantityNeeded = ingredient.quantityNeeded || 1;
+    const weightNeeded = ingredient.weightNeeded || 1;
+    
+    const quantityRatio = ingredient.quantityInStock / quantityNeeded;
+    const weightRatio = ingredient.weightInStock / weightNeeded;
     const minRatio = Math.min(quantityRatio, weightRatio);
 
     if (minRatio >= 1) return "in-stock";
@@ -144,6 +164,41 @@ export default function InventoryTab() {
     return status === "low" || status === "out-of-stock";
   }).length;
 
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <p className="text-gray-600 dark:text-gray-400">Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <div>
+              <h3 className="font-medium text-red-800 dark:text-red-200">
+                Lỗi tải dữ liệu
+              </h3>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                {error}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Filter */}
@@ -153,7 +208,7 @@ export default function InventoryTab() {
             Nguyên liệu trong ngày
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {`${filteredIngredients.length} ingredients required for today's menu`}
+            {`${filteredIngredients.length} nguyên liệu cần cho thực đơn hôm nay`}
           </p>
         </div>
 
@@ -198,10 +253,10 @@ export default function InventoryTab() {
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredIngredients.map((ingredient) => {
               const status = getStockStatus(ingredient);
-              const quantityRatio =
-                ingredient.quantityInStock / ingredient.quantityNeeded;
-              const weightRatio =
-                ingredient.weightInStock / ingredient.weightNeeded;
+              const quantityNeeded = ingredient.quantityNeeded || 1;
+              const weightNeeded = ingredient.weightNeeded || 1;
+              const quantityRatio = ingredient.quantityInStock / quantityNeeded;
+              const weightRatio = ingredient.weightInStock / weightNeeded;
 
               return (
                 <div
@@ -234,7 +289,7 @@ export default function InventoryTab() {
                               Số lượng
                             </span>
                             <span className="text-gray-600 dark:text-gray-400">
-                              SL cần {ingredient.quantityNeeded} {ingredient.unit} / tồn {ingredient.quantityInStock} {ingredient.unit} • KL cần {ingredient.weightNeeded} {ingredient.weightUnit} / tồn {ingredient.weightInStock} {ingredient.weightUnit}
+                              SL cần {quantityNeeded} {ingredient.unit} / tồn {ingredient.quantityInStock} {ingredient.unit} • KL cần {weightNeeded} {ingredient.weightUnit} / tồn {ingredient.weightInStock} {ingredient.weightUnit}
                             </span>
                           </div>
                           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -260,7 +315,7 @@ export default function InventoryTab() {
                               Weight
                             </span>
                             <span className="text-gray-600 dark:text-gray-400">
-                              {ingredient.weightNeeded} {ingredient.weightUnit}{" "}
+                              {weightNeeded} {ingredient.weightUnit}{" "}
                               needed / {ingredient.weightInStock}{" "}
                               {ingredient.weightUnit} in stock
                             </span>

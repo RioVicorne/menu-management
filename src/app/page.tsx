@@ -20,6 +20,7 @@ import {
 import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
 import { getCalendarData } from "@/lib/api";
 import { HydrationBoundary } from "@/components/hydration-boundary";
+import InventoryTab from "@/components/daily-menu/inventory-tab";
 
 const locales = { vi } as const;
 const localizer = dateFnsLocalizer({
@@ -44,6 +45,7 @@ export default function CalendarDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totalDishes, setTotalDishes] = useState(0);
+  const [activeTab, setActiveTab] = useState<'calendar' | 'inventory'>('calendar');
 
   const loadRange = useCallback(
     async (start: Date, end: Date) => {
@@ -213,13 +215,37 @@ export default function CalendarDashboardPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Lịch thực đơn
+                  Trang chủ
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Lập kế hoạch và quản lý thực đơn hằng ngày
+                  Lập kế hoạch thực đơn và quản lý kho
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Tab Navigation */}
+          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'calendar'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              Lịch thực đơn
+            </button>
+            <button
+              onClick={() => setActiveTab('inventory')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'inventory'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              Quản lý kho
+            </button>
           </div>
 
           {/* Stats Cards */}
@@ -276,32 +302,36 @@ export default function CalendarDashboardPage() {
           </div>
         </div>
 
-        {/* Calendar Section */}
-        <HydrationBoundary
-          fallback={
-            <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-              <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        {/* Content Section */}
+        {activeTab === 'calendar' ? (
+          <HydrationBoundary
+            fallback={
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                <div className="flex items-center justify-center h-96">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
               </div>
-            </div>
-          }
-        >
-          <MonthlyCalendar
-            menuData={events.map((event) => ({
-              date: event.start.toISOString().split("T")[0],
-              dishCount: event.count || 0,
-              totalCalories: (event.count || 0) * 300, // Mock calories
-              totalServings: (event.count || 0) * 2, // Mock servings
-            }))}
-            onDateClick={(date) => {
-              const d = new Date(date);
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, "0");
-              const day = String(d.getDate()).padStart(2, "0");
-              router.push(`/menu/${y}-${m}-${day}`);
-            }}
-          />
-        </HydrationBoundary>
+            }
+          >
+            <MonthlyCalendar
+              menuData={events.map((event) => ({
+                date: event.start.toISOString().split("T")[0],
+                dishCount: event.count || 0,
+                totalCalories: (event.count || 0) * 300, // Mock calories
+                totalServings: (event.count || 0) * 2, // Mock servings
+              }))}
+              onDateClick={(date) => {
+                const d = new Date(date);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                router.push(`/menu/${y}-${m}-${day}`);
+              }}
+            />
+          </HydrationBoundary>
+        ) : (
+          <InventoryTab />
+        )}
 
         {/* Legend */}
         {events.length > 0 && (

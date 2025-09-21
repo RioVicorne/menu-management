@@ -1,77 +1,58 @@
 "use client";
 
 import { Link, ChefHat, Calendar, Utensils, Package } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+
+const navigationItems = [
+  {
+    name: "Trang chủ",
+    href: "/",
+    icon: Calendar,
+    description: "Lịch thực đơn và quản lý kho",
+  },
+  {
+    name: "Quản lý kho",
+    href: "/storage",
+    icon: Package,
+    description: "Quản lý nguyên liệu và tồn kho",
+  },
+  {
+    name: "Quản lý nguyên liệu",
+    href: "/ingredients",
+    icon: ChefHat,
+    description: "Thêm và chỉnh sửa nguyên liệu",
+  },
+];
+
 export default function AppHeader() {
+  const pathname = usePathname();
+
   return (
-    <header className="sticky top-0 z-30 bg-background border-b border-border shadow-sm">
+    <header className="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm min-h-[60px] w-full">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2 group">
-            <div
-              className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors"
-              suppressHydrationWarning={true}
-            >
-              <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <span
-              className="text-xl font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-              suppressHydrationWarning={true}
-            >
-              Thực đơn
-            </span>
-          </Link>
-
-          <nav className="hidden md:flex items-center space-x-1">
-            <Link
-              href="/"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Calendar className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>Lịch</span>
-            </Link>
-            <Link
-              href="/ingredients"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Utensils className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>Nguyên liệu</span>
-            </Link>
-            <Link
-              href="/storage"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Package className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>Kho</span>
-            </Link>
-            <Link
-              href="/recipes"
-              className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium text-foreground/90 hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <ChefHat className="h-4 w-4" />
-              <span suppressHydrationWarning={true}>Công thức</span>
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            {/* Mobile menu button */}
-            <div className="md:hidden">
-              <button className="p-2 rounded-lg text-foreground/90 hover:bg-muted hover:text-foreground">
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
+        <div className="flex space-x-8 py-3 items-center">
+          <div className="text-sm text-gray-500 mr-4">Navigation:</div>
+          {navigationItems.map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
+            
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center space-x-2 px-3 py-4 text-sm font-medium border-b-2 transition-colors",
+                  isActive
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </header>

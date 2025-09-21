@@ -88,10 +88,10 @@ export function MonthlyCalendar({
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4">
+        <div className="flex items-center justify-between sm:justify-start sm:space-x-4">
           <button
             onClick={() => navigateMonth("prev")}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -99,7 +99,7 @@ export function MonthlyCalendar({
             <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
           </button>
 
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             {monthNames[month]} {year}
           </h2>
 
@@ -113,10 +113,11 @@ export function MonthlyCalendar({
 
         <Link
           href={`/menu/${today.toISOString().split("T")[0]}`}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base"
         >
           <Plus className="h-4 w-4" />
-          <span>Thêm thực đơn hôm nay</span>
+          <span className="hidden sm:inline">Thêm thực đơn hôm nay</span>
+          <span className="sm:hidden">Thêm hôm nay</span>
         </Link>
       </div>
 
@@ -126,7 +127,7 @@ export function MonthlyCalendar({
         {dayNames.map((day) => (
           <div
             key={day}
-            className="p-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400"
+            className="p-1 sm:p-3 text-center text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400"
           >
             {day}
           </div>
@@ -135,7 +136,7 @@ export function MonthlyCalendar({
         {/* Calendar days */}
         {calendarDays.map((dayData, index) => {
           if (!dayData) {
-            return <div key={index} className="p-3" />;
+            return <div key={index} className="p-1 sm:p-3" />;
           }
 
           const { day, date, hasMenu, menuData, isToday } = dayData;
@@ -145,7 +146,7 @@ export function MonthlyCalendar({
               key={`${date}-${day}`}
               href={`/menu/${date}`}
               className={`
-                relative p-3 min-h-[80px] rounded-lg border-2 transition-all duration-200 hover:shadow-md group
+                relative p-1 sm:p-3 min-h-[60px] sm:min-h-[80px] rounded-lg border-2 transition-all duration-200 hover:shadow-md group
                 ${
                   isToday
                     ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
@@ -158,7 +159,7 @@ export function MonthlyCalendar({
               <div className="flex flex-col h-full">
                 <span
                   className={`
-                  text-sm font-medium mb-1
+                  text-xs sm:text-sm font-medium mb-1
                   ${isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-white"}
                 `}
                 >
@@ -167,14 +168,14 @@ export function MonthlyCalendar({
 
                 {hasMenu && menuData && (
                   <div className="flex-1 flex flex-col justify-center">
-                    <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-400">
-                      <ChefHat className="h-3 w-3" />
+                    <div className="flex items-center space-x-1 text-[10px] sm:text-xs text-green-600 dark:text-green-400">
+                      <ChefHat className="h-2 w-2 sm:h-3 sm:w-3" />
                       <span>
                         {menuData.dishCount}{" "}
                         {menuData.dishCount === 1 ? "dish" : "dishes"}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {menuData.totalCalories} cal
                     </div>
                   </div>
@@ -182,7 +183,7 @@ export function MonthlyCalendar({
 
                 {!hasMenu && (
                   <div className="flex-1 flex items-center justify-center">
-                    <div className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400">
+                    <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400">
                       No menu
                     </div>
                   </div>
