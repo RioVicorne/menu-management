@@ -6,10 +6,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Filter,
   Loader2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 interface Ingredient {
   id: string;
@@ -47,7 +47,7 @@ export default function InventoryTab() {
           .order("ten_nguyen_lieu", { ascending: true });
 
         if (queryError) {
-          console.error("Supabase query error:", queryError);
+          logger.error("Supabase query error:", queryError);
           throw new Error(`Database error: ${queryError.message || 'Unknown database error'}`);
         }
 
@@ -56,22 +56,22 @@ export default function InventoryTab() {
         }
 
         // Transform data to match our interface
-        const transformedData: Ingredient[] = (data || []).map((item: any) => ({
-          id: item.id,
-          name: item.ten_nguyen_lieu || "Unknown",
-          source: item.nguon_nhap || "Nguồn chưa rõ",
-          quantityNeeded: item.so_luong_nguyen_lieu || 0,
-          quantityInStock: item.ton_kho_so_luong || 0,
-          weightNeeded: item.khoi_luong_nguyen_lieu || 0,
-          weightInStock: item.ton_kho_khoi_luong || 0,
+        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => ({
+          id: String(item.id || ""),
+          name: String(item.ten_nguyen_lieu || "Unknown"),
+          source: String(item.nguon_nhap || "Nguồn chưa rõ"),
+          quantityNeeded: Number(item.so_luong_nguyen_lieu || 0),
+          quantityInStock: Number(item.ton_kho_so_luong || 0),
+          weightNeeded: Number(item.khoi_luong_nguyen_lieu || 0),
+          weightInStock: Number(item.ton_kho_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));
 
         setIngredients(transformedData);
       } catch (err) {
-        console.error("Error fetching ingredients:", err);
-        console.error("Error details:", {
+        logger.error("Error fetching ingredients:", err);
+        logger.error("Error details:", {
           message: err instanceof Error ? err.message : 'Unknown error',
           name: err instanceof Error ? err.name : 'Unknown',
           stack: err instanceof Error ? err.stack : undefined,

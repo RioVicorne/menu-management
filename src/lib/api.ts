@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { logger } from "./logger";
 
 // Types based on your Supabase schema
 export interface Dish {
@@ -91,7 +92,7 @@ export async function getDishes(): Promise<Dish[]> {
     .order("ten_mon_an");
 
   if (error) {
-    console.error("Error fetching dishes:", error);
+    logger.error("Error fetching dishes:", error);
     throw error;
   }
 
@@ -113,7 +114,7 @@ export async function getMenuItems(date: string): Promise<MenuItem[]> {
       .order("created_at");
 
     if (error) {
-      console.warn(
+      logger.warn(
         "Error fetching menu items (running in mock mode):",
         error.message,
       );
@@ -134,7 +135,7 @@ export async function getMenuItems(date: string): Promise<MenuItem[]> {
 
     return data || [];
   } catch (err) {
-    console.warn("Database connection failed (running in mock mode):", err);
+    logger.warn("Database connection failed (running in mock mode):", err);
     // Return empty array instead of throwing error in mock mode
     return [];
   }
@@ -176,7 +177,7 @@ export async function addDishToMenu(
     .single();
 
   if (error) {
-    console.error("Error adding dish to menu:", error);
+    logger.error("Error adding dish to menu:", error);
     throw error;
   }
 
@@ -209,7 +210,7 @@ export async function updateMenuItem(
     .single();
 
   if (error) {
-    console.error("Error updating menu item:", error);
+    logger.error("Error updating menu item:", error);
     throw error;
   }
 
@@ -226,13 +227,13 @@ export async function deleteMenuItem(id: string): Promise<void> {
   const { error } = await supabase.from("thuc_don").delete().eq("id", id);
 
   if (error) {
-    console.error("Error deleting menu item:", error);
+    logger.error("Error deleting menu item:", error);
     throw error;
   }
 }
 
 // Get ingredients for a specific date
-export async function getIngredientsForDate(date: string): Promise<any[]> {
+export async function getIngredientsForDate(date: string): Promise<Record<string, unknown>[]> {
   if (!supabase) {
     // Return mock data when Supabase is not configured
     return [];
@@ -254,7 +255,7 @@ export async function getIngredientsForDate(date: string): Promise<any[]> {
     .eq("ngay", date);
 
   if (error) {
-    console.error("Error fetching ingredients:", error);
+    logger.error("Error fetching ingredients:", error);
     throw error;
   }
 
@@ -265,7 +266,7 @@ export async function getIngredientsForDate(date: string): Promise<any[]> {
 export async function getCalendarData(
   startDate: string,
   endDate: string,
-): Promise<any[]> {
+): Promise<Record<string, unknown>[]> {
   if (!supabase) {
     // Return mock data when Supabase is not configured
     return [];
@@ -279,7 +280,7 @@ export async function getCalendarData(
       .lte("ngay", endDate);
 
     if (error) {
-      console.warn(
+      logger.warn(
         "Error fetching calendar data (running in mock mode):",
         error.message,
       );
@@ -305,7 +306,7 @@ export async function getCalendarData(
       totalServings: count * 2, // Mock servings - you can calculate real ones
     }));
   } catch (err) {
-    console.warn("Database connection failed (running in mock mode):", err);
+    logger.warn("Database connection failed (running in mock mode):", err);
     // Return empty array instead of throwing error in mock mode
     return [];
   }

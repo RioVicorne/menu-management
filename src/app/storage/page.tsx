@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 interface Ingredient {
   id: string;
@@ -51,7 +52,7 @@ export default function StoragePage() {
           .order("ten_nguyen_lieu", { ascending: true });
 
         if (queryError) {
-          console.error("Supabase query error:", queryError);
+          logger.error("Supabase query error:", queryError);
           throw new Error(`Database error: ${queryError.message || 'Unknown database error'}`);
         }
 
@@ -60,22 +61,22 @@ export default function StoragePage() {
         }
 
         // Transform data to match our interface
-        const transformedData: Ingredient[] = (data || []).map((item: any) => ({
-          id: item.id,
-          name: item.ten_nguyen_lieu || "Unknown",
-          source: item.nguon_nhap || "Nguồn chưa rõ",
-          quantityNeeded: item.so_luong_nguyen_lieu || 0,
-          quantityInStock: item.ton_kho_so_luong || 0,
-          weightNeeded: item.khoi_luong_nguyen_lieu || 0,
-          weightInStock: item.ton_kho_khoi_luong || 0,
+        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => ({
+          id: String(item.id || ""),
+          name: String(item.ten_nguyen_lieu || "Unknown"),
+          source: String(item.nguon_nhap || "Nguồn chưa rõ"),
+          quantityNeeded: Number(item.so_luong_nguyen_lieu || 0),
+          quantityInStock: Number(item.ton_kho_so_luong || 0),
+          weightNeeded: Number(item.khoi_luong_nguyen_lieu || 0),
+          weightInStock: Number(item.ton_kho_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));
 
         setIngredients(transformedData);
       } catch (err) {
-        console.error("Error fetching ingredients:", err);
-        console.error("Error details:", {
+        logger.error("Error fetching ingredients:", err);
+        logger.error("Error details:", {
           message: err instanceof Error ? err.message : 'Unknown error',
           name: err instanceof Error ? err.name : 'Unknown',
           stack: err instanceof Error ? err.stack : undefined,
@@ -309,7 +310,7 @@ export default function StoragePage() {
                   {`${filteredIngredients.length} nguyên liệu hiện có trong kho`}
                   {searchQuery && (
                     <span className="ml-2 text-blue-600 dark:text-blue-400">
-                      (tìm kiếm: "{searchQuery}")
+                      (tìm kiếm: &quot;{searchQuery}&quot;)
                     </span>
                   )}
                 </p>
@@ -389,7 +390,7 @@ export default function StoragePage() {
                   <>
                     <Search className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                     <p className="text-gray-500 dark:text-gray-400 mb-2">
-                      Không tìm thấy nguyên liệu nào phù hợp với "{searchQuery}"
+                      Không tìm thấy nguyên liệu nào phù hợp với &quot;{searchQuery}&quot;
                     </p>
                     <button
                       onClick={handleClearSearch}

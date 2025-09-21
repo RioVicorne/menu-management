@@ -18,7 +18,6 @@ interface MonthlyCalendarProps {
 
 export function MonthlyCalendar({
   menuData = [],
-  onDateClick,
 }: MonthlyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 

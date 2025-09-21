@@ -3,19 +3,15 @@
 import React, { useState, useEffect } from "react";
 import {
   ChefHat,
-  Users,
-  StickyNote,
   Plus,
-  Zap,
-  Package,
   Loader2,
   CheckCircle,
-  RotateCcw,
   Search,
   X,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
 import { getDishes, Dish } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface SelectedDishItem {
   dish: Dish;
@@ -46,7 +42,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         const dishes = await getDishes();
         setAvailableDishes(dishes);
       } catch (error) {
-        console.error("Error loading dishes:", error);
+        logger.error("Error loading dishes:", error);
       } finally {
         setLoading(false);
       }
@@ -74,9 +70,6 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   };
 
 
-  const removeDishFromSelection = (dishId: string) => {
-    setSelectedDishes(prev => prev.filter(item => item.dish.id !== dishId));
-  };
 
   // Helper function to check if dish exists in current menu and merge if needed
   const addOrUpdateDishInMenu = async (dishId: string, servings: number, notes?: string) => {
@@ -154,18 +147,12 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
       setSelectedDishes([]);
       onDishAdded?.();
     } catch (error) {
-      console.error("Error adding dishes to menu:", error);
+      logger.error("Error adding dishes to menu:", error);
     } finally {
       setIsAdding(false);
     }
   };
 
-  const handleClearForm = () => {
-    setSelectedDishes([]);
-    setShowSuccess(false);
-    setShowAllDishes(false);
-    setSearchQuery("");
-  };
 
   const totalCalories = selectedDishes.reduce((total, item) => {
     return total + ((item.dish.calories || 0) * item.servings);
@@ -360,7 +347,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                 <div className="p-8 text-center">
                   <Search className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400">
-                    Không tìm thấy món ăn nào phù hợp với "{searchQuery}"
+                    Không tìm thấy món ăn nào phù hợp với &quot;{searchQuery}&quot;
                   </p>
                   <button
                     onClick={handleClearSearch}
@@ -372,7 +359,6 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
               ) : (
                 filteredDishes.map((dish) => {
                 const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
-                const selectedItem = selectedDishes.find(item => item.dish.id === dish.id);
                 
                 return (
                   <div

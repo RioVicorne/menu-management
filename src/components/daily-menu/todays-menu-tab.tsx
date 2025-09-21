@@ -12,9 +12,9 @@ import {
   Loader2,
   CheckSquare,
   Square,
-  X,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
+import { logger } from "@/lib/logger";
 
 interface TodaysMenuTabProps {
   onAddDish?: () => void;
@@ -41,7 +41,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     0,
   ); // Mock calories
 
-  const handleEdit = useCallback((dish: any) => {
+  const handleEdit = useCallback((dish: { id: string; boi_so: number; ghi_chu?: string }) => {
     setEditingDish(dish.id);
     setEditForm({
       servings: dish.boi_so,
@@ -56,7 +56,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         setEditingDish(null);
         setEditForm({});
       } catch (error) {
-        console.error("Error updating dish:", error);
+        logger.error("Error updating dish:", error);
       }
     }
   }, [editingDish, editForm, updateDish]);
@@ -66,7 +66,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
       try {
         await removeDish(dishId);
       } catch (error) {
-        console.error("Error deleting dish:", error);
+        logger.error("Error deleting dish:", error);
       }
     },
     [removeDish],
@@ -110,14 +110,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
       setSelectedDishes(new Set());
       setDeleteMode(false);
     } catch (error) {
-      console.error("Error deleting dishes:", error);
+      logger.error("Error deleting dishes:", error);
     } finally {
       setIsDeleting(false);
     }
   }, [selectedDishes, removeDish]);
 
   const handleAddDish = useCallback(async () => {
-    console.log("handleAddDish called");
+    logger.debug("handleAddDish called");
     onAddDish?.();
   }, [onAddDish]);
 

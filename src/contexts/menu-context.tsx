@@ -7,9 +7,9 @@ import {
   updateMenuItem,
   deleteMenuItem,
   getCalendarData,
-  Dish,
   MenuItem,
 } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface MenuContextType {
   // State
@@ -25,7 +25,7 @@ interface MenuContextType {
   ) => Promise<void>;
   removeDish: (id: string) => Promise<void>;
   refreshMenu: () => Promise<void>;
-  getCalendarData: (startDate: string, endDate: string) => Promise<any[]>;
+  getCalendarData: (startDate: string, endDate: string) => Promise<Record<string, unknown>[]>;
 }
 
 const MenuContext = createContext<MenuContextType | null>(null);
@@ -55,7 +55,7 @@ export function MenuProvider({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load menu items";
       setError(errorMessage);
-      console.error("Error loading menu items:", err);
+      logger.error("Error loading menu items:", err);
       // Don't throw the error, just log it and set error state
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export function MenuProvider({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to add dish";
       setError(errorMessage);
-      console.error("Error adding dish:", errorMessage);
+      logger.error("Error adding dish:", errorMessage);
       // Don't throw the error, just log it and set error state
     }
   };
@@ -91,7 +91,7 @@ export function MenuProvider({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to update dish";
       setError(errorMessage);
-      console.error("Error updating dish:", errorMessage);
+      logger.error("Error updating dish:", errorMessage);
       // Don't throw the error, just log it and set error state
     }
   };
@@ -105,7 +105,7 @@ export function MenuProvider({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to remove dish";
       setError(errorMessage);
-      console.error("Error removing dish:", errorMessage);
+      logger.error("Error removing dish:", errorMessage);
       // Don't throw the error, just log it and set error state
     }
   };
@@ -126,7 +126,7 @@ export function MenuProvider({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to load calendar data";
       setError(errorMessage);
-      console.error("Error loading calendar data:", errorMessage);
+      logger.error("Error loading calendar data:", errorMessage);
       // Return empty array instead of throwing
       return [];
     }
@@ -135,7 +135,7 @@ export function MenuProvider({
   // Load menu items when selectedDate changes
   useEffect(() => {
     loadMenuItems();
-  }, [selectedDate]);
+  }, [selectedDate, loadMenuItems]);
 
   const value: MenuContextType = {
     dishes,

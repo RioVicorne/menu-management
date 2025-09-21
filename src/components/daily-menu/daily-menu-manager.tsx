@@ -16,7 +16,7 @@ interface DailyMenuManagerProps {
 type TabType = "menu" | "inventory" | "add-dish";
 
 function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
-  const { error } = useMenu();
+  const { } = useMenu();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("menu");
 

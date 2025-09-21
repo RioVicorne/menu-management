@@ -96,7 +96,6 @@ type I18nContextValue = {
   setLang: (l: Language) => void;
   t: (
     key: keyof typeof dictionary,
-    params?: Record<string, string | number>,
   ) => string;
 };
 

@@ -1,18 +1,17 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { Calendar, dateFnsLocalizer, Views } from "react-big-calendar";
+import { dateFnsLocalizer } from "react-big-calendar";
 import { format } from "date-fns/format";
 import { parse } from "date-fns/parse";
 import { startOfWeek } from "date-fns/startOfWeek";
 import { getDay } from "date-fns/getDay";
-import { enUS } from "date-fns/locale/en-US";
 import { vi } from "date-fns/locale/vi";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 import {
   Calendar as CalendarIcon,
-  Plus,
   ChefHat,
   Users,
   Loader2,
@@ -23,13 +22,6 @@ import { HydrationBoundary } from "@/components/hydration-boundary";
 import InventoryTab from "@/components/daily-menu/inventory-tab";
 
 const locales = { vi } as const;
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
 
 interface Event {
   title: string;
@@ -42,14 +34,12 @@ interface Event {
 export default function MenuPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [totalDishes, setTotalDishes] = useState(0);
   const [activeTab, setActiveTab] = useState<'calendar' | 'inventory'>('calendar');
 
   const loadRange = useCallback(
     async (start: Date, end: Date) => {
-      setLoading(true);
       try {
         const from = start.toISOString().slice(0, 10);
         const to = end.toISOString().slice(0, 10);
@@ -59,10 +49,10 @@ export default function MenuPage() {
           const data = await getCalendarData(from, to);
           setEvents(
             data.map((item) => ({
-              start: new Date(item.date),
-              end: new Date(item.date),
-              title: `${item.dishCount} dishes`,
-              count: item.dishCount,
+              start: new Date(item.date as string),
+              end: new Date(item.date as string),
+              title: `${Number(item.dishCount || 0)} dishes`,
+              count: Number(item.dishCount || 0),
               allDay: true,
             })),
           );
@@ -76,15 +66,15 @@ export default function MenuPage() {
           .lte("ngay", to);
 
         if (error) {
-          console.error("Database error:", error);
+          logger.error("Database error:", error);
           // Fallback to API function when database fails
           const data = await getCalendarData(from, to);
           setEvents(
             data.map((item) => ({
-              start: new Date(item.date),
-              end: new Date(item.date),
-              title: `${item.dishCount} dishes`,
-              count: item.dishCount,
+              start: new Date(item.date as string),
+              end: new Date(item.date as string),
+              title: `${Number(item.dishCount || 0)} dishes`,
+              count: Number(item.dishCount || 0),
               allDay: true,
             })),
           );
@@ -112,55 +102,16 @@ export default function MenuPage() {
         setEvents(evs);
         setTotalDishes(evs.reduce((sum, event) => sum + (event.count || 0), 0));
       } catch (error) {
-        console.error("Error loading events:", error);
+        logger.error("Error loading events:", error);
         setEvents([]);
-      } finally {
-        setLoading(false);
       }
     },
     [],
   );
 
-  type MonthRange = { start: Date; end: Date };
-  const onRangeChange = useCallback(
-    (range: Date[] | MonthRange) => {
-      if (Array.isArray(range)) {
-        const start = range[0];
-        const end = range[range.length - 1];
-        loadRange(start, end);
-      } else {
-        loadRange(range.start, range.end);
-      }
-    },
-    [loadRange],
-  );
 
-  type SlotInfo = { start: Date };
-  const onSelectSlot = useCallback(
-    (slot: SlotInfo) => {
-      const d = slot.start;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      router.push(`/menu/${y}-${m}-${day}`);
-    },
-    [router],
-  );
 
-  const onSelectEvent = useCallback(
-    (event: Event) => {
-      const d = event.start;
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      router.push(`/menu/${y}-${m}-${day}`);
-    },
-    [router],
-  );
 
-  const onNavigate = useCallback((newDate: Date) => {
-    setCurrentDate(newDate);
-  }, []);
 
   // Load initial data
   useEffect(() => {
@@ -177,31 +128,6 @@ export default function MenuPage() {
     loadRange(start, end);
   }, [currentDate, loadRange]);
 
-  const eventStyleGetter = (event: Event) => {
-    const count = event.count || 0;
-    let backgroundColor = "#3b82f6";
-
-    if (count >= 5) {
-      backgroundColor = "#10b981"; // Green for many dishes
-    } else if (count >= 3) {
-      backgroundColor = "#f59e0b"; // Orange for moderate dishes
-    } else if (count >= 1) {
-      backgroundColor = "#3b82f6"; // Blue for few dishes
-    }
-
-    return {
-      style: {
-        backgroundColor,
-        borderRadius: "6px",
-        opacity: 0.9,
-        color: "white",
-        border: "none",
-        display: "block",
-        fontSize: "0.75rem",
-        fontWeight: "500",
-      },
-    };
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">

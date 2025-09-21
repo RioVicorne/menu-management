@@ -56,12 +56,13 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
           const data = await getCalendarData(todayString, todayString);
           if (data && data.length > 0) {
             const todayData = data[0];
+            const dishCount = Number(todayData.dishCount || 0);
             setMenuData({
               date: todayString,
-              totalDishes: todayData.dishCount,
-              totalCalories: todayData.dishCount * 300, // Mock calories per dish
-              totalServings: todayData.dishCount * 2, // Mock servings per dish
-              dishes: Array.from({ length: todayData.dishCount }, (_, i) => ({
+              totalDishes: dishCount,
+              totalCalories: dishCount * 300, // Mock calories per dish
+              totalServings: dishCount * 2, // Mock servings per dish
+              dishes: Array.from({ length: dishCount }, (_, i) => ({
                 id: `dish-${i + 1}`,
                 name: `Món ăn ${i + 1}`,
                 calories: 300,
@@ -82,7 +83,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
           
           if (menuItems && menuItems.length > 0) {
             // Process real data from database
-            const dishes: TodayMenuDish[] = menuItems.map((item: any, index: number) => ({
+            const dishes: TodayMenuDish[] = menuItems.map((item, index: number) => ({
               id: item.id || `dish-${index + 1}`,
               name: item.ten_mon_an || `Món ăn ${index + 1}`,
               calories: item.calories || 300,
@@ -126,11 +127,11 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             }
           }
         } catch (apiError) {
-          console.error("API error:", apiError);
+          logger.error("API error:", apiError);
           setMenuData(null);
         }
       } catch (err) {
-        console.error("Error fetching today menu:", err);
+        logger.error("Error fetching today menu:", err);
         setError("Không thể tải thực đơn hôm nay");
       } finally {
         setLoading(false);
