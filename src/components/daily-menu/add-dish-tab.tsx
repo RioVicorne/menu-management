@@ -187,9 +187,9 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Customization & Preview - Show first on mobile */}
-        <div className="space-y-4 order-1 lg:order-2">
+        <div className="space-y-4 order-1 lg:order-2 lg:col-span-1 lg:fixed lg:top-1/2 lg:right-4 lg:-translate-y-1/2 lg:w-96 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
           {selectedDishes.length > 0 ? (
             <>
               {/* Preview - Moved to top */}
@@ -297,7 +297,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </div>
 
         {/* Dish Selection - Show second on mobile */}
-        <div className="space-y-4 order-2 lg:order-1">
+        <div className="space-y-4 order-2 lg:order-1 lg:col-span-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
             <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <span>Chọn món</span>
@@ -335,11 +335,6 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                           <h4 className="font-medium text-gray-900 dark:text-white">
                             {dish.ten_mon_an}
                           </h4>
-                          {isSelected && (
-                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-                              Đã chọn
-                            </span>
-                          )}
                         </div>
                         {isSelected && (
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">

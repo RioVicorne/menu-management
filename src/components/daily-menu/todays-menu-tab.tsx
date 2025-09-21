@@ -220,24 +220,24 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
           <>
             {/* Delete Mode Controls */}
             {deleteMode && dishes.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm font-medium text-red-800 dark:text-red-200">
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
                       Chế độ xóa - Đã chọn {selectedDishes.size}/{dishes.length} món
                     </span>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={selectAllDishes}
                         disabled={isDeleting}
-                        className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded"
+                        className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
                       >
                         Chọn tất cả
                       </button>
                       <button
                         onClick={deselectAllDishes}
                         disabled={isDeleting}
-                        className="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white rounded"
+                        className="px-3 py-2 text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
                       >
                         Bỏ chọn
                       </button>
@@ -246,12 +246,12 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                   <button
                     onClick={handleDeleteSelected}
                     disabled={selectedDishes.size === 0 || isDeleting}
-                    className="flex items-center space-x-2 px-3 py-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded text-sm"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
                   >
                     {isDeleting ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     )}
                     <span>
                       {isDeleting ? `Đang xóa ${selectedDishes.size} món...` : `Xóa đã chọn (${selectedDishes.size})`}
