@@ -202,9 +202,63 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Customization & Preview - Show first on mobile */}
-        <div className="space-y-4 order-2 lg:order-2">
+        <div className="space-y-4 order-1 lg:order-2">
           {selectedDishes.length > 0 ? (
             <>
+              {/* Preview - Moved to top */}
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Tổng quan menu
+                </h3>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Số món đã chọn
+                    </span>
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {selectedDishes.length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Tổng khẩu phần
+                    </span>
+                    <span className="text-sm text-gray-900 dark:text-white">
+                      {selectedDishes.reduce((total, item) => total + item.servings, 0)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Tổng calories
+                    </span>
+                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                      {totalCalories.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                      Danh sách món:
+                    </span>
+                    <div className="space-y-1">
+                      {selectedDishes.map((item, index) => (
+                        <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm">
+                          <span className="text-gray-900 dark:text-white">
+                            {item.dish.ten_mon_an}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400">
+                            x{item.servings}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Selected Dishes List */}
               <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
@@ -295,60 +349,6 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                 </div>
               </div>
 
-              {/* Preview */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Tổng quan menu
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Số món đã chọn
-                    </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {selectedDishes.length}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Tổng khẩu phần
-                    </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
-                      {selectedDishes.reduce((total, item) => total + item.servings, 0)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Tổng calories
-                    </span>
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                      {totalCalories.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                      Danh sách món:
-                    </span>
-                    <div className="space-y-1">
-                      {selectedDishes.map((item, index) => (
-                        <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm">
-                          <span className="text-gray-900 dark:text-white">
-                            {item.dish.ten_mon_an}
-                          </span>
-                          <span className="text-gray-600 dark:text-gray-400">
-                            x{item.servings}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Add Button */}
               <div className="space-y-3">
                 <button
@@ -387,8 +387,8 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           )}
         </div>
 
-        {/* Dish Selection - Show first on mobile */}
-        <div className="space-y-4 order-1 lg:order-1">
+        {/* Dish Selection - Show second on mobile */}
+        <div className="space-y-4 order-2 lg:order-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
             <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <span>Chọn món</span>
