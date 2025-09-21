@@ -37,7 +37,7 @@ export default function AppSectionLayout({
           <ThemeProvider>
             <div className="min-h-dvh bg-background text-foreground">
               <Header />
-              <main className="flex-1">{children}</main>
+              <main className="flex-1 pt-16">{children}</main>
             </div>
           </ThemeProvider>
         </LanguageProvider>

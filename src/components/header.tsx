@@ -76,23 +76,18 @@ export default function Header({ className = "" }: HeaderProps) {
   ];
 
   return (
-    <header className={`bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
+    <header className={`fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo/Brand */}
-          <div className="flex items-center space-x-3">
+          {/* Logo - Clickable to go home */}
+          <button 
+            onClick={() => router.push("/")}
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+          >
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                Menu Management
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Hệ thống quản lý thực đơn
-              </p>
-            </div>
-          </div>
+          </button>
 
           {/* Navigation Tabs */}
           <nav className="flex space-x-1">
