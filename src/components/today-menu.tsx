@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
 import { getCalendarData, getMenuItems } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 interface TodayMenuDish {
   id: string;
