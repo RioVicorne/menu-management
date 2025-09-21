@@ -11,6 +11,8 @@ import {
   Loader2,
   CheckCircle,
   RotateCcw,
+  Search,
+  X,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
 import { getDishes, Dish } from "@/lib/api";
@@ -34,6 +36,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showAllDishes, setShowAllDishes] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Load available dishes from database
   useEffect(() => {
@@ -161,11 +164,21 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
     setSelectedDishes([]);
     setShowSuccess(false);
     setShowAllDishes(false);
+    setSearchQuery("");
   };
 
   const totalCalories = selectedDishes.reduce((total, item) => {
     return total + ((item.dish.calories || 0) * item.servings);
   }, 0);
+
+  // Filter dishes based on search query
+  const filteredDishes = availableDishes.filter(dish =>
+    dish.ten_mon_an.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -298,10 +311,41 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
         {/* Dish Selection - Show second on mobile */}
         <div className="space-y-4 order-2 lg:order-1 lg:col-span-1 lg:max-w-96">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
-            <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            <span>Chọn món</span>
-          </h3>
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+              <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <span>Chọn món</span>
+            </h3>
+            
+            {/* Search Bar */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+              </div>
+              <input
+                type="text"
+                placeholder="Tìm kiếm món ăn..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            {/* Search Results Count */}
+            {searchQuery && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Tìm thấy {filteredDishes.length} món ăn
+              </p>
+            )}
+          </div>
 
           {loading ? (
             <div className="p-8 text-center">
@@ -312,7 +356,21 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              {availableDishes.map((dish) => {
+              {filteredDishes.length === 0 && searchQuery ? (
+                <div className="p-8 text-center">
+                  <Search className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Không tìm thấy món ăn nào phù hợp với "{searchQuery}"
+                  </p>
+                  <button
+                    onClick={handleClearSearch}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium mt-2 transition-colors"
+                  >
+                    Xóa bộ lọc tìm kiếm
+                  </button>
+                </div>
+              ) : (
+                filteredDishes.map((dish) => {
                 const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
                 const selectedItem = selectedDishes.find(item => item.dish.id === dish.id);
                 
@@ -343,7 +401,8 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                     </div>
                   </div>
                 );
-              })}
+                })
+              )}
             </div>
           )}
         </div>
