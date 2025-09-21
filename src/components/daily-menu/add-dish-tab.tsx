@@ -29,12 +29,11 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   const { addDish, dishes: currentMenuDishes, updateDish } = useMenu();
   const [availableDishes, setAvailableDishes] = useState<Dish[]>([]);
   const [selectedDishes, setSelectedDishes] = useState<SelectedDishItem[]>([]);
-  const [currentServings, setCurrentServings] = useState(1);
-  const [currentNotes, setCurrentNotes] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showAllDishes, setShowAllDishes] = useState(false);
 
   // Load available dishes from database
   useEffect(() => {
@@ -61,25 +60,16 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
       // If dish is already selected, remove it (toggle off)
       setSelectedDishes(prev => prev.filter((_, index) => index !== existingIndex));
     } else {
-      // If dish is not selected, add it (toggle on)
+      // If dish is not selected, add it with default values (toggle on)
       const newDishItem: SelectedDishItem = {
         dish,
-        servings: currentServings,
-        notes: currentNotes
+        servings: 1, // Default servings
+        notes: "" // Default empty notes
       };
       setSelectedDishes(prev => [...prev, newDishItem]);
     }
   };
 
-  const updateDishSettings = (index: number, servings: number, notes: string) => {
-    setSelectedDishes(prev => 
-      prev.map((item, idx) => 
-        idx === index 
-          ? { ...item, servings, notes }
-          : item
-      )
-    );
-  };
 
   const removeDishFromSelection = (dishId: string) => {
     setSelectedDishes(prev => prev.filter(item => item.dish.id !== dishId));
@@ -159,8 +149,6 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
       // Clear selection and notify parent component
       setSelectedDishes([]);
-      setCurrentServings(1);
-      setCurrentNotes("");
       onDishAdded?.();
     } catch (error) {
       console.error("Error adding dishes to menu:", error);
@@ -171,9 +159,8 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
   const handleClearForm = () => {
     setSelectedDishes([]);
-    setCurrentServings(1);
-    setCurrentNotes("");
     setShowSuccess(false);
+    setShowAllDishes(false);
   };
 
   const totalCalories = selectedDishes.reduce((total, item) => {
@@ -244,7 +231,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                       Danh sách món:
                     </span>
                     <div className="space-y-1">
-                      {selectedDishes.map((item, index) => (
+                      {(showAllDishes ? selectedDishes : selectedDishes.slice(0, 4)).map((item, index) => (
                         <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm">
                           <span className="text-gray-900 dark:text-white">
                             {item.dish.ten_mon_an}
@@ -254,100 +241,22 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                           </span>
                         </div>
                       ))}
+                      {selectedDishes.length > 4 && (
+                        <button
+                          onClick={() => setShowAllDishes(!showAllDishes)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium mt-2 transition-colors"
+                        >
+                          {showAllDishes 
+                            ? `Thu gọn (hiện ${selectedDishes.length} món)` 
+                            : `Xem thêm ${selectedDishes.length - 4} món nữa...`
+                          }
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Selected Dishes List */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Món đã chọn ({selectedDishes.length})
-                  </h3>
-                  <button
-                    onClick={handleClearForm}
-                    className="flex items-center space-x-1 px-3 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    <span>Xóa tất cả</span>
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {selectedDishes.map((item, index) => {
-                    const duplicateCount = selectedDishes.filter(i => i.dish.id === item.dish.id).length;
-                    const isDuplicate = duplicateCount > 1;
-                    
-                    return (
-                      <div key={`${item.dish.id}-${index}`} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <h4 className="font-medium text-gray-900 dark:text-white">
-                                {item.dish.ten_mon_an}
-                              </h4>
-                              {isDuplicate && (
-                                <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 text-xs rounded-full">
-                                  #{index + 1}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Món Việt Nam
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const itemIndex = selectedDishes.findIndex(i => i === item);
-                              setSelectedDishes(prev => prev.filter((_, idx) => idx !== itemIndex));
-                            }}
-                            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                            title="Xóa món khỏi danh sách"
-                          >
-                            <Package className="h-4 w-4" />
-                          </button>
-                        </div>
-                      
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              <Users className="h-3 w-3 inline mr-1" />
-                              Khẩu phần
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={item.servings}
-                              onChange={(e) => {
-                                const newServings = parseInt(e.target.value) || 1;
-                                updateDishSettings(index, newServings, item.notes);
-                              }}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              <StickyNote className="h-3 w-3 inline mr-1" />
-                              Ghi chú
-                            </label>
-                            <input
-                              type="text"
-                              value={item.notes}
-                              onChange={(e) => {
-                                updateDishSettings(index, item.servings, e.target.value);
-                              }}
-                              placeholder="Ghi chú đặc biệt..."
-                              className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* Add Button */}
               <div className="space-y-3">
@@ -432,12 +341,9 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          Món Việt Nam
-                        </p>
-                        {isSelected && selectedItem && (
+                        {isSelected && (
                           <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            {selectedItem.servings} khẩu phần{selectedItem.notes && ` • ${selectedItem.notes}`}
+                            Đã chọn
                           </p>
                         )}
                       </div>
