@@ -9,6 +9,8 @@ import {
   Filter,
   Plus,
   Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -29,6 +31,7 @@ export default function StoragePage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -153,12 +156,24 @@ export default function StoragePage() {
     }
   };
 
-  const filteredIngredients = showLowOnly
-    ? ingredients.filter((ingredient) => {
-        const status = getStockStatus(ingredient);
-        return status === "low" || status === "out-of-stock";
-      })
-    : ingredients;
+  // Filter ingredients based on search query and low stock filter
+  const filteredIngredients = ingredients.filter((ingredient) => {
+    // Apply search filter
+    const matchesSearch = searchQuery === "" || 
+      ingredient.name.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Apply low stock filter
+    if (showLowOnly) {
+      const status = getStockStatus(ingredient);
+      return matchesSearch && (status === "low" || status === "out-of-stock");
+    }
+    
+    return matchesSearch;
+  });
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
 
   const alertCount = ingredients.filter((ingredient) => {
     const status = getStockStatus(ingredient);
@@ -283,29 +298,74 @@ export default function StoragePage() {
 
         {/* Main Content */}
         <div className="space-y-6">
-          {/* Header with Filter */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Nguyên liệu trong kho
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                {`${filteredIngredients.length} nguyên liệu hiện có trong kho`}
-              </p>
+          {/* Header with Search and Filter */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Nguyên liệu trong kho
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                  {`${filteredIngredients.length} nguyên liệu hiện có trong kho`}
+                  {searchQuery && (
+                    <span className="ml-2 text-blue-600 dark:text-blue-400">
+                      (tìm kiếm: "{searchQuery}")
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={showLowOnly}
+                    onChange={(e) => setShowLowOnly(e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Chỉ hiển thị thiếu/hết
+                  </span>
+                </label>
+              </div>
             </div>
 
+            {/* Search Bar */}
             <div className="flex items-center space-x-4">
-              <label className="flex items-center space-x-2">
+              <div className="relative flex-1 max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                </div>
                 <input
-                  type="checkbox"
-                  checked={showLowOnly}
-                  onChange={(e) => setShowLowOnly(e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  type="text"
+                  placeholder="Tìm kiếm nguyên liệu..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Chỉ hiển thị thiếu/hết
-                </span>
-              </label>
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              
+              {searchQuery && (
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {filteredIngredients.length === 0 ? (
+                    <span className="text-red-600 dark:text-red-400">
+                      Không tìm thấy kết quả
+                    </span>
+                  ) : (
+                    <span className="text-green-600 dark:text-green-400">
+                      {filteredIngredients.length} kết quả
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -325,10 +385,27 @@ export default function StoragePage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             {filteredIngredients.length === 0 ? (
               <div className="p-8 text-center">
-                <Package className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
-                  Không có nguyên liệu nào.
-                </p>
+                {searchQuery ? (
+                  <>
+                    <Search className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400 mb-2">
+                      Không tìm thấy nguyên liệu nào phù hợp với "{searchQuery}"
+                    </p>
+                    <button
+                      onClick={handleClearSearch}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+                    >
+                      Xóa bộ lọc tìm kiếm
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Package className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Không có nguyên liệu nào.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
