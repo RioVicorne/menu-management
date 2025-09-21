@@ -193,7 +193,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           {selectedDishes.length > 0 ? (
             <>
               {/* Preview - Moved to top */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-2 border-black dark:border-white">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   Tổng quan menu
                 </h3>
@@ -297,7 +297,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </div>
 
         {/* Dish Selection - Show second on mobile */}
-        <div className="space-y-4 order-2 lg:order-1 lg:col-span-1">
+        <div className="space-y-4 order-2 lg:order-1 lg:col-span-1 lg:max-w-96">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
             <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <span>Chọn món</span>
@@ -311,7 +311,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               {availableDishes.map((dish) => {
                 const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
                 const selectedItem = selectedDishes.find(item => item.dish.id === dish.id);
@@ -329,15 +329,13 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                       }
                     `}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h4 className="font-medium text-gray-900 dark:text-white">
-                            {dish.ten_mon_an}
-                          </h4>
-                        </div>
+                        <h4 className="font-medium text-gray-900 dark:text-white">
+                          {dish.ten_mon_an}
+                        </h4>
                         {isSelected && (
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                             Đã chọn
                           </p>
                         )}

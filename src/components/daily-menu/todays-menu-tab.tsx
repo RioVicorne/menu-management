@@ -222,26 +222,24 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             {deleteMode && dishes.length > 0 && (
               <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                      Chế độ xóa - Đã chọn {selectedDishes.size}/{dishes.length} món
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={selectAllDishes}
-                        disabled={isDeleting}
-                        className="px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
-                      >
-                        Chọn tất cả
-                      </button>
-                      <button
-                        onClick={deselectAllDishes}
-                        disabled={isDeleting}
-                        className="px-3 py-2 text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 text-white rounded-lg transition-colors font-medium"
-                      >
-                        Bỏ chọn
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="select-all"
+                      checked={selectedDishes.size === dishes.length && dishes.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selectAllDishes();
+                        } else {
+                          deselectAllDishes();
+                        }
+                      }}
+                      disabled={isDeleting}
+                      className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <label htmlFor="select-all" className="text-sm font-medium text-orange-800 dark:text-orange-200 cursor-pointer">
+                      Chọn tất cả ({selectedDishes.size}/{dishes.length})
+                    </label>
                   </div>
                   <button
                     onClick={handleDeleteSelected}
