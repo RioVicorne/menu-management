@@ -42,7 +42,7 @@ export function MenuProvider({
   const [error, setError] = useState<string | null>(null);
 
   // Load menu items for the selected date
-  const loadMenuItems = async () => {
+  const loadMenuItems = useCallback(async () => {
     if (!selectedDate) return;
 
     setLoading(true);
@@ -60,7 +60,7 @@ export function MenuProvider({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
 
   // Add a dish to the menu
   const addDish = async (dishId: string, servings: number, notes?: string) => {
@@ -135,7 +135,7 @@ export function MenuProvider({
   // Load menu items when selectedDate changes
   useEffect(() => {
     loadMenuItems();
-  }, [selectedDate, loadMenuItems]);
+  }, [loadMenuItems]);
 
   const value: MenuContextType = {
     dishes,

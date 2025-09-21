@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useState, useEffect } from "react";
-import { dateFnsLocalizer } from "react-big-calendar";
 import { format } from "date-fns/format";
-import { parse } from "date-fns/parse";
-import { startOfWeek } from "date-fns/startOfWeek";
-import { getDay } from "date-fns/getDay";
 import { vi } from "date-fns/locale/vi";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -21,7 +17,6 @@ import { getCalendarData } from "@/lib/api";
 import { HydrationBoundary } from "@/components/hydration-boundary";
 import InventoryTab from "@/components/daily-menu/inventory-tab";
 
-const locales = { vi } as const;
 
 interface Event {
   title: string;
@@ -34,7 +29,7 @@ interface Event {
 export default function MenuPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate] = useState(new Date());
   const [totalDishes, setTotalDishes] = useState(0);
   const [activeTab, setActiveTab] = useState<'calendar' | 'inventory'>('calendar');
 

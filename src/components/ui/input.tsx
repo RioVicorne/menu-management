@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   // Extends HTMLInputElement attributes
+  className?: string;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(

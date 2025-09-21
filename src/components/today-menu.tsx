@@ -86,9 +86,9 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             const dishes: TodayMenuDish[] = menuItems.map((item, index: number) => ({
               id: item.id || `dish-${index + 1}`,
               name: item.ten_mon_an || `Món ăn ${index + 1}`,
-              calories: item.calories || 300,
+              calories: 300, // Mock calories since MenuItem doesn't have this field
               servings: item.boi_so || 2,
-              category: item.danh_muc || "Món chính",
+              category: "Món chính", // Mock category since MenuItem doesn't have this field
               description: item.ghi_chu || `Món ăn trong thực đơn ngày ${todayString}`,
             }));
 
