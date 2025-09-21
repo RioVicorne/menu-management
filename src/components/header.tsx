@@ -57,7 +57,7 @@ export default function Header({ className = "" }: HeaderProps) {
     },
     {
       id: "menu",
-      label: "Thực đơn",
+      label: "Lịch",
       icon: Menu,
       path: "/menu",
     },
