@@ -500,57 +500,59 @@ export default function StoragePage() {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Quantity */}
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium text-gray-700 dark:text-gray-300">
-                                  Số lượng
-                                </span>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Cần {quantityNeeded} {ingredient.unit} / Có {ingredient.quantityInStock} {ingredient.unit}
-                                </span>
+                            {ingredient.quantityInStock > 0 && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    Số lượng
+                                  </span>
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Cần {quantityNeeded} {ingredient.unit} / Có {ingredient.quantityInStock} {ingredient.unit}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                      quantityRatio >= 1
+                                        ? "bg-green-500"
+                                        : quantityRatio >= 0.5
+                                          ? "bg-yellow-500"
+                                          : "bg-red-500"
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(quantityRatio * 100, 100)}%`,
+                                    }}
+                                  />
+                                </div>
                               </div>
-                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full transition-all duration-300 ${
-                                    quantityRatio >= 1
-                                      ? "bg-green-500"
-                                      : quantityRatio >= 0.5
-                                        ? "bg-yellow-500"
-                                        : "bg-red-500"
-                                  }`}
-                                  style={{
-                                    width: `${Math.min(quantityRatio * 100, 100)}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
+                            )}
 
-                            {/* Weight */}
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="font-medium text-gray-700 dark:text-gray-300">
-                                  Khối lượng
-                                </span>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Cần {weightNeeded} {ingredient.weightUnit} / Có {ingredient.weightInStock} {ingredient.weightUnit}
-                                </span>
+                            {ingredient.weightInStock > 0 && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    Khối lượng
+                                  </span>
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Cần {weightNeeded} {ingredient.weightUnit} / Có {ingredient.weightInStock} {ingredient.weightUnit}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                      weightRatio >= 1
+                                        ? "bg-green-500"
+                                        : weightRatio >= 0.5
+                                          ? "bg-yellow-500"
+                                          : "bg-red-500"
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(weightRatio * 100, 100)}%`,
+                                    }}
+                                  />
+                                </div>
                               </div>
-                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full transition-all duration-300 ${
-                                    weightRatio >= 1
-                                      ? "bg-green-500"
-                                      : weightRatio >= 0.5
-                                        ? "bg-yellow-500"
-                                        : "bg-red-500"
-                                  }`}
-                                  style={{
-                                    width: `${Math.min(weightRatio * 100, 100)}%`,
-                                  }}
-                                />
-                              </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                         <div className="mt-4 flex justify-end">
