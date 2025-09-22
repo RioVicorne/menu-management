@@ -52,10 +52,13 @@ export async function POST(req: NextRequest) {
 
     if (countableUnits.includes(unit)) {
       insertData.ton_kho_so_luong = quantity;
+      insertData.tong_so_luong = quantity; // total at creation equals current
     } else if (weightOrVolumeUnits.includes(unit)) {
       insertData.ton_kho_khoi_luong = quantity;
+      insertData.tong_khoi_luong = quantity; // total at creation equals current
     } else {
       insertData.ton_kho_so_luong = quantity;
+      insertData.tong_so_luong = quantity;
     }
 
     const { error: insErr } = await supabaseAdmin.from("nguyen_lieu").insert(insertData);

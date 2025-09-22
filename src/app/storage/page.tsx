@@ -36,6 +36,7 @@ export default function StoragePage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -68,10 +69,11 @@ export default function StoragePage() {
           id: String(item.id || ""),
           name: String(item.ten_nguyen_lieu || "Unknown"),
           source: String(item.nguon_nhap || "Nguồn chưa rõ"),
-          quantityNeeded: Number(item.so_luong_nguyen_lieu || 0),
+          // Tổng số đã nhập lấy từ các cột tổng nếu có; mặc định 0
           quantityInStock: Number(item.ton_kho_so_luong || 0),
-          weightNeeded: Number(item.khoi_luong_nguyen_lieu || 0),
+          quantityNeeded: Number((item as any).tong_so_luong || 0),
           weightInStock: Number(item.ton_kho_khoi_luong || 0),
+          weightNeeded: Number((item as any).tong_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));
@@ -108,17 +110,15 @@ export default function StoragePage() {
   }, []);
 
   const getStockStatus = (ingredient: Ingredient) => {
-    // Use default values if needed quantities are 0
-    const quantityNeeded = ingredient.quantityNeeded || 1;
-    const weightNeeded = ingredient.weightNeeded || 1;
-    
-    const quantityRatio = ingredient.quantityInStock / quantityNeeded;
-    const weightRatio = ingredient.weightInStock / weightNeeded;
-    const minRatio = Math.min(quantityRatio, weightRatio);
+    // Dùng giá trị tồn kho thực tế: ưu tiên số lượng, nếu không có thì dùng khối lượng
+    const stockValue = Math.max(
+      Number(ingredient.quantityInStock || 0),
+      Number(ingredient.weightInStock || 0)
+    );
 
-    if (minRatio >= 1) return "in-stock";
-    if (minRatio >= 0.5) return "low";
-    return "out-of-stock";
+    if (stockValue === 0) return "out-of-stock"; // hết hàng
+    if (stockValue >= 1 && stockValue <= 5) return "low"; // cần chú ý
+    return "in-stock"; // còn hàng
   };
 
   const getStatusColor = (status: string) => {
@@ -150,7 +150,7 @@ export default function StoragePage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "in-stock":
-        return "Đủ hàng";
+        return "Còn hàng";
       case "low":
         return "Sắp hết";
       case "out-of-stock":
@@ -210,10 +210,10 @@ export default function StoragePage() {
           id: String(item.id || ""),
           name: String(item.ten_nguyen_lieu || "Unknown"),
           source: String(item.nguon_nhap || "Nguồn chưa rõ"),
-          quantityNeeded: Number(item.so_luong_nguyen_lieu || 0),
           quantityInStock: Number(item.ton_kho_so_luong || 0),
-          weightNeeded: Number(item.khoi_luong_nguyen_lieu || 0),
+          quantityNeeded: Number((item as any).tong_so_luong || 0),
           weightInStock: Number(item.ton_kho_khoi_luong || 0),
+          weightNeeded: Number((item as any).tong_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));
@@ -507,7 +507,7 @@ export default function StoragePage() {
                                     Số lượng
                                   </span>
                                   <span className="text-gray-600 dark:text-gray-400">
-                                    Cần {quantityNeeded} {ingredient.unit} / Có {ingredient.quantityInStock} {ingredient.unit}
+                                    Còn {ingredient.quantityInStock} {ingredient.unit} / Tổng {quantityNeeded} {ingredient.unit}
                                   </span>
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -534,7 +534,7 @@ export default function StoragePage() {
                                     Khối lượng
                                   </span>
                                   <span className="text-gray-600 dark:text-gray-400">
-                                    Cần {weightNeeded} {ingredient.weightUnit} / Có {ingredient.weightInStock} {ingredient.weightUnit}
+                                    Còn {ingredient.weightInStock} {ingredient.weightUnit} / Tổng {weightNeeded} {ingredient.weightUnit}
                                   </span>
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
@@ -556,12 +556,60 @@ export default function StoragePage() {
                           </div>
                         </div>
                         <div className="mt-4 flex justify-end">
-                          <button
-                            onClick={() => setConfirmDeleteId(ingredient.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Xóa nguyên liệu
-                          </button>
+                          <div className="relative">
+                            <button
+                              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                              onClick={() => setOpenMenuId(prev => prev === ingredient.id ? null : ingredient.id)}
+                            >
+                              ⋯
+                            </button>
+                            {openMenuId === ingredient.id && (
+                              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-10">
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={async () => {
+                                    setOpenMenuId(null);
+                                        const mode = ingredient.quantityInStock > 0 ? 'quantity' : 'weight';
+                                        const promptText = mode === 'quantity' ? 'Nhập số lượng cần tăng:' : 'Nhập khối lượng cần tăng:';
+                                        const val = typeof window !== 'undefined' ? window.prompt(promptText, '1') : '1';
+                                        const amount = Number((val || '').trim());
+                                        if (!amount || amount <= 0) return;
+                                        try {
+                                          const res = await fetch(`/api/ingredients/${ingredient.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, mode, op: 'increase' }) });
+                                          const data = await res.json().catch(() => ({}));
+                                          if (!res.ok) throw new Error(data.error || 'Cập nhật thất bại');
+                                          handleAddIngredientSuccess();
+                                        } catch (e) {
+                                          logger.error('Increase stock error:', e);
+                                        }
+                                      }}
+                                >Tăng tồn kho</button>
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                                  onClick={async () => {
+                                    setOpenMenuId(null);
+                                        const mode = ingredient.quantityInStock > 0 ? 'quantity' : 'weight';
+                                        const promptText = mode === 'quantity' ? 'Nhập số lượng cần giảm:' : 'Nhập khối lượng cần giảm:';
+                                        const val = typeof window !== 'undefined' ? window.prompt(promptText, '1') : '1';
+                                        const amount = Number((val || '').trim());
+                                        if (!amount || amount <= 0) return;
+                                        try {
+                                          const res = await fetch(`/api/ingredients/${ingredient.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, mode, op: 'decrease' }) });
+                                          const data = await res.json().catch(() => ({}));
+                                          if (!res.ok) throw new Error(data.error || 'Cập nhật thất bại');
+                                          handleAddIngredientSuccess();
+                                        } catch (e) {
+                                          logger.error('Decrease stock error:', e);
+                                        }
+                                      }}
+                                >Giảm tồn kho</button>
+                                <button
+                                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  onClick={() => { setOpenMenuId(null); setConfirmDeleteId(ingredient.id); }}
+                                >Xóa nguyên liệu</button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

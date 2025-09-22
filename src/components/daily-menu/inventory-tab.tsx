@@ -60,10 +60,10 @@ export default function InventoryTab() {
           id: String(item.id || ""),
           name: String(item.ten_nguyen_lieu || "Unknown"),
           source: String(item.nguon_nhap || "Nguồn chưa rõ"),
-          quantityNeeded: Number(item.so_luong_nguyen_lieu || 0),
           quantityInStock: Number(item.ton_kho_so_luong || 0),
-          weightNeeded: Number(item.khoi_luong_nguyen_lieu || 0),
+          quantityNeeded: Number(item.ton_kho_so_luong || 0),
           weightInStock: Number(item.ton_kho_khoi_luong || 0),
+          weightNeeded: Number(item.ton_kho_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));

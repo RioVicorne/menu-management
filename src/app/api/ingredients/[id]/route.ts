@@ -30,4 +30,52 @@ export async function DELETE(
   }
 }
 
+export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+    }
+
+    const { id } = await context.params;
+    const body = await req.json().catch(() => ({}));
+    const amount = Number(body.amount || 0);
+    const op: 'increase' | 'decrease' = body.op === 'increase' ? 'increase' : 'decrease';
+    const mode: 'quantity' | 'weight' = body.mode === 'weight' ? 'weight' : 'quantity';
+
+    if (!id || amount <= 0) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+
+    // Fetch current stock
+    const { data, error: selErr } = await supabaseAdmin
+      .from('nguyen_lieu')
+      .select('ton_kho_so_luong, ton_kho_khoi_luong')
+      .eq('id', id)
+      .single();
+    if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
+
+    const currentQty = Number(data?.ton_kho_so_luong || 0);
+    const currentWgt = Number(data?.ton_kho_khoi_luong || 0);
+
+    if (mode === 'quantity') {
+      const newQty = op === 'increase' ? currentQty + amount : Math.max(0, currentQty - amount);
+      const { error } = await supabaseAdmin
+        .from('nguyen_lieu')
+        .update({ ton_kho_so_luong: newQty })
+        .eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+      const newWgt = op === 'increase' ? currentWgt + amount : Math.max(0, currentWgt - amount);
+      const { error } = await supabaseAdmin
+        .from('nguyen_lieu')
+        .update({ ton_kho_khoi_luong: newWgt })
+        .eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unexpected error';
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 
