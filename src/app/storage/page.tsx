@@ -34,6 +34,8 @@ export default function StoragePage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -551,6 +553,14 @@ export default function StoragePage() {
                             </div>
                           </div>
                         </div>
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={() => setConfirmDeleteId(ingredient.id)}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          >
+                            Xóa nguyên liệu
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -567,6 +577,44 @@ export default function StoragePage() {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={handleAddIngredientSuccess}
       />
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Xác nhận xóa</h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Bạn có chắc chắn muốn xóa nguyên liệu này? Hành động này không thể hoàn tác.</p>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="px-4 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600"
+                disabled={deleting}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setDeleting(true);
+                    const res = await fetch(`/api/ingredients/${confirmDeleteId}`, { method: 'DELETE' });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(data.error || 'Xóa thất bại');
+                    setConfirmDeleteId(null);
+                    handleAddIngredientSuccess();
+                  } catch (e) {
+                    logger.error('Delete ingredient error:', e);
+                    setConfirmDeleteId(null);
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

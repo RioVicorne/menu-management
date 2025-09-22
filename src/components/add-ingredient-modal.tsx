@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import Modal from "./ui/modal";
-import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 
 interface AddIngredientModalProps {
@@ -40,6 +39,10 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
     if (error) setError(null);
   };
 
+  // Unit classification helpers
+  const countableUnits = ["cái", "gói", "chai", "lon", "hộp", "túi"];
+  const weightOrVolumeUnits = ["kg", "g", "l", "ml"]; // stored in ton_kho_khoi_luong
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -65,30 +68,24 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
     setError(null);
 
     try {
-      if (!supabase) {
-        throw new Error("Không thể kết nối đến cơ sở dữ liệu");
-      }
-
       const finalSource = formData.source === "Khác" ? formData.customSource.trim() : formData.source;
+      const quantity = Number(formData.quantity);
+      const nameTrimmed = formData.name.trim();
 
-      const { error: insertError } = await supabase
-        .from("nguyen_lieu")
-        .insert({
-          ten_nguyen_lieu: formData.name.trim(),
-          nguon_nhap: finalSource,
-          so_luong_nguyen_lieu: Number(formData.quantity),
-          ton_kho_so_luong: Number(formData.quantity), // Set initial stock same as needed
-          khoi_luong_nguyen_lieu: Number(formData.quantity), // Use same value for weight
-          ton_kho_khoi_luong: Number(formData.quantity), // Use same value for weight stock
-          don_vi_so_luong: formData.unit,
-          don_vi_khoi_luong: formData.unit, // Use same unit for weight
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      const res = await fetch("/api/ingredients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: nameTrimmed,
+          source: finalSource,
+          quantity,
+          unit: formData.unit
+        })
+      });
 
-      if (insertError) {
-        logger.error("Supabase insert error:", insertError);
-        throw new Error(`Lỗi cơ sở dữ liệu: ${insertError.message}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: "Có lỗi xảy ra" }));
+        throw new Error(data.error || "Có lỗi xảy ra");
       }
 
       // Reset form
