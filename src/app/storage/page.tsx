@@ -69,11 +69,11 @@ export default function StoragePage() {
           id: String(item.id || ""),
           name: String(item.ten_nguyen_lieu || "Unknown"),
           source: String(item.nguon_nhap || "Nguồn chưa rõ"),
-          // Tổng số đã nhập lấy từ các cột tổng nếu có; mặc định 0
+          // Tổng ban đầu = hiện còn (vì mặc định chưa sử dụng)
           quantityInStock: Number(item.ton_kho_so_luong || 0),
-          quantityNeeded: Number((item as any).tong_so_luong || 0),
+          quantityNeeded: Number(item.ton_kho_so_luong || 0),
           weightInStock: Number(item.ton_kho_khoi_luong || 0),
-          weightNeeded: Number((item as any).tong_khoi_luong || 0),
+          weightNeeded: Number(item.ton_kho_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));
@@ -211,9 +211,9 @@ export default function StoragePage() {
           name: String(item.ten_nguyen_lieu || "Unknown"),
           source: String(item.nguon_nhap || "Nguồn chưa rõ"),
           quantityInStock: Number(item.ton_kho_so_luong || 0),
-          quantityNeeded: Number((item as any).tong_so_luong || 0),
+          quantityNeeded: Number(item.ton_kho_so_luong || 0),
           weightInStock: Number(item.ton_kho_khoi_luong || 0),
-          weightNeeded: Number((item as any).tong_khoi_luong || 0),
+          weightNeeded: Number(item.ton_kho_khoi_luong || 0),
           unit: "kg", // Default unit
           weightUnit: "kg", // Default weight unit
         }));
