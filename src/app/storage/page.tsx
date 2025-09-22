@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
+import AddIngredientModal from "@/components/add-ingredient-modal";
 
 interface Ingredient {
   id: string;
@@ -32,6 +33,7 @@ export default function StoragePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -175,6 +177,59 @@ export default function StoragePage() {
     setSearchQuery("");
   };
 
+  const handleAddIngredientSuccess = () => {
+    // Refresh the ingredients list
+    const fetchIngredients = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        if (!supabase) {
+          throw new Error("Supabase client not available");
+        }
+
+        // Query ingredients from Supabase
+        const { data, error: queryError } = await supabase
+          .from("nguyen_lieu")
+          .select("*")
+          .order("ten_nguyen_lieu", { ascending: true });
+
+        if (queryError) {
+          logger.error("Supabase query error:", queryError);
+          throw new Error(`Database error: ${queryError.message || 'Unknown database error'}`);
+        }
+
+        if (!data) {
+          throw new Error("No data returned from database");
+        }
+
+        // Transform data to match our interface
+        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => ({
+          id: String(item.id || ""),
+          name: String(item.ten_nguyen_lieu || "Unknown"),
+          source: String(item.nguon_nhap || "Nguồn chưa rõ"),
+          quantityNeeded: Number(item.so_luong_nguyen_lieu || 0),
+          quantityInStock: Number(item.ton_kho_so_luong || 0),
+          weightNeeded: Number(item.khoi_luong_nguyen_lieu || 0),
+          weightInStock: Number(item.ton_kho_khoi_luong || 0),
+          unit: "kg", // Default unit
+          weightUnit: "kg", // Default weight unit
+        }));
+
+        setIngredients(transformedData);
+      } catch (err) {
+        logger.error("Error fetching ingredients:", err);
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch ingredients";
+        setError(errorMessage);
+        setIngredients([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchIngredients();
+  };
+
   const alertCount = ingredients.filter((ingredient) => {
     const status = getStockStatus(ingredient);
     return status === "low" || status === "out-of-stock";
@@ -238,7 +293,10 @@ export default function StoragePage() {
                 </p>
               </div>
             </div>
-            <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
               <Plus className="h-4 w-4" />
               <span>Thêm nguyên liệu</span>
             </button>
@@ -502,6 +560,13 @@ export default function StoragePage() {
           </div>
         </div>
       </div>
+
+      {/* Add Ingredient Modal */}
+      <AddIngredientModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={handleAddIngredientSuccess}
+      />
     </div>
   );
 }

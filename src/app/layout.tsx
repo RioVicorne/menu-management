@@ -1,22 +1,12 @@
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import "../globals.css";
+import "./globals.css";
 
 // import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/components/i18n";
 import { Header } from "@/components";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Using system fonts instead of Google Fonts
 
 export const metadata: Metadata = {
   title: "Menu Management",
@@ -31,7 +21,8 @@ export default function AppSectionLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
-        className={`min-h-dvh bg-background text-foreground ${geistSans.variable} ${geistMono.variable} antialiased`}
+        className="min-h-dvh bg-background text-foreground antialiased"
+        style={{ fontFamily: 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif' }}
       >
         <LanguageProvider>
           <ThemeProvider>

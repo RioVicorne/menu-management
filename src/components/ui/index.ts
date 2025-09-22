@@ -20,3 +20,4 @@ export {
 } from "./table";
 export { LoadingSpinner } from "./loading-spinner";
 export { EmptyState } from "./empty-state";
+export { default as Modal } from "./modal";
