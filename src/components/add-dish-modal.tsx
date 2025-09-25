@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Modal from "./ui/modal";
-import { Loader2, Plus, Search, XCircle } from "lucide-react";
+import { Loader2, Plus, Search, Check } from "lucide-react";
 import { createDish, getAllIngredients } from "@/lib/api";
 
 interface AddDishModalProps {
@@ -18,7 +18,7 @@ export default function AddDishModal({ isOpen, onClose, onCreated }: AddDishModa
 
   const [allIngredients, setAllIngredients] = useState<Array<{ id: string; ten_nguyen_lieu: string; ton_kho_khoi_luong?: number; ton_kho_so_luong?: number }>>([]);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Record<string, { amount: number; mode: "weight" | "quantity" }>>({});
+  const [selected, setSelected] = useState<Record<string, true>>({});
 
   useEffect(() => {
     if (!isOpen) return;
@@ -52,7 +52,12 @@ export default function AddDishModal({ isOpen, onClose, onCreated }: AddDishModa
     }
     try {
       setLoading(true);
-      const dish = await createDish(name.trim());
+      // Build recipe payload with ingredient ids only (no quantities for now)
+      const recipe = Object.keys(selected).map((ingredientId) => ({
+        ma_nguyen_lieu: ingredientId,
+      }));
+
+      const dish = await createDish(name.trim(), recipe);
       onCreated(dish.ten_mon_an);
       clear();
       onClose();
@@ -98,76 +103,38 @@ export default function AddDishModal({ isOpen, onClose, onCreated }: AddDishModa
           </div>
           <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
             {filtered.map((ing) => {
-              const state = selected[ing.id];
+              const isSelected = Boolean(selected[ing.id]);
               const weightStock = Number(ing.ton_kho_khoi_luong || 0);
               const qtyStock = Number(ing.ton_kho_so_luong || 0);
               const outOfStock = weightStock <= 0 && qtyStock <= 0;
-
-              const effectiveMode = state?.mode || (weightStock > 0 ? "weight" : "quantity");
-              const maxAmount = effectiveMode === "weight" ? weightStock : qtyStock;
 
               return (
                 <div key={ing.id} className={`flex items-center justify-between p-3 ${outOfStock ? "opacity-60" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}>
                   <div>
                     <div className="text-sm text-gray-800 dark:text-gray-200">{ing.ten_nguyen_lieu}</div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Tồn: {weightStock > 0 ? `${weightStock} kg` : "0 kg"} · {qtyStock > 0 ? `${qtyStock} cái` : "0 cái"}
+                      Tồn: {weightStock > 0 ? `${weightStock} kg` : "0 kg"}
+                      {" "}·{" "}
+                      {qtyStock > 0 ? `${qtyStock} cái` : "0 cái"}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <select
-                      value={effectiveMode}
-                      onChange={(e) => {
-                        const mode = e.target.value as "weight" | "quantity";
-                        const limit = mode === "weight" ? weightStock : qtyStock;
-                        setSelected(prev => ({ ...prev, [ing.id]: { amount: Math.min(Math.max((state?.amount || 1), 0), limit), mode } }));
-                      }}
-                      className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded"
-                      disabled={outOfStock}
-                    >
-                      <option value="weight" disabled={weightStock <= 0}>kg</option>
-                      <option value="quantity" disabled={qtyStock <= 0}>cái</option>
-                    </select>
-                    <input
-                      type="number"
-                      min={0}
-                      step={effectiveMode === "weight" ? 0.1 : 1}
-                      value={Math.min(state?.amount ?? 0, maxAmount)}
-                      onChange={(e) => {
-                        const raw = Number(e.target.value);
-                        const clamped = Math.min(Math.max(raw, 0), maxAmount);
-                        setSelected(prev => ({ ...prev, [ing.id]: { amount: clamped, mode: effectiveMode } }));
-                      }}
-                      className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded text-right"
-                      disabled={outOfStock}
-                    />
-                    {state ? (
-                      <button
-                        className="text-gray-400 hover:text-red-600"
-                        onClick={() => {
+                    <button
+                      className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${isSelected ? "border-emerald-500" : "border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"} ${outOfStock ? "opacity-50 cursor-not-allowed" : ""}`}
+                      onClick={() => {
+                        if (outOfStock) return;
+                        if (isSelected) {
                           const { [ing.id]: _, ...rest } = selected; // eslint-disable-line @typescript-eslint/no-unused-vars
                           setSelected(rest);
-                        }}
-                        title="Bỏ chọn"
-                        disabled={loading}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <button
-                        className={`px-2 py-1 text-xs rounded border ${outOfStock ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"}`}
-                        onClick={() => {
-                          if (outOfStock) return;
-                          const initialMode = weightStock > 0 ? "weight" : "quantity";
-                          const limit = initialMode === "weight" ? weightStock : qtyStock;
-                          setSelected(prev => ({ ...prev, [ing.id]: { amount: Math.min(1, limit), mode: initialMode } }));
-                        }}
-                        title={outOfStock ? "Hết hàng" : "Chọn"}
-                        disabled={outOfStock}
-                      >
-                        {outOfStock ? "Hết" : "Thêm"}
-                      </button>
-                    )}
+                        } else {
+                          setSelected(prev => ({ ...prev, [ing.id]: true }));
+                        }
+                      }}
+                      title={outOfStock ? "Hết hàng" : isSelected ? "Bỏ chọn" : "Chọn"}
+                      disabled={outOfStock || loading}
+                    >
+                      {isSelected ? <Check className="h-4 w-4 text-emerald-500" /> : null}
+                    </button>
                   </div>
                 </div>
               );

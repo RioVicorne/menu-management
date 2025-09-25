@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { ChefHat, Plus, Search, Trash2, Loader2, Eye } from "lucide-react";
 import { getDishes, type Dish, getRecipeForDish, deleteDish, createDish } from "@/lib/api";
 import AddDishModal from "@/components/add-dish-modal";
+import DishRecipeModal from "@/components/dish-recipe-modal";
+import Modal from "@/components/ui/modal";
 
 export default function IngredientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -11,9 +13,12 @@ export default function IngredientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDishId, setSelectedDishId] = useState<string | null>(null);
-  const [recipeLoading, setRecipeLoading] = useState(false);
-  const [recipeItems, setRecipeItems] = useState<ReturnType<typeof Array.prototype.slice>>([]);
+  const [selectedDishName, setSelectedDishName] = useState<string>("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isRecipeOpen, setIsRecipeOpen] = useState(false);
+  const [deleteDishId, setDeleteDishId] = useState<string | null>(null);
+  const [deleteDishName, setDeleteDishName] = useState<string>("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -129,13 +134,8 @@ export default function IngredientsPage() {
                         className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                         onClick={async () => {
                           setSelectedDishId(dish.id);
-                          setRecipeLoading(true);
-                          try {
-                            const items = await getRecipeForDish(dish.id);
-                            setRecipeItems(items as any);
-                          } finally {
-                            setRecipeLoading(false);
-                          }
+                          setSelectedDishName(dish.ten_mon_an);
+                          setIsRecipeOpen(true);
                         }}
                         title="Xem nguyên liệu món"
                       >
@@ -143,19 +143,9 @@ export default function IngredientsPage() {
                       </button>
                       <button
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        onClick={async () => {
-                          const ok = confirm(`Xóa món \"${dish.ten_mon_an}\"?`);
-                          if (!ok) return;
-                          try {
-                            await deleteDish(dish.id);
-                            setDishes(prev => prev.filter(d => d.id !== dish.id));
-                            if (selectedDishId === dish.id) {
-                              setSelectedDishId(null);
-                              setRecipeItems([] as any);
-                            }
-                          } catch (e) {
-                            alert(e instanceof Error ? e.message : "Không thể xóa món ăn");
-                          }
+                        onClick={() => {
+                          setDeleteDishId(dish.id);
+                          setDeleteDishName(dish.ten_mon_an);
                         }}
                         title="Xóa món ăn"
                       >
@@ -164,30 +154,6 @@ export default function IngredientsPage() {
                     </div>
                   </div>
 
-                  {selectedDishId === dish.id && (
-                    <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900 dark:text-white">Nguyên liệu của món</h4>
-                        {recipeLoading && (
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        )}
-                      </div>
-                      {(!recipeItems || (recipeItems as any[]).length === 0) && !recipeLoading ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có dữ liệu nguyên liệu.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {(recipeItems as any[]).map((it: any) => (
-                            <li key={it.id} className="flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
-                              <span>{it.ten_nguyen_lieu || it.ma_nguyen_lieu}</span>
-                              <span className="text-gray-500 dark:text-gray-400">
-                                {it.khoi_luong_nguyen_lieu ? `${it.khoi_luong_nguyen_lieu} kg` : it.so_luong_nguyen_lieu ? `${it.so_luong_nguyen_lieu} cái` : ""}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -206,6 +172,62 @@ export default function IngredientsPage() {
           } catch {}
         }}
       />
+
+      {/* Recipe Modal */}
+      <DishRecipeModal
+        isOpen={isRecipeOpen}
+        dishId={selectedDishId}
+        dishName={selectedDishName}
+        onClose={() => setIsRecipeOpen(false)}
+      />
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={Boolean(deleteDishId)}
+        onClose={() => (deleting ? null : (setDeleteDishId(null), setDeleteDishName("")))}
+        title="Xác nhận xóa"
+      >
+        <div className="space-y-6">
+          <p className="text-gray-700 dark:text-gray-300">
+            Bạn có chắc chắn muốn xóa món
+            <span className="font-semibold"> {deleteDishName} </span>
+            ? Hành động này không thể hoàn tác.
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => { if (!deleting) { setDeleteDishId(null); setDeleteDishName(""); } }}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              disabled={deleting}
+            >
+              Hủy
+            </button>
+            <button
+              onClick={async () => {
+                if (!deleteDishId) return;
+                try {
+                  setDeleting(true);
+                  await deleteDish(deleteDishId);
+                  setDishes(prev => prev.filter(d => d.id !== deleteDishId));
+                  if (selectedDishId === deleteDishId) {
+                    setSelectedDishId(null);
+                    setIsRecipeOpen(false);
+                  }
+                  setDeleteDishId(null);
+                  setDeleteDishName("");
+                } catch (e) {
+                  alert(e instanceof Error ? e.message : "Không thể xóa món ăn");
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-70"
+              disabled={deleting}
+            >
+              {deleting ? "Đang xóa..." : "Xóa"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
