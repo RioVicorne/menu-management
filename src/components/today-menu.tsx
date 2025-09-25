@@ -6,7 +6,7 @@ import { Calendar, ChefHat, Users, Zap, Clock, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
-import { getCalendarData, getMenuItems } from "@/lib/api";
+import { getCalendarData, getMenuItems, getAllIngredients, getRecipeForDish } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 interface TodayMenuDish {
@@ -26,6 +26,15 @@ interface TodayMenuData {
   dishes: TodayMenuDish[];
 }
 
+interface ShoppingItem {
+  id: string;
+  name: string;
+  needQuantity: number; // đếm
+  needWeight: number; // kg
+  stockQuantity: number;
+  stockWeight: number;
+}
+
 interface TodayMenuProps {
   className?: string;
 }
@@ -35,6 +44,8 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
   const [menuData, setMenuData] = useState<TodayMenuData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [shopping, setShopping] = useState<ShoppingItem[]>([]);
+  const [shoppingLoading, setShoppingLoading] = useState(false);
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date();
@@ -69,7 +80,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
                 calories: 300,
                 servings: 2,
                 category: "Món chính",
-                description: "Món ăn trong thực đơn hôm nay",
+                // No default description
               })),
             });
           } else {
@@ -90,7 +101,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
               calories: 300, // Mock calories since MenuItem doesn't have this field
               servings: item.boi_so || 2,
               category: "Món chính", // Mock category since MenuItem doesn't have this field
-              description: item.ghi_chu || `Món ăn trong thực đơn ngày ${todayString}`,
+              description: item.ghi_chu || undefined,
             }));
 
             const totalDishes = dishes.length;
@@ -121,7 +132,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
                   calories: 300,
                   servings: 2,
                   category: "Món chính",
-                  description: "Món ăn trong thực đơn hôm nay",
+                  // No default description
                 })),
               });
             } else {
@@ -141,6 +152,86 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
     };
 
     fetchTodayMenu();
+  }, [todayString]);
+
+  // Build shopping list based on today's menu
+  useEffect(() => {
+    const buildShopping = async () => {
+      try {
+        if (!supabase) {
+          setShopping([]);
+          return;
+        }
+
+        setShoppingLoading(true);
+
+        const menuItems = await getMenuItems(todayString);
+        if (!menuItems || menuItems.length === 0) {
+          setShopping([]);
+          return;
+        }
+
+        // Fetch all stock once
+        const stockList = await getAllIngredients();
+        const stockById = new Map<string, { q: number; w: number; name: string }>();
+        stockList.forEach((ing) => {
+          stockById.set(String(ing.id), {
+            q: Number(ing.ton_kho_so_luong || 0),
+            w: Number(ing.ton_kho_khoi_luong || 0),
+            name: String(ing.ten_nguyen_lieu || "")
+          });
+        });
+
+        // Aggregate needs by ingredient id
+        const needMap = new Map<string, { name: string; q: number; w: number }>();
+
+        for (const item of menuItems) {
+          const multiplier = Number(item.boi_so || 1);
+          const recipe = await getRecipeForDish(String(item.ma_mon_an));
+          for (const comp of recipe) {
+            const id = String(comp.ma_nguyen_lieu || "");
+            if (!id) continue;
+            const name = comp.ten_nguyen_lieu || stockById.get(id)?.name || "";
+            const addQ = Number(comp.so_luong_nguyen_lieu || 0) * multiplier;
+            const addW = Number(comp.khoi_luong_nguyen_lieu || 0) * multiplier;
+            const prev = needMap.get(id) || { name, q: 0, w: 0 };
+            prev.q += addQ;
+            prev.w += addW;
+            prev.name = name || prev.name;
+            needMap.set(id, prev);
+          }
+        }
+
+        const list: ShoppingItem[] = Array.from(needMap.entries()).map(([id, v]) => {
+          const stock = stockById.get(id);
+          return {
+            id,
+            name: v.name || stock?.name || id,
+            needQuantity: Number(v.q || 0),
+            needWeight: Number(v.w || 0),
+            stockQuantity: Number(stock?.q || 0),
+            stockWeight: Number(stock?.w || 0),
+          };
+        });
+
+        // Sort: need more than stock first
+        list.sort((a, b) => {
+          const aShort = (a.needQuantity > a.stockQuantity) || (a.needWeight > a.stockWeight);
+          const bShort = (b.needQuantity > b.stockQuantity) || (b.needWeight > b.stockWeight);
+          if (aShort === bShort) return a.name.localeCompare(b.name);
+          return aShort ? -1 : 1;
+        });
+
+        setShopping(list);
+      } catch (e) {
+        logger.error("Build shopping list failed", e);
+        setShopping([]);
+      } finally {
+        setShoppingLoading(false);
+      }
+    };
+
+    buildShopping();
   }, [todayString]);
 
   if (loading) {
@@ -330,6 +421,53 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Shopping List */}
+      <div className="px-6 pb-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Hôm nay cần đi chợ gì
+        </h3>
+        {shoppingLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          </div>
+        ) : shopping.length === 0 ? (
+          <p className="text-sm text-gray-600 dark:text-gray-400">Không có nguyên liệu cần mua.</p>
+        ) : (
+          <div className="space-y-2">
+            {shopping.map((it) => {
+              const shortQty = it.needQuantity > it.stockQuantity;
+              const shortW = it.needWeight > it.stockWeight;
+              const needParts: string[] = [];
+              const stockParts: string[] = [];
+              if (it.needQuantity > 0) {
+                needParts.push(String(it.needQuantity));
+                stockParts.push(String(it.stockQuantity));
+              }
+              if (it.needWeight > 0) {
+                needParts.push(`${it.needWeight} kg`);
+                stockParts.push(`${it.stockWeight} kg`);
+              }
+              const shortage = shortQty || shortW;
+              return (
+                <div key={it.id} className={`flex items-center justify-between p-3 rounded-lg border ${shortage ? "border-amber-300 bg-amber-50 dark:bg-amber-900/20" : "border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-gray-700/40"}`}>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 dark:text-white">{it.name}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Cần: {needParts.join(" • ")} — Tồn: {stockParts.join(" • ")}
+                    </p>
+                  </div>
+                  {shortage ? (
+                    <span className="text-xs px-2 py-1 rounded-full bg-amber-200 text-amber-900 dark:bg-amber-400/30 dark:text-amber-200">Thiếu</span>
+                  ) : (
+                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">Đủ</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -353,7 +353,13 @@ export default function MenuPage() {
             />
           </HydrationBoundary>
         ) : (
-          <StatsTab monthEvents={events} yearEvents={yearEvents} currentDate={currentDate} topDishes={topDishes} topIngredients={topIngredients} />
+          <StatsTab
+            monthEvents={events}
+            yearEvents={yearEvents}
+            currentDate={currentDate}
+            topDishes={topDishes}
+            topIngredients={topIngredients}
+          />
         )}
 
         {/* Legend - only show on calendar tab */}

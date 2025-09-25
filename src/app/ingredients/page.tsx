@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChefHat, Plus, Search, Trash2, Loader2, Eye } from "lucide-react";
+import { ChefHat, Plus, Search, Trash2, Loader2, Eye, Pencil } from "lucide-react";
 import { getDishes, type Dish, getRecipeForDish, deleteDish, createDish } from "@/lib/api";
 import AddDishModal from "@/components/add-dish-modal";
 import DishRecipeModal from "@/components/dish-recipe-modal";
 import Modal from "@/components/ui/modal";
+import EditDishIngredientsModal from "@/components/edit-dish-ingredients-modal";
 
 export default function IngredientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,6 +20,8 @@ export default function IngredientsPage() {
   const [deleteDishId, setDeleteDishId] = useState<string | null>(null);
   const [deleteDishName, setDeleteDishName] = useState<string>("");
   const [deleting, setDeleting] = useState(false);
+  const [editDishId, setEditDishId] = useState<string | null>(null);
+  const [editDishName, setEditDishName] = useState<string>("");
 
   useEffect(() => {
     const load = async () => {
@@ -142,6 +145,13 @@ export default function IngredientsPage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        onClick={() => { setEditDishId(dish.id); setEditDishName(dish.ten_mon_an); }}
+                        title="Chỉnh sửa nguyên liệu món"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         onClick={() => {
                           setDeleteDishId(dish.id);
@@ -228,6 +238,17 @@ export default function IngredientsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Edit ingredients modal */}
+      <EditDishIngredientsModal
+        isOpen={Boolean(editDishId)}
+        dishId={editDishId}
+        dishName={editDishName}
+        onClose={() => { setEditDishId(null); setEditDishName(""); }}
+        onSaved={async () => {
+          try { const data = await getDishes(); setDishes(data); } catch {}
+        }}
+      />
     </div>
   );
 }

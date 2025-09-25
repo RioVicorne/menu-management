@@ -434,6 +434,23 @@ export async function createDish(ten_mon_an: string, cong_thuc?: Array<Record<st
   return data as Dish;
 }
 
+// Update dish ingredients (store in cong_thuc_nau as JSON of { ma_nguyen_lieu })
+export async function updateDishIngredients(
+  dishId: string,
+  ingredientIds: string[],
+): Promise<void> {
+  if (!supabase) return;
+  const recipe = ingredientIds.map((id) => ({ ma_nguyen_lieu: id }));
+  const { error } = await supabase
+    .from("mon_an")
+    .update({ cong_thuc_nau: JSON.stringify(recipe) })
+    .eq("id", dishId);
+  if (error) {
+    logger.error("Error updating dish ingredients:", error);
+    throw new Error(error.message);
+  }
+}
+
 // Get ingredients for a specific date
 export async function getIngredientsForDate(date: string): Promise<Record<string, unknown>[]> {
   if (!supabase) {
