@@ -150,7 +150,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
           .map((it) => it.ma_nguyen_lieu)
           .filter((v) => typeof v === "string" && v.length > 0);
 
-        let idToName: Record<string, string> = {};
+        const idToName: Record<string, string> = {};
         if (ids.length > 0) {
           const { data: ingRows } = await supabase
             .from("nguyen_lieu")
@@ -175,7 +175,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
         return items;
       }
     }
-  } catch (e) {
+  } catch {
     // fall through to legacy path
   }
 
@@ -193,7 +193,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
   }
 
   const ids = (comps || []).map((r: any) => r.ma_nguyen_lieu).filter(Boolean);
-  let idToName: Record<string, string> = {};
+  const idToName: Record<string, string> = {};
   if (ids.length > 0) {
     const { data: ingRows, error: ingErr } = await supabase
       .from("nguyen_lieu")
