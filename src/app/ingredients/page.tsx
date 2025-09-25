@@ -125,14 +125,14 @@ export default function IngredientsPage() {
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filtered.map((dish) => (
                 <div key={dish.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">{dish.ten_mon_an}</h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate">{dish.ten_mon_an}</h3>
                       <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Tạo: {new Date(dish.created_at).toLocaleDateString('vi-VN')}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-shrink-0">
                       <button
                         className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                         onClick={async () => {

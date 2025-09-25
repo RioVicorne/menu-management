@@ -38,8 +38,8 @@ export default function DishRecipeModal({ isOpen, dishId, dishName, onClose }: D
           ) : (
             <ul className="divide-y divide-gray-200 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
               {items.map((it) => (
-                <li key={it.id} className="flex items-center justify-between p-3">
-                  <span className="text-gray-900 dark:text-gray-100">{it.ten_nguyen_lieu || it.ma_nguyen_lieu}</span>
+                <li key={it.id} className="flex items-center justify-between p-3 gap-3">
+                  <span className="text-gray-900 dark:text-gray-100 truncate">{it.ten_nguyen_lieu || it.ma_nguyen_lieu}</span>
                   <span className="text-gray-500 dark:text-gray-400 text-sm">
                     {it.khoi_luong_nguyen_lieu ? `${it.khoi_luong_nguyen_lieu} kg` : it.so_luong_nguyen_lieu ? `${it.so_luong_nguyen_lieu} cái` : ""}
                   </span>

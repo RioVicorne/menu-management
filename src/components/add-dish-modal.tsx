@@ -109,16 +109,16 @@ export default function AddDishModal({ isOpen, onClose, onCreated }: AddDishModa
               const outOfStock = weightStock <= 0 && qtyStock <= 0;
 
               return (
-                <div key={ing.id} className={`flex items-center justify-between p-3 ${outOfStock ? "opacity-60" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}>
-                  <div>
-                    <div className="text-sm text-gray-800 dark:text-gray-200">{ing.ten_nguyen_lieu}</div>
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <div key={ing.id} className={`flex items-center justify-between p-3 gap-3 ${outOfStock ? "opacity-60" : "hover:bg-gray-50 dark:hover:bg-gray-800/50"}`}>
+                  <div className="min-w-0">
+                    <div className="text-sm text-gray-800 dark:text-gray-200 truncate">{ing.ten_nguyen_lieu}</div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                       Tồn: {weightStock > 0 ? `${weightStock} kg` : "0 kg"}
                       {" "}·{" "}
                       {qtyStock > 0 ? `${qtyStock} cái` : "0 cái"}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-shrink-0">
                     <button
                       className={`h-7 w-7 rounded-full border flex items-center justify-center transition ${isSelected ? "border-emerald-500" : "border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"} ${outOfStock ? "opacity-50 cursor-not-allowed" : ""}`}
                       onClick={() => {
