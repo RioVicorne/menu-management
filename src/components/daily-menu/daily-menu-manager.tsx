@@ -2,18 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Calendar, Utensils, Package, Plus } from "lucide-react";
+import { ArrowLeft, Calendar, Utensils, Plus } from "lucide-react";
 import Link from "next/link";
 import { MenuProvider, useMenu } from "@/contexts/menu-context";
 import TodaysMenuTab from "./todays-menu-tab";
-import InventoryTab from "./inventory-tab";
 import AddDishTab from "./add-dish-tab";
 
 interface DailyMenuManagerProps {
   selectedDate: string;
 }
 
-type TabType = "menu" | "inventory" | "add-dish";
+type TabType = "menu" | "add-dish";
 
 function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   const { } = useMenu();
@@ -23,7 +22,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   // Check for tab parameter in URL
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["menu", "inventory", "add-dish"].includes(tab)) {
+    if (tab && ["menu", "add-dish"].includes(tab)) {
       setActiveTab(tab as TabType);
     }
   }, [searchParams]);
@@ -40,7 +39,6 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
 
   const tabs = [
     { id: "menu" as TabType, label: "Thực đơn hôm nay", icon: Utensils },
-    { id: "inventory" as TabType, label: "Quản lý kho", icon: Package },
     { id: "add-dish" as TabType, label: "Thêm món", icon: Plus },
   ];
 
@@ -112,7 +110,6 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
               }}
             />
           )}
-          {activeTab === "inventory" && <InventoryTab />}
           {activeTab === "add-dish" && (
             <AddDishTab onDishAdded={() => setActiveTab("menu")} />
           )}

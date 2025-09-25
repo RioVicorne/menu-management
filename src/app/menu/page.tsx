@@ -15,7 +15,8 @@ import {
 import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
 import { getCalendarData } from "@/lib/api";
 import { HydrationBoundary } from "@/components/hydration-boundary";
-import InventoryTab from "@/components/daily-menu/inventory-tab";
+import StatsTab from "@/components/daily-menu/stats-tab";
+import { getDishes, getRecipeForDish } from "@/lib/api";
 
 
 interface Event {
@@ -29,9 +30,12 @@ interface Event {
 export default function MenuPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
+  const [yearEvents, setYearEvents] = useState<Event[]>([]);
   const [currentDate] = useState(new Date());
   const [totalDishes, setTotalDishes] = useState(0);
-  const [activeTab, setActiveTab] = useState<'calendar' | 'inventory'>('calendar');
+  const [activeTab, setActiveTab] = useState<'calendar' | 'stats'>('calendar');
+  const [topDishes, setTopDishes] = useState<{ name: string; count: number }[]>([]);
+  const [topIngredients, setTopIngredients] = useState<{ name: string; count: number }[]>([]);
 
   const loadRange = useCallback(
     async (start: Date, end: Date) => {
@@ -104,6 +108,101 @@ export default function MenuPage() {
     [],
   );
 
+  const loadYearAndTop = useCallback(
+    async (year: number, monthStart: Date, monthEnd: Date) => {
+      try {
+        // Year events for monthly chart
+        if (!supabase) {
+          setYearEvents([]);
+          setTopDishes([]);
+          return;
+        }
+
+        const yFrom = `${year}-01-01`;
+        const yTo = `${year}-12-31`;
+        const { data: yearData, error: yearErr } = await supabase
+          .from("thuc_don")
+          .select("ngay")
+          .gte("ngay", yFrom)
+          .lte("ngay", yTo);
+        if (yearErr) throw yearErr;
+
+        const yearMap = new Map<string, number>();
+        for (const row of yearData ?? []) {
+          const k = String(row.ngay);
+          yearMap.set(k, (yearMap.get(k) ?? 0) + 1);
+        }
+        const yEvents: Event[] = Array.from(yearMap.entries()).map(([iso, count]) => ({
+          title: `${count} món`,
+          start: new Date(iso),
+          end: new Date(iso),
+          allDay: true,
+          count,
+        }));
+        setYearEvents(yEvents);
+
+        // Top dishes in current month
+        const mFrom = monthStart.toISOString().slice(0, 10);
+        const mTo = monthEnd.toISOString().slice(0, 10);
+        const { data: monthRows, error: monthErr } = await supabase
+          .from("thuc_don")
+          .select("ma_mon_an")
+          .gte("ngay", mFrom)
+          .lte("ngay", mTo);
+        if (monthErr) throw monthErr;
+
+        const counts = new Map<string, number>();
+        for (const r of monthRows ?? []) {
+          const id = String(r.ma_mon_an);
+          counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+
+        const dishes = await getDishes();
+        const idToName = new Map(dishes.map((d) => [d.id, d.ten_mon_an] as const));
+        const ranking = Array.from(counts.entries())
+          .map(([id, count]) => ({ name: idToName.get(id) || `Món ${id}`, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+        setTopDishes(ranking);
+
+        // Ingredient ranking for the month
+        const uniqueDishIds = Array.from(counts.keys());
+        const recipes = await Promise.all(
+          uniqueDishIds.map(async (dishId) => {
+            try {
+              const items = await getRecipeForDish(dishId);
+              return { dishId, items };
+            } catch {
+              return { dishId, items: [] } as const;
+            }
+          }),
+        );
+
+        const ingredientCounts = new Map<string, { name: string; count: number }>();
+        for (const { dishId, items } of recipes) {
+          const times = counts.get(dishId) || 0;
+          for (const it of items) {
+            const key = String(it.ma_nguyen_lieu);
+            const name = it.ten_nguyen_lieu || key;
+            const prev = ingredientCounts.get(key)?.count || 0;
+            ingredientCounts.set(key, { name, count: prev + times });
+          }
+        }
+
+        const ingRanking = Array.from(ingredientCounts.values())
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+        setTopIngredients(ingRanking);
+      } catch (err) {
+        logger.error("Error loading yearly stats:", err);
+        setYearEvents([]);
+        setTopDishes([]);
+        setTopIngredients([]);
+      }
+    },
+    [],
+  );
+
 
 
 
@@ -121,6 +220,7 @@ export default function MenuPage() {
       0,
     );
     loadRange(start, end);
+    loadYearAndTop(currentDate.getFullYear(), start, end);
   }, [currentDate, loadRange]);
 
 
@@ -158,18 +258,19 @@ export default function MenuPage() {
               Lịch thực đơn
             </button>
             <button
-              onClick={() => setActiveTab('inventory')}
+              onClick={() => setActiveTab('stats')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'inventory'
+                activeTab === 'stats'
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
-              Quản lý kho
+              Thống kê
             </button>
           </div>
 
-          {/* Stats Cards */}
+          {/* Stats Cards - only show on calendar tab */}
+          {activeTab === 'calendar' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
               <div className="flex items-center">
@@ -221,6 +322,7 @@ export default function MenuPage() {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Content Section */}
@@ -251,11 +353,11 @@ export default function MenuPage() {
             />
           </HydrationBoundary>
         ) : (
-          <InventoryTab />
+          <StatsTab monthEvents={events} yearEvents={yearEvents} currentDate={currentDate} topDishes={topDishes} topIngredients={topIngredients} />
         )}
 
-        {/* Legend */}
-        {events.length > 0 && (
+        {/* Legend - only show on calendar tab */}
+        {activeTab === 'calendar' && events.length > 0 && (
           <div className="mt-6 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Chú thích
