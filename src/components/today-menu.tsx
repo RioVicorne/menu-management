@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, ChefHat, Users, Zap, Clock, Plus } from "lucide-react";
+import { Calendar, ChefHat, Users, Zap, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
@@ -401,23 +401,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
                   )}
                 </div>
               </div>
-              <div className="flex items-center space-x-6 text-sm">
-                <div className="text-center">
-                  <p className="text-gray-500 dark:text-gray-400">Calo</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {dish.calories}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-500 dark:text-gray-400">Khẩu phần</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">
-                    {dish.servings}
-                  </p>
-                </div>
-                <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
-                  <Clock className="h-4 w-4" />
-                </button>
-              </div>
+              {/* Right-side metrics removed per request */}
             </div>
           ))}
         </div>

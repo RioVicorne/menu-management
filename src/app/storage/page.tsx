@@ -37,6 +37,7 @@ export default function StoragePage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'manage' | 'sources'>('manage');
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -237,6 +238,12 @@ export default function StoragePage() {
     return status === "low" || status === "out-of-stock";
   }).length;
 
+  const sourceCounts = ingredients.reduce((acc, ing) => {
+    const key = ing.source || 'Không rõ nguồn';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc as Record<string, number>;
+  }, {} as Record<string, number>);
+
   // Show loading state
   if (loading) {
     return (
@@ -304,6 +311,32 @@ export default function StoragePage() {
             </button>
           </div>
 
+          {/* Tabs - placed at top under header */}
+          <div className="mt-2">
+            <div className="bg-gray-100 dark:bg-gray-800/40 rounded-xl p-1 inline-flex">
+              <button
+                onClick={() => setActiveTab('manage')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  activeTab === 'manage'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Quản lý
+              </button>
+              <button
+                onClick={() => setActiveTab('sources')}
+                className={`ml-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  activeTab === 'sources'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                }`}
+              >
+                Nguồn nhập
+              </button>
+            </div>
+          </div>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
@@ -358,21 +391,13 @@ export default function StoragePage() {
 
         {/* Main Content */}
         <div className="space-y-6">
-          {/* Header with Search and Filter */}
+          {activeTab === 'manage' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   Nguyên liệu trong kho
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  {`${filteredIngredients.length} nguyên liệu hiện có trong kho`}
-                  {searchQuery && (
-                    <span className="ml-2 text-blue-600 dark:text-blue-400">
-                      (tìm kiếm: &quot;{searchQuery}&quot;)
-                    </span>
-                  )}
-                </p>
               </div>
 
               <div className="flex items-center space-x-4">
@@ -428,9 +453,9 @@ export default function StoragePage() {
               )}
             </div>
           </div>
+          )}
 
-          {/* Alert Summary */}
-          {alertCount > 0 && (
+          {activeTab === 'manage' && alertCount > 0 && (
             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -442,6 +467,7 @@ export default function StoragePage() {
           )}
 
           {/* Ingredients List */}
+          {activeTab === 'manage' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             {filteredIngredients.length === 0 ? (
               <div className="p-8 text-center">
@@ -618,6 +644,27 @@ export default function StoragePage() {
               </div>
             )}
           </div>
+          )}
+
+          {activeTab === 'sources' && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nguồn nhập</h3>
+                {Object.keys(sourceCounts).length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có dữ liệu nguồn nhập.</p>
+                ) : (
+                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {Object.entries(sourceCounts).map(([src, count]) => (
+                      <li key={src} className="flex items-center justify-between py-3">
+                        <span className="text-gray-800 dark:text-gray-200 truncate">{src}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{count} nguyên liệu</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
