@@ -37,7 +37,12 @@ export default function InventoryTab() {
         setError(null);
 
         if (!supabase) {
-          throw new Error("Supabase client not available");
+          // Gracefully handle demo/mock mode when Supabase isn't configured
+          setError(
+            "Ứng dụng đang chạy ở chế độ demo: Chưa cấu hình kết nối cơ sở dữ liệu."
+          );
+          setIngredients([]);
+          return;
         }
 
         // Query ingredients from Supabase

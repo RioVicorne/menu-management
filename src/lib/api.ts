@@ -99,6 +99,91 @@ export async function getDishes(): Promise<Dish[]> {
   return data || [];
 }
 
+// Get all ingredients (for pickers)
+export async function getAllIngredients(): Promise<Ingredient[]> {
+  if (!supabase) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("nguyen_lieu")
+    .select("id, ten_nguyen_lieu, ton_kho_khoi_luong, ton_kho_so_luong, nguon_nhap, created_at")
+    .order("ten_nguyen_lieu");
+  if (error) {
+    logger.error("Error fetching ingredients:", error);
+    throw error;
+  }
+  return (data || []) as Ingredient[];
+}
+
+// Get recipe components for a dish, joined with ingredient names
+export interface DishRecipeItem extends RecipeComponent {
+  ten_nguyen_lieu?: string;
+}
+
+export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("thanh_phan")
+    .select(
+      `id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, created_at, nguyen_lieu:ma_nguyen_lieu ( ten_nguyen_lieu )`
+    )
+    .eq("ma_mon_an", dishId);
+
+  if (error) {
+    logger.error("Error fetching recipe for dish:", error);
+    throw error;
+  }
+
+  // Map joined field
+  const items: DishRecipeItem[] = (data || []).map((row: any) => ({
+    id: row.id,
+    ma_mon_an: row.ma_mon_an,
+    ma_nguyen_lieu: row.ma_nguyen_lieu,
+    so_nguoi_an: row.so_nguoi_an,
+    khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu,
+    so_luong_nguyen_lieu: row.so_luong_nguyen_lieu,
+    created_at: row.created_at,
+    luong_calo: 0,
+    ten_nguyen_lieu: row.nguyen_lieu?.ten_nguyen_lieu,
+  }));
+
+  return items;
+}
+
+// Deduct ingredients from storage for a dish based on its recipe
+export async function consumeIngredientsForDish(
+  dishId: string,
+  servingsMultiplier: number = 1
+): Promise<void> {
+  const recipe = await getRecipeForDish(dishId);
+  if (!recipe || recipe.length === 0) return;
+
+  // For each component, call our API PATCH to decrease stock
+  await Promise.all(
+    recipe.map(async (item) => {
+      // Prefer weight if specified, otherwise quantity
+      if (item.khoi_luong_nguyen_lieu && item.khoi_luong_nguyen_lieu > 0) {
+        const amount = item.khoi_luong_nguyen_lieu * servingsMultiplier;
+        await fetch(`/api/ingredients/${item.ma_nguyen_lieu}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ op: "decrease", mode: "weight", amount }),
+        });
+      } else if (item.so_luong_nguyen_lieu && item.so_luong_nguyen_lieu > 0) {
+        const amount = item.so_luong_nguyen_lieu * servingsMultiplier;
+        await fetch(`/api/ingredients/${item.ma_nguyen_lieu}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ op: "decrease", mode: "quantity", amount }),
+        });
+      }
+    })
+  );
+}
+
 // Get menu items for a specific date
 export async function getMenuItems(date: string): Promise<MenuItem[]> {
   if (!supabase) {
@@ -230,6 +315,49 @@ export async function deleteMenuItem(id: string): Promise<void> {
     logger.error("Error deleting menu item:", error);
     throw error;
   }
+}
+
+// Delete a dish from mon_an
+export async function deleteDish(id: string): Promise<void> {
+  if (!supabase) {
+    // In mock mode, do nothing
+    return;
+  }
+
+  const { error } = await supabase.from("mon_an").delete().eq("id", id);
+  if (error) {
+    logger.error("Error deleting dish:", error);
+    throw error;
+  }
+}
+
+// Create a new dish
+export async function createDish(ten_mon_an: string): Promise<Dish> {
+  if (!ten_mon_an || !ten_mon_an.trim()) {
+    throw new Error("Tên món ăn không được để trống");
+  }
+
+  if (!supabase) {
+    // Mock new dish
+    return {
+      id: Date.now().toString(),
+      ten_mon_an,
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("mon_an")
+    .insert({ ten_mon_an })
+    .select("*")
+    .single();
+
+  if (error) {
+    logger.error("Error creating dish:", error);
+    throw new Error(error.message);
+  }
+
+  return data as Dish;
 }
 
 // Get ingredients for a specific date

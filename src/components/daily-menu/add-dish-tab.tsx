@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
-import { getDishes, Dish } from "@/lib/api";
+import { getDishes, Dish, consumeIngredientsForDish } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 interface SelectedDishItem {
@@ -121,6 +121,10 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           });
         }
       }
+      // After successfully adding/updating in menu, deduct inventory accordingly
+      // Only deduct for the servings just added
+      await Promise.all(selectedDishes.map(it => consumeIngredientsForDish(it.dish.id, it.servings)));
+
       
       // Create success message
       let successMsg = "";

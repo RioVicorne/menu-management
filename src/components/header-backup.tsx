@@ -69,7 +69,7 @@ export default function Header({ className = "" }: HeaderProps) {
     },
     {
       id: "ingredients",
-      label: "Quản lý nguyên liệu",
+      label: "Quản lý món ăn",
       icon: ChefHat,
       path: "/ingredients",
     },
