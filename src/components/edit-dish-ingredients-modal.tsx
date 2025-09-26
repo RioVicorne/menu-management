@@ -60,7 +60,7 @@ export default function EditDishIngredientsModal({ isOpen, dishId, dishName, onC
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={() => { if (!saving) onClose(); }} title={`Chỉnh sửa nguyên liệu: ${dishName || ""}`}>
+    <Modal isOpen={isOpen} onClose={() => { if (!saving) onClose(); }} title={`${dishName || ""}`}>
       {loading ? (
         <div className="p-8 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600 mx-auto" />

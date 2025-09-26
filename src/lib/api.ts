@@ -441,9 +441,10 @@ export async function updateDishIngredients(
 ): Promise<void> {
   if (!supabase) return;
   const recipe = ingredientIds.map((id) => ({ ma_nguyen_lieu: id }));
+  const congThucNau = recipe.length > 0 ? JSON.stringify(recipe) : null;
   const { error } = await supabase
     .from("mon_an")
-    .update({ cong_thuc_nau: JSON.stringify(recipe) })
+    .update({ cong_thuc_nau: congThucNau })
     .eq("id", dishId);
   if (error) {
     logger.error("Error updating dish ingredients:", error);
