@@ -128,4 +128,3 @@ export default function EditDishIngredientsModal({ isOpen, dishId, dishName, onC
   );
 }
 
-

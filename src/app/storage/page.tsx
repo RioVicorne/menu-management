@@ -38,6 +38,7 @@ export default function StoragePage() {
   const [deleting, setDeleting] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'manage' | 'sources'>('manage');
+  // Fixed thresholds for warnings (design: just warn low/out-of-stock)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [showAllSources, setShowAllSources] = useState(false);
@@ -750,6 +751,8 @@ export default function StoragePage() {
                   </div>
                 </div>
               </div>
+
+              {/* Settings panel removed per request: Nguồn nhập chỉ cảnh báo */}
 
               {/* Restocking by Source */}
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">

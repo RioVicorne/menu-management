@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Package, ChefHat, Menu } from "lucide-react";
+import { Home, Package, ChefHat, Menu, ShoppingCart } from "lucide-react";
 
 interface HeaderProps {
   className?: string;
@@ -23,6 +23,8 @@ export default function Header({ className = "" }: HeaderProps) {
       setActiveTab("ingredients");
     } else if (pathname.startsWith("/menu")) {
       setActiveTab("menu");
+    } else if (pathname.startsWith("/shopping")) {
+      setActiveTab("shopping");
     } else {
       setActiveTab("home");
     }
@@ -42,6 +44,9 @@ export default function Header({ className = "" }: HeaderProps) {
         break;
       case "menu":
         router.push("/menu");
+        break;
+      case "shopping":
+        router.push("/shopping");
         break;
       default:
         router.push("/");
@@ -72,6 +77,12 @@ export default function Header({ className = "" }: HeaderProps) {
       label: "Quản lý món ăn",
       icon: ChefHat,
       path: "/ingredients",
+    },
+    {
+      id: "shopping",
+      label: "Mua sắm",
+      icon: ShoppingCart,
+      path: "/shopping",
     },
   ];
 
