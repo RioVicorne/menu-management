@@ -330,7 +330,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                   ) : (
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
                           {/* Checkbox for delete mode */}
                           {deleteMode && (
                             <button
@@ -346,14 +346,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                             </button>
                           )}
                           
-                          <h3 className={`text-lg font-medium ${
+                          <h3 className={`text-lg font-medium whitespace-normal break-words leading-snug min-w-0 ${
                             deleteMode && selectedDishes.has(dish.id) 
                               ? "text-red-600 line-through" 
                               : "text-gray-900 dark:text-white"
                           }`}>
                             {dish.ten_mon_an || "Món chưa đặt tên"}
                           </h3>
-                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
+                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full flex-shrink-0">
                             {dish.boi_so || 0} Khẩu phần
                           </span>
                         </div>

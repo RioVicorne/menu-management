@@ -127,7 +127,9 @@ export default function IngredientsPage() {
                 <div key={dish.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate">{dish.ten_mon_an}</h3>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug">
+                        {dish.ten_mon_an}
+                      </h3>
                       <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Tạo: {new Date(dish.created_at).toLocaleDateString('vi-VN')}
                       </div>
