@@ -318,10 +318,12 @@ export default function ShoppingPage() {
                       const checked = selectedIds.has(ing.id);
                       return (
                         <div key={ing.id} className="py-2 sm:py-3 flex items-center justify-between gap-4 rounded-lg hover:bg-gray-50 px-2 sm:px-3">
-                          <label className="flex items-center gap-3 cursor-pointer min-w-0">
+                          <label className="flex flex-wrap items-center gap-2 sm:gap-3 cursor-pointer min-w-0 flex-1">
                             <input className="scale-110" type="checkbox" checked={checked} onChange={() => toggleItem(ing.id)} />
-                            <span className="font-medium text-gray-900 truncate max-w-[240px] sm:max-w-[420px]">{ing.ten_nguyen_lieu}</span>
-                            <span className="text-xs rounded-full px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200">gợi ý +{suggestion}</span>
+                            <span className="font-medium text-gray-900 whitespace-normal break-words leading-snug min-w-0">
+                              {ing.ten_nguyen_lieu}
+                            </span>
+                            <span className="text-xs rounded-full px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">gợi ý +{suggestion}</span>
                           </label>
                           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                             <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Tồn: {value}</span>
