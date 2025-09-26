@@ -38,6 +38,9 @@ export default function StoragePage() {
   const [deleting, setDeleting] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'manage' | 'sources'>('manage');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [showAllSources, setShowAllSources] = useState(false);
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -159,6 +162,53 @@ export default function StoragePage() {
       default:
         return "Unknown";
     }
+  };
+
+  // Get ingredients that need restocking
+  const getIngredientsNeedingRestock = () => {
+    return ingredients.filter(ingredient => {
+      const status = getStockStatus(ingredient);
+      return status === 'out-of-stock' || status === 'low';
+    });
+  };
+
+  // Group ingredients by source for restocking
+  const getRestockBySource = () => {
+    const restockIngredients = getIngredientsNeedingRestock();
+    const groupedBySource: { [key: string]: Ingredient[] } = {};
+    
+    restockIngredients.forEach(ingredient => {
+      const source = ingredient.source || 'Nguồn chưa rõ';
+      if (!groupedBySource[source]) {
+        groupedBySource[source] = [];
+      }
+      groupedBySource[source].push(ingredient);
+    });
+    
+    return groupedBySource;
+  };
+
+  // Get month name in Vietnamese
+  const getMonthName = (monthString: string) => {
+    const [year, month] = monthString.split('-');
+    const monthNames = [
+      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+    ];
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  // Toggle source expansion
+  const toggleSourceExpansion = (source: string) => {
+    setExpandedSources(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(source)) {
+        newSet.delete(source);
+      } else {
+        newSet.add(source);
+      }
+      return newSet;
+    });
   };
 
   // Filter ingredients based on search query and low stock filter
@@ -647,21 +697,207 @@ export default function StoragePage() {
           )}
 
           {activeTab === 'sources' && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nguồn nhập</h3>
-                {Object.keys(sourceCounts).length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có dữ liệu nguồn nhập.</p>
-                ) : (
-                  <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {Object.entries(sourceCounts).map(([src, count]) => (
-                      <li key={src} className="flex items-center justify-between py-3">
-                        <span className="text-gray-800 dark:text-gray-200 truncate">{src}</span>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">{count} nguyên liệu</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+            <div className="space-y-6">
+              {/* Month Selector */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Tổng hợp tồn kho {getMonthName(selectedMonth)}
+                  </h3>
+                  <div className="flex items-center space-x-3">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Chọn tháng:
+                    </label>
+                    <input
+                      type="month"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                {/* Summary Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <span className="font-medium text-red-800 dark:text-red-200">Hết hàng</span>
+                    </div>
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+                      {ingredients.filter(i => getStockStatus(i) === 'out-of-stock').length}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                      <span className="font-medium text-yellow-800 dark:text-yellow-200">Sắp hết</span>
+                    </div>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">
+                      {ingredients.filter(i => getStockStatus(i) === 'low').length}
+                    </p>
+                  </div>
+                  
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span className="font-medium text-green-800 dark:text-green-200">Còn hàng</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+                      {ingredients.filter(i => getStockStatus(i) === 'in-stock').length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Restocking by Source */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Danh sách cần nhập hàng theo nguồn
+                  </h3>
+                  
+                  {Object.keys(getRestockBySource()).length === 0 ? (
+                    <div className="text-center py-8">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <p className="text-gray-500 dark:text-gray-400">
+                        Tất cả nguyên liệu đều đủ hàng! Không cần nhập thêm.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {Object.entries(getRestockBySource()).map(([source, sourceIngredients]) => {
+                        const isExpanded = expandedSources.has(source);
+                        const displayIngredients = isExpanded ? sourceIngredients : sourceIngredients.slice(0, 5);
+                        const hasMore = sourceIngredients.length > 5;
+                        
+                        return (
+                          <div key={source} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-900 dark:text-white">
+                                📦 {source}
+                              </h4>
+                              <span className="text-sm text-gray-600 dark:text-gray-400">
+                                {sourceIngredients.length} nguyên liệu cần nhập
+                              </span>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              {displayIngredients.map((ingredient) => {
+                                const status = getStockStatus(ingredient);
+                                return (
+                                  <div key={ingredient.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                      <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                                        {getStatusIcon(status)}
+                                        <span>{getStatusText(status)}</span>
+                                      </span>
+                                      <span className="font-medium text-gray-900 dark:text-white">
+                                        {ingredient.name}
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {ingredient.quantityInStock > 0 ? (
+                                        <span>Còn {ingredient.quantityInStock} {ingredient.unit}</span>
+                                      ) : (
+                                        <span>Còn {ingredient.weightInStock} {ingredient.weightUnit}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            {hasMore && (
+                              <div className="mt-3 text-center">
+                                <button
+                                  onClick={() => toggleSourceExpansion(source)}
+                                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+                                >
+                                  {isExpanded ? 'Thu gọn' : `Xem thêm ${sourceIngredients.length - 5} nguyên liệu`}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* All Sources Overview */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Tổng quan tất cả nguồn nhập
+                  </h3>
+                  
+                  {Object.keys(sourceCounts).length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có dữ liệu nguồn nhập.</p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(sourceCounts)
+                          .slice(0, showAllSources ? undefined : 5)
+                          .map(([src, count]) => {
+                            const sourceIngredients = ingredients.filter(i => i.source === src);
+                            const restockCount = sourceIngredients.filter(i => {
+                              const status = getStockStatus(i);
+                              return status === 'out-of-stock' || status === 'low';
+                            }).length;
+                            
+                            return (
+                              <div key={src} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h4 className="font-medium text-gray-900 dark:text-white truncate">
+                                    {src}
+                                  </h4>
+                                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                                    {count} nguyên liệu
+                                  </span>
+                                </div>
+                                
+                                {restockCount > 0 && (
+                                  <div className="flex items-center space-x-2 text-sm">
+                                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                    <span className="text-orange-600 dark:text-orange-400">
+                                      {restockCount} cần nhập hàng
+                                    </span>
+                                  </div>
+                                )}
+                                
+                                {restockCount === 0 && (
+                                  <div className="flex items-center space-x-2 text-sm">
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                    <span className="text-green-600 dark:text-green-400">
+                                      Đủ hàng
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                      
+                      {Object.keys(sourceCounts).length > 5 && (
+                        <div className="mt-4 text-center">
+                          <button
+                            onClick={() => setShowAllSources(!showAllSources)}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium transition-colors"
+                          >
+                            {showAllSources 
+                              ? 'Thu gọn' 
+                              : `Xem thêm ${Object.keys(sourceCounts).length - 5} nguồn nhập`
+                            }
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
