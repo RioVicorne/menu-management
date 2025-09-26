@@ -10,6 +10,7 @@ import {
   Loader2,
   Search,
   X,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
@@ -37,6 +38,12 @@ export default function StoragePage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [manageItem, setManageItem] = useState<Ingredient | null>(null);
+  const [manageSource, setManageSource] = useState<string>("");
+  const [manageCustomSource, setManageCustomSource] = useState<string>("");
+  const [editQty, setEditQty] = useState<number>(0);
+  const [editWgt, setEditWgt] = useState<number>(0);
+  const [savingManage, setSavingManage] = useState(false);
   const [activeTab, setActiveTab] = useState<'manage' | 'sources'>('manage');
   // Fixed thresholds for warnings (design: just warn low/out-of-stock)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
@@ -635,57 +642,27 @@ export default function StoragePage() {
                         <div className="mt-4 flex justify-end">
                           <div className="relative">
                             <button
+                              aria-label="Cài đặt"
                               className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
-                              onClick={() => setOpenMenuId(prev => prev === ingredient.id ? null : ingredient.id)}
+                              onClick={() => {
+                                setManageItem(ingredient);
+                                const presets = ["Nhà bà nội", "Nhà bà ngoại", "Nhà anh Thơ"]; 
+                                if (presets.includes(ingredient.source)) {
+                                  setManageSource(ingredient.source);
+                                  setManageCustomSource("");
+                                } else if ((ingredient.source || "").trim().length > 0) {
+                                  setManageSource("Khác");
+                                  setManageCustomSource(ingredient.source);
+                                } else {
+                                  setManageSource("");
+                                  setManageCustomSource("");
+                                }
+                                setEditQty(Math.max(0, Number(ingredient.quantityInStock || 0)));
+                                setEditWgt(Math.max(0, Number(ingredient.weightInStock || 0)));
+                              }}
                             >
-                              ⋯
+                              <Settings className="h-4 w-4" />
                             </button>
-                            {openMenuId === ingredient.id && (
-                              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden z-10">
-                                <button
-                                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                                  onClick={async () => {
-                                    setOpenMenuId(null);
-                                        const mode = ingredient.quantityInStock > 0 ? 'quantity' : 'weight';
-                                        const promptText = mode === 'quantity' ? 'Nhập số lượng cần tăng:' : 'Nhập khối lượng cần tăng:';
-                                        const val = typeof window !== 'undefined' ? window.prompt(promptText, '1') : '1';
-                                        const amount = Number((val || '').trim());
-                                        if (!amount || amount <= 0) return;
-                                        try {
-                                          const res = await fetch(`/api/ingredients/${ingredient.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, mode, op: 'increase' }) });
-                                          const data = await res.json().catch(() => ({}));
-                                          if (!res.ok) throw new Error(data.error || 'Cập nhật thất bại');
-                                          handleAddIngredientSuccess();
-                                        } catch (e) {
-                                          logger.error('Increase stock error:', e);
-                                        }
-                                      }}
-                                >Tăng tồn kho</button>
-                                <button
-                                  className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                                  onClick={async () => {
-                                    setOpenMenuId(null);
-                                        const mode = ingredient.quantityInStock > 0 ? 'quantity' : 'weight';
-                                        const promptText = mode === 'quantity' ? 'Nhập số lượng cần giảm:' : 'Nhập khối lượng cần giảm:';
-                                        const val = typeof window !== 'undefined' ? window.prompt(promptText, '1') : '1';
-                                        const amount = Number((val || '').trim());
-                                        if (!amount || amount <= 0) return;
-                                        try {
-                                          const res = await fetch(`/api/ingredients/${ingredient.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, mode, op: 'decrease' }) });
-                                          const data = await res.json().catch(() => ({}));
-                                          if (!res.ok) throw new Error(data.error || 'Cập nhật thất bại');
-                                          handleAddIngredientSuccess();
-                                        } catch (e) {
-                                          logger.error('Decrease stock error:', e);
-                                        }
-                                      }}
-                                >Giảm tồn kho</button>
-                                <button
-                                  className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                  onClick={() => { setOpenMenuId(null); setConfirmDeleteId(ingredient.id); }}
-                                >Xóa nguyên liệu</button>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -913,6 +890,110 @@ export default function StoragePage() {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={handleAddIngredientSuccess}
       />
+      {/* Manage Ingredient Modal */}
+      {manageItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-[92%] max-w-lg p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Quản lý nguyên liệu</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{manageItem.name}</p>
+              </div>
+              <button className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" onClick={() => setManageItem(null)}>✕</button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nguồn nhập</label>
+                <select
+                  value={manageSource}
+                  onChange={(e) => setManageSource(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="">Chọn nguồn nhập...</option>
+                  <option value="Nhà bà nội">Nhà bà nội</option>
+                  <option value="Nhà bà ngoại">Nhà bà ngoại</option>
+                  <option value="Nhà anh Thơ">Nhà anh Thơ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+                {manageSource === 'Khác' && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nhập nguồn nhập khác</label>
+                    <input
+                      type="text"
+                      value={manageCustomSource}
+                      onChange={(e) => setManageCustomSource(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      placeholder="Nhập nguồn..."
+                    />
+                  </div>
+                )}
+              </div>
+
+              {(manageItem.quantityInStock > 0) && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Số lượng</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Hiện có: {manageItem.quantityInStock} {manageItem.unit}</span>
+                  </div>
+                  <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+                    <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditQty(Math.max(0, editQty - 1))}>−</button>
+                    <input type="number" className="w-20 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none" value={editQty} onChange={(e) => setEditQty(Math.max(0, Number(e.target.value || 0)))} />
+                    <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditQty(editQty + 1)}>+</button>
+                  </div>
+                </div>
+              )}
+
+              {(manageItem.weightInStock > 0) && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Khối lượng</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Hiện có: {manageItem.weightInStock} {manageItem.weightUnit}</span>
+                  </div>
+                  <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+                    <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditWgt(Math.max(0, editWgt - 1))}>−</button>
+                    <input type="number" className="w-20 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none" value={editWgt} onChange={(e) => setEditWgt(Math.max(0, Number(e.target.value || 0)))} />
+                    <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditWgt(editWgt + 1)}>+</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-2">
+                <button className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700" onClick={() => { setManageItem(null); setConfirmDeleteId(manageItem.id); }}>Xóa</button>
+                <button className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50" disabled={savingManage} onClick={async () => {
+                  try {
+                    setSavingManage(true);
+                    const finalSource = manageSource === 'Khác' ? (manageCustomSource || '').trim() : manageSource;
+                    if (finalSource !== (manageItem.source || '')) {
+                      const resSrc = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ source: finalSource }) });
+                      const dataSrc = await resSrc.json().catch(() => ({}));
+                      if (!resSrc.ok) throw new Error(dataSrc.error || 'Cập nhật nguồn thất bại');
+                    }
+                    const qtyDiff = Math.max(0, editQty) - Math.max(0, Number(manageItem.quantityInStock || 0));
+                    if (qtyDiff !== 0) {
+                      const resQty = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Math.abs(qtyDiff), mode: 'quantity', op: qtyDiff > 0 ? 'increase' : 'decrease' }) });
+                      const dataQty = await resQty.json().catch(() => ({}));
+                      if (!resQty.ok) throw new Error(dataQty.error || 'Cập nhật số lượng thất bại');
+                    }
+                    const wgtDiff = Math.max(0, editWgt) - Math.max(0, Number(manageItem.weightInStock || 0));
+                    if (wgtDiff !== 0) {
+                      const resWgt = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Math.abs(wgtDiff), mode: 'weight', op: wgtDiff > 0 ? 'increase' : 'decrease' }) });
+                      const dataWgt = await resWgt.json().catch(() => ({}));
+                      if (!resWgt.ok) throw new Error(dataWgt.error || 'Cập nhật khối lượng thất bại');
+                    }
+                    handleAddIngredientSuccess();
+                    setManageItem(null);
+                  } catch (e) {
+                    logger.error('Save manage error', e);
+                  } finally {
+                    setSavingManage(false);
+                  }
+                }}>Lưu</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {confirmDeleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-lg">

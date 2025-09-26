@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, ChefHat, Users, Zap, Plus } from "lucide-react";
 import { format } from "date-fns";
@@ -46,6 +46,16 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
   const [error, setError] = useState<string | null>(null);
   const [shopping, setShopping] = useState<ShoppingItem[]>([]);
   const [shoppingLoading, setShoppingLoading] = useState(false);
+  const formatNumber = (value: number) => {
+    const rounded = Math.round(Number(value || 0) * 100) / 100;
+    if (Number.isNaN(rounded)) return "0";
+    return Number.isInteger(rounded)
+      ? String(rounded)
+      : String(rounded.toFixed(2).replace(/0+$/,'').replace(/\.$/,''));
+  };
+  const shortageList = useMemo(() => {
+    return shopping.filter((it) => (it.needQuantity > it.stockQuantity) || (it.needWeight > it.stockWeight));
+  }, [shopping]);
 
   // Get today's date in YYYY-MM-DD format
   const today = new Date();
@@ -370,8 +380,53 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
         </div>
       </div>
 
+      {/* Shopping List */}
+      <div className="px-6 pt-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Hôm nay cần đi chợ gì
+        </h3>
+        {shoppingLoading ? (
+          <div className="flex items-center justify-center h-24">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          </div>
+        ) : shortageList.length === 0 ? (
+          <p className="text-sm text-gray-600 dark:text-gray-400">Không có nguyên liệu cần mua.</p>
+        ) : (
+          <div className="space-y-2">
+            {shortageList.map((it) => {
+              const shortQty = it.needQuantity > it.stockQuantity;
+              const shortW = it.needWeight > it.stockWeight;
+              const needParts: string[] = [];
+              const stockParts: string[] = [];
+              if (it.needQuantity > 0) {
+                needParts.push(String(it.needQuantity));
+                stockParts.push(String(it.stockQuantity));
+              }
+              if (it.needWeight > 0) {
+                needParts.push(`${formatNumber(it.needWeight)} kg`);
+                stockParts.push(`${formatNumber(it.stockWeight)} kg`);
+              }
+              const shortage = shortQty || shortW;
+              return (
+                <div key={it.id} className={`flex items-center justify-between p-3 rounded-lg border ${shortage ? "border-amber-300 bg-amber-50 dark:bg-amber-900/20" : "border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-gray-700/40"}`}>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 dark:text-white">{it.name}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Cần: {needParts.join(" • ")} — Tồn: {stockParts.join(" • ")}
+                    </p>
+                  </div>
+                  {shortage && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-amber-200 text-amber-900 dark:bg-amber-400/30 dark:text-amber-200">Thiếu</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Dishes List */}
-      <div className="p-6">
+      <div className="p-6 pb-8">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Danh sách món ăn
         </h3>
@@ -405,53 +460,6 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Shopping List */}
-      <div className="px-6 pb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Hôm nay cần đi chợ gì
-        </h3>
-        {shoppingLoading ? (
-          <div className="flex items-center justify-center h-24">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          </div>
-        ) : shopping.length === 0 ? (
-          <p className="text-sm text-gray-600 dark:text-gray-400">Không có nguyên liệu cần mua.</p>
-        ) : (
-          <div className="space-y-2">
-            {shopping.map((it) => {
-              const shortQty = it.needQuantity > it.stockQuantity;
-              const shortW = it.needWeight > it.stockWeight;
-              const needParts: string[] = [];
-              const stockParts: string[] = [];
-              if (it.needQuantity > 0) {
-                needParts.push(String(it.needQuantity));
-                stockParts.push(String(it.stockQuantity));
-              }
-              if (it.needWeight > 0) {
-                needParts.push(`${it.needWeight} kg`);
-                stockParts.push(`${it.stockWeight} kg`);
-              }
-              const shortage = shortQty || shortW;
-              return (
-                <div key={it.id} className={`flex items-center justify-between p-3 rounded-lg border ${shortage ? "border-amber-300 bg-amber-50 dark:bg-amber-900/20" : "border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-gray-700/40"}`}>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900 dark:text-white">{it.name}</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Cần: {needParts.join(" • ")} — Tồn: {stockParts.join(" • ")}
-                    </p>
-                  </div>
-                  {shortage ? (
-                    <span className="text-xs px-2 py-1 rounded-full bg-amber-200 text-amber-900 dark:bg-amber-400/30 dark:text-amber-200">Thiếu</span>
-                  ) : (
-                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">Đủ</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

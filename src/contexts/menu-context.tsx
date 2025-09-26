@@ -15,8 +15,7 @@ interface MenuContextType {
   // State
   dishes: MenuItem[];
   loading: boolean;
-  error: string | null;
-
+  error: string | null
   // Actions
   addDish: (dishId: string, servings: number, notes?: string) => Promise<void>;
   updateDish: (

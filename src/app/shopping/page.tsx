@@ -216,7 +216,7 @@ export default function ShoppingPage() {
   }, [groupedBySource]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -232,7 +232,7 @@ export default function ShoppingPage() {
 
           {/* Summary + Actions */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-xs text-gray-500">Nguồn</div>
@@ -250,12 +250,12 @@ export default function ShoppingPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 justify-start md:justify-end">
-            <button onClick={selectAll} className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">Chọn tất cả</button>
-            <button onClick={clearAll} className="px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">Bỏ chọn</button>
-            <button onClick={handleCopy} className="inline-flex items-center space-x-2 px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">
+              <button onClick={selectAll} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">Chọn tất cả</button>
+              <button onClick={clearAll} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">Bỏ chọn</button>
+              <button onClick={handleCopy} className="inline-flex items-center space-x-2 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
               <Copy className="h-4 w-4" /><span>Sao chép</span>
             </button>
-            <button onClick={handleExportCsv} className="inline-flex items-center space-x-2 px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50">
+              <button onClick={handleExportCsv} className="inline-flex items-center space-x-2 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
               <Download className="h-4 w-4" /><span>Xuất CSV</span>
             </button>
             </div>
@@ -288,19 +288,19 @@ export default function ShoppingPage() {
               const allSelected = list.every((i) => selectedIds.has(i.id));
 
               return (
-                <div key={src} className="bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="p-4 flex items-center justify-between border-b border-gray-100 rounded-t-xl bg-gray-50">
+                <div key={src} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                  <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-slate-700 rounded-t-xl bg-gray-50 dark:bg-slate-800/60">
                     <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-gray-900">{src}</h3>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{list.length} nguyên liệu</span>
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{src}</h3>
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{list.length} nguyên liệu</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <label className="text-sm text-gray-700 flex items-center gap-2 select-none">
+                      <label className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2 select-none">
                         <input className="scale-110" type="checkbox" checked={allSelected} onChange={() => toggleSourceAll(src)} />
                         Chọn nguồn này
                       </label>
                       <button
-                        className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                        className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
                         onClick={() => purchaseSource(src)}
                         disabled={(groupedBySource[src] || []).every(i => !selectedIds.has(i.id))}
                       >
@@ -309,7 +309,7 @@ export default function ShoppingPage() {
                     </div>
                   </div>
 
-                  <div className="px-2 sm:px-4 pb-2 divide-y divide-gray-100">
+                  <div className="px-2 sm:px-4 pb-2 divide-y divide-gray-100 dark:divide-slate-700/70">
                     {display.map((ing) => {
                       const qty = Number(ing.ton_kho_so_luong || 0);
                       const wgt = Number(ing.ton_kho_khoi_luong || 0);
@@ -317,31 +317,31 @@ export default function ShoppingPage() {
                       const suggestion = getDefaultSuggestion(ing);
                       const checked = selectedIds.has(ing.id);
                       return (
-                        <div key={ing.id} className="py-2 sm:py-3 flex items-center justify-between gap-4 rounded-lg hover:bg-gray-50 px-2 sm:px-3">
+                        <div key={ing.id} className="py-2 sm:py-3 flex items-center justify-between gap-4 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 px-2 sm:px-3">
                           <label className="flex flex-wrap items-center gap-2 sm:gap-3 cursor-pointer min-w-0 flex-1">
                             <input className="scale-110" type="checkbox" checked={checked} onChange={() => toggleItem(ing.id)} />
-                            <span className="font-medium text-gray-900 whitespace-normal break-words leading-snug min-w-0">
+                            <span className="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug min-w-0">
                               {ing.ten_nguyen_lieu}
                             </span>
-                            <span className="text-xs rounded-full px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">gợi ý +{suggestion}</span>
+                            <span className="text-xs rounded-full px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-200 border border-amber-200 dark:border-amber-800 flex-shrink-0">gợi ý +{suggestion}</span>
                           </label>
                           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                            <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Tồn: {value}</span>
-                            <div className="inline-flex items-center border border-gray-300 rounded overflow-hidden">
+                            <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Tồn: {value}</span>
+                            <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
                               <button
                                 type="button"
-                                className="px-2 py-1 hover:bg-gray-50 select-none text-gray-700"
+                                className="px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
                                 onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? suggestion)) - 1) }))}
                                 aria-label="Giảm"
                               >
                                 −
                               </button>
-                              <span className="w-10 text-center text-sm text-gray-900">
+                              <span className="w-10 text-center text-sm text-gray-900 dark:text-white">
                                 {qtyById[ing.id] ?? suggestion}
                               </span>
                               <button
                                 type="button"
-                                className="px-2 py-1 hover:bg-gray-50 select-none text-gray-700"
+                                className="px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
                                 onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? suggestion)) + 1) }))}
                                 aria-label="Tăng"
                               >

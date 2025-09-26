@@ -152,23 +152,32 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
 
         {/* Nguồn nhập */}
         <div>
-          <label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Nguồn nhập *
           </label>
-          <select
-            id="source"
-            value={formData.source}
-            onChange={(e) => handleInputChange("source", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            disabled={isSubmitting}
-          >
-            <option value="">Chọn nguồn nhập...</option>
-            <option value="Nhà bà nội">Nhà bà nội</option>
-            <option value="Nhà bà ngoại">Nhà bà ngoại</option>
-            <option value="Nhà anh Thơ">Nhà anh Thơ</option>
-            <option value="Khác">Khác</option>
-          </select>
-          
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              "Nhà bà nội",
+              "Nhà bà ngoại",
+              "Nhà anh Thơ",
+              "Khác",
+            ].map((opt) => {
+              const checked = formData.source === opt;
+              return (
+                <label key={opt} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer select-none ${checked ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"}`}>
+                  <input
+                    type="checkbox"
+                    className="scale-110"
+                    checked={checked}
+                    onChange={() => handleInputChange("source", checked ? "" : opt)}
+                    disabled={isSubmitting}
+                  />
+                  <span className="text-sm text-gray-800 dark:text-gray-200">{opt}</span>
+                </label>
+              );
+            })}
+          </div>
+
           {/* Custom source input - only show when "Khác" is selected */}
           {formData.source === "Khác" && (
             <div className="mt-3">
@@ -193,18 +202,46 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
           <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Số lượng/khối lượng *
           </label>
-          <div className="flex">
-            <input
-              type="number"
-              id="quantity"
-              value={formData.quantity}
-              onChange={(e) => handleInputChange("quantity", e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="0"
-              min="0"
-              step="0.01"
-              disabled={isSubmitting}
-            />
+          <div className="flex items-stretch">
+            <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-l-lg overflow-hidden">
+              <button
+                type="button"
+                className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
+                disabled={isSubmitting}
+                onClick={() => {
+                  const step = countableUnits.includes(formData.unit) ? 1 : 0.1;
+                  const next = Math.max(0, Number(formData.quantity || 0) - step);
+                  handleInputChange("quantity", String(Number(next.toFixed(2))));
+                }}
+                aria-label="Giảm"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                id="quantity"
+                value={formData.quantity}
+                onChange={(e) => handleInputChange("quantity", e.target.value)}
+                className="w-24 text-center px-2 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+                placeholder="0"
+                min="0"
+                step={countableUnits.includes(formData.unit) ? 1 : 0.1}
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
+                disabled={isSubmitting}
+                onClick={() => {
+                  const step = countableUnits.includes(formData.unit) ? 1 : 0.1;
+                  const next = Number(formData.quantity || 0) + step;
+                  handleInputChange("quantity", String(Number(next.toFixed(2))));
+                }}
+                aria-label="Tăng"
+              >
+                +
+              </button>
+            </div>
             <select
               value={formData.unit}
               onChange={(e) => handleInputChange("unit", e.target.value)}
