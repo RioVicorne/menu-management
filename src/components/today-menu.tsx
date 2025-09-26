@@ -381,21 +381,21 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
               key={dish.id}
               className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center gap-4 min-w-0">
                 <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full text-sm font-semibold text-blue-600 dark:text-blue-400">
                   {index + 1}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <h4 className="font-medium text-gray-900 dark:text-white">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug min-w-0">
                       {dish.name}
                     </h4>
-                    <span className="px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full">
+                    <span className="px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full flex-shrink-0">
                       {dish.category}
                     </span>
                   </div>
                   {dish.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
                       {dish.description}
                     </p>
                   )}
