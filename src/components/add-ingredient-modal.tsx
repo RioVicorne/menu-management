@@ -29,6 +29,7 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unitTouched, setUnitTouched] = useState(false);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({
@@ -37,6 +38,21 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
     }));
     // Clear error when user starts typing
     if (error) setError(null);
+    if (field === "unit") setUnitTouched(true);
+  };
+  // Infer unit by ingredient name (simple heuristic)
+  const inferUnitFromName = (raw: string): string => {
+    const n = (raw || "").toLowerCase();
+    if (!n) return "cái";
+    if (n.includes(" kg")) return "kg";
+    if (n.includes(" g")) return "g";
+    if (n.includes(" ml")) return "ml";
+    if (n.includes(" l")) return "l";
+    const volumeKeywords = ["nước", "sữa", "dầu", "giấm", "nước mắm", "xì dầu"];
+    if (volumeKeywords.some(k => n.includes(k))) return "l";
+    const weightKeywords = ["thịt", "cá", "gạo", "đường", "muối", "bột", "tôm", "mực", "cà rốt", "khoai", "bắp", "hành", "tỏi", "gừng", "rau"];
+    if (weightKeywords.some(k => n.includes(k))) return "kg";
+    return "cái";
   };
 
   // Unit classification helpers
@@ -143,7 +159,14 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
             type="text"
             id="name"
             value={formData.name}
-            onChange={(e) => handleInputChange("name", e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              handleInputChange("name", v);
+              if (!unitTouched) {
+                const u = inferUnitFromName(v);
+                setFormData(prev => ({ ...prev, unit: u }));
+              }
+            }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             placeholder="Nhập tên nguyên liệu..."
             disabled={isSubmitting}
@@ -203,7 +226,7 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
             Số lượng/khối lượng *
           </label>
           <div className="flex items-stretch">
-            <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-l-lg overflow-hidden">
+            <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden flex-1">
               <button
                 type="button"
                 className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
@@ -222,7 +245,7 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
                 id="quantity"
                 value={formData.quantity}
                 onChange={(e) => handleInputChange("quantity", e.target.value)}
-                className="w-24 text-center px-2 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
+                className="flex-1 text-center px-2 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none"
                 placeholder="0"
                 min="0"
                 step={countableUnits.includes(formData.unit) ? 1 : 0.1}
@@ -242,23 +265,7 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
                 +
               </button>
             </div>
-            <select
-              value={formData.unit}
-              onChange={(e) => handleInputChange("unit", e.target.value)}
-              className="px-4 py-2 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors min-w-[80px]"
-              disabled={isSubmitting}
-            >
-              <option value="cái">cái</option>
-              <option value="gói">gói</option>
-              <option value="chai">chai</option>
-              <option value="lon">lon</option>
-              <option value="hộp">hộp</option>
-              <option value="túi">túi</option>
-              <option value="kg">kg</option>
-              <option value="g">g</option>
-              <option value="l">l</option>
-              <option value="ml">ml</option>
-            </select>
+            {/* Unit select hidden per request; still maintained internally */}
           </div>
         </div>
 

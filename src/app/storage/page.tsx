@@ -936,9 +936,9 @@ export default function StoragePage() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Số lượng</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">Hiện có: {manageItem.quantityInStock} {manageItem.unit}</span>
                   </div>
-                  <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+                  <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden w-full max-w-md">
                     <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditQty(Math.max(0, editQty - 1))}>−</button>
-                    <input type="number" className="w-20 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none" value={editQty} onChange={(e) => setEditQty(Math.max(0, Number(e.target.value || 0)))} />
+                    <input type="number" className="flex-1 text-center px-2 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none" value={editQty} onChange={(e) => setEditQty(Math.max(0, Number(e.target.value || 0)))} />
                     <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditQty(editQty + 1)}>+</button>
                   </div>
                 </div>
@@ -950,9 +950,9 @@ export default function StoragePage() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Khối lượng</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">Hiện có: {manageItem.weightInStock} {manageItem.weightUnit}</span>
                   </div>
-                  <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+                  <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden w-full max-w-md">
                     <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditWgt(Math.max(0, editWgt - 1))}>−</button>
-                    <input type="number" className="w-20 text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none" value={editWgt} onChange={(e) => setEditWgt(Math.max(0, Number(e.target.value || 0)))} />
+                    <input type="number" className="flex-1 text-center px-2 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none" value={editWgt} onChange={(e) => setEditWgt(Math.max(0, Number(e.target.value || 0)))} />
                     <button className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700" onClick={() => setEditWgt(editWgt + 1)}>+</button>
                   </div>
                 </div>
