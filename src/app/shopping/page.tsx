@@ -30,6 +30,9 @@ export default function ShoppingPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        if (!supabase) {
+          throw new Error("Supabase chưa được cấu hình. Vui lòng thiết lập biến môi trường.");
+        }
         const { data, error } = await supabase
           .from("nguyen_lieu")
           .select("id, ten_nguyen_lieu, nguon_nhap, ton_kho_so_luong, ton_kho_khoi_luong")
