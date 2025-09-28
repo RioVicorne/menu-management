@@ -77,18 +77,24 @@ export default function StoragePage() {
         }
 
         // Transform data to match our interface
-        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => ({
-          id: String(item.id || ""),
-          name: String(item.ten_nguyen_lieu || "Unknown"),
-          source: String(item.nguon_nhap || "Nguồn chưa rõ"),
-          // Tổng ban đầu = hiện còn (vì mặc định chưa sử dụng)
-          quantityInStock: Number(item.ton_kho_so_luong || 0),
-          quantityNeeded: Number(item.ton_kho_so_luong || 0),
-          weightInStock: Number(item.ton_kho_khoi_luong || 0),
-          weightNeeded: Number(item.ton_kho_khoi_luong || 0),
-          unit: "kg", // Default unit
-          weightUnit: "kg", // Default weight unit
-        }));
+        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => {
+          // Kiểm tra trường nào có dữ liệu thực tế (không NULL và không undefined)
+          const hasQuantityData = item.ton_kho_so_luong !== null && item.ton_kho_so_luong !== undefined;
+          const hasWeightData = item.ton_kho_khoi_luong !== null && item.ton_kho_khoi_luong !== undefined;
+          
+          return {
+            id: String(item.id || ""),
+            name: String(item.ten_nguyen_lieu || "Unknown"),
+            source: String(item.nguon_nhap || "Nguồn chưa rõ"),
+            // Chỉ gán giá trị cho trường có dữ liệu thực tế trong database
+            quantityInStock: hasQuantityData ? Number(item.ton_kho_so_luong) : -1,
+            quantityNeeded: hasQuantityData ? Number(item.ton_kho_so_luong) : -1,
+            weightInStock: hasWeightData ? Number(item.ton_kho_khoi_luong) : -1,
+            weightNeeded: hasWeightData ? Number(item.ton_kho_khoi_luong) : -1,
+            unit: "kg", // Default unit
+            weightUnit: "kg", // Default weight unit
+          };
+        });
 
         setIngredients(transformedData);
       } catch (err) {
@@ -578,7 +584,8 @@ export default function StoragePage() {
                           </div>
 
                           <div className="space-y-4">
-                            {(ingredient.quantityInStock > 0 || ingredient.quantityNeeded > 0) && (
+                            {/* Show quantity progress bar ONLY if ton_kho_so_luong has data (>= 0) */}
+                            {ingredient.quantityInStock >= 0 && (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="font-medium text-gray-700 dark:text-gray-300">
@@ -592,8 +599,8 @@ export default function StoragePage() {
                                   <div
                                     className={`h-3 rounded-full transition-all duration-300 ${
                                       ingredient.quantityInStock === 0
-                                        ? "bg-transparent"
-                                        : getStockStatus(ingredient) === "low"
+                                        ? "bg-red-500"
+                                        : ingredient.quantityInStock <= 5
                                           ? "bg-yellow-500"
                                           : "bg-green-500"
                                     }`}
@@ -601,14 +608,12 @@ export default function StoragePage() {
                                       width: `${Math.min(quantityRatio * 100, 100)}%`,
                                     }}
                                   />
-                                  {ingredient.quantityInStock === 0 && (
-                                    <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                                  )}
                                 </div>
                               </div>
                             )}
 
-                            {(ingredient.weightInStock > 0 || ingredient.weightNeeded > 0) && (
+                            {/* Show weight progress bar ONLY if ton_kho_khoi_luong has data (>= 0) AND no quantity data */}
+                            {ingredient.weightInStock >= 0 && ingredient.quantityInStock < 0 && (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="font-medium text-gray-700 dark:text-gray-300">
@@ -622,8 +627,8 @@ export default function StoragePage() {
                                   <div
                                     className={`h-3 rounded-full transition-all duration-300 ${
                                       ingredient.weightInStock === 0
-                                        ? "bg-transparent"
-                                        : getStockStatus(ingredient) === "low"
+                                        ? "bg-red-500"
+                                        : ingredient.weightInStock <= 5
                                           ? "bg-yellow-500"
                                           : "bg-green-500"
                                     }`}
@@ -631,9 +636,6 @@ export default function StoragePage() {
                                       width: `${Math.min(weightRatio * 100, 100)}%`,
                                     }}
                                   />
-                                  {ingredient.weightInStock === 0 && (
-                                    <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-                                  )}
                                 </div>
                               </div>
                             )}

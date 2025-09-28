@@ -23,8 +23,26 @@ export default function ShoppingPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [qtyById, setQtyById] = useState<Record<string, number>>({});
   const [purchasingIds, setPurchasingIds] = useState<Set<string>>(new Set());
+  const [purchasedIds, setPurchasedIds] = useState<Set<string>>(new Set());
   const [copiedModal, setCopiedModal] = useState(false);
   const [copyZooming, setCopyZooming] = useState(false);
+
+  // Normalize source key to avoid duplicate groups due to casing/spacing/diacritics variations
+  const normalizeSourceKey = (src: string) =>
+    (src || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/[\u0300-\u036f]/g, "");
+
+  // Optional aliases to collapse common variants to a preferred display label
+  const SOURCE_ALIASES: Record<string, string> = {
+    // keys must be normalized by normalizeSourceKey
+    [normalizeSourceKey("Co.opmart")]: "Co.opmart",
+    [normalizeSourceKey("Coopmart")]: "Co.opmart",
+    [normalizeSourceKey("Co.op mart")]: "Co.opmart",
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,13 +78,23 @@ export default function ShoppingPage() {
   }, [ingredients]);
 
   const groupedBySource: Grouped = useMemo(() => {
-    const map: Grouped = {};
+    // Group by normalized key, but keep a nice display label for UI
+    const byKey: Record<string, { label: string; items: Ingredient[] }> = {};
     for (const ing of needBuy) {
-      const src = (ing.nguon_nhap || "Nguồn chưa rõ").trim() || "Nguồn chưa rõ";
-      if (!map[src]) map[src] = [];
-      map[src].push(ing);
+      const original = (ing.nguon_nhap || "Nguồn chưa rõ");
+      const labelCandidate = original.trim() || "Nguồn chưa rõ";
+      const key = normalizeSourceKey(labelCandidate);
+      const displayLabel = SOURCE_ALIASES[key] || labelCandidate;
+      if (!byKey[key]) byKey[key] = { label: displayLabel, items: [] };
+      byKey[key].items.push(ing);
     }
-    return map;
+    // Collapse into Record<label, items>
+    const result: Grouped = {};
+    for (const bucket of Object.values(byKey)) {
+      if (!result[bucket.label]) result[bucket.label] = [];
+      result[bucket.label].push(...bucket.items);
+    }
+    return result;
   }, [needBuy]);
 
   const allIds = useMemo(() => new Set(needBuy.map((i) => i.id)), [needBuy]);
@@ -112,11 +140,7 @@ export default function ShoppingPage() {
       if (chosen.length === 0) continue;
       lines.push(`# ${src}`);
       for (const ing of chosen) {
-        const qty = Number(ing.ton_kho_so_luong || 0);
-        const wgt = Number(ing.ton_kho_khoi_luong || 0);
-        const value = Math.max(qty, wgt);
-        const suggestion = value === 0 ? 1 : Math.max(1, 3 - value); // gợi ý mua tối thiểu
-        lines.push(`- ${ing.ten_nguyen_lieu}: +${suggestion}`);
+        lines.push(`- ${ing.ten_nguyen_lieu}`);
       }
       lines.push("");
     }
@@ -135,15 +159,11 @@ export default function ShoppingPage() {
   };
 
   const handleExportCsv = () => {
-    const rows: string[] = ["Nguồn,Nguyên liệu,Gợi ý mua"];
+    const rows: string[] = ["Nguồn,Nguyên liệu"];
     for (const [src, list] of Object.entries(groupedBySource)) {
       for (const ing of list) {
         if (!selectedIds.has(ing.id)) continue;
-        const qty = Number(ing.ton_kho_so_luong || 0);
-        const wgt = Number(ing.ton_kho_khoi_luong || 0);
-        const value = Math.max(qty, wgt);
-        const suggestion = value === 0 ? 1 : Math.max(1, 3 - value);
-        rows.push(`${src},${ing.ten_nguyen_lieu},${suggestion}`);
+        rows.push(`${src},${ing.ten_nguyen_lieu}`);
       }
     }
     const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -195,6 +215,7 @@ export default function ShoppingPage() {
         }
       }));
       setSelectedIds(prev => { const n = new Set(prev); n.delete(ing.id); return n; });
+      setPurchasedIds(prev => new Set(prev).add(ing.id));
     } catch (e) {
       logger.error('purchaseOne error', e);
       alert(e instanceof Error ? e.message : 'Cập nhật thất bại');
@@ -314,7 +335,6 @@ export default function ShoppingPage() {
                       const qty = Number(ing.ton_kho_so_luong || 0);
                       const wgt = Number(ing.ton_kho_khoi_luong || 0);
                       const value = Math.max(qty, wgt);
-                      const suggestion = getDefaultSuggestion(ing);
                       const checked = selectedIds.has(ing.id);
                       return (
                         <div key={ing.id} className="py-2 sm:py-3 flex items-center justify-between gap-4 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 px-2 sm:px-3">
@@ -323,7 +343,6 @@ export default function ShoppingPage() {
                             <span className="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug min-w-0">
                               {ing.ten_nguyen_lieu}
                             </span>
-                            <span className="text-xs rounded-full px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-200 border border-amber-200 dark:border-amber-800 flex-shrink-0">gợi ý +{suggestion}</span>
                           </label>
                           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                             <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Tồn: {value}</span>
@@ -331,29 +350,35 @@ export default function ShoppingPage() {
                               <button
                                 type="button"
                                 className="px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
-                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? suggestion)) - 1) }))}
+                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? getDefaultSuggestion(ing))) - 1) }))}
                                 aria-label="Giảm"
                               >
                                 −
                               </button>
                               <span className="w-10 text-center text-sm text-gray-900 dark:text-white">
-                                {qtyById[ing.id] ?? suggestion}
+                                {qtyById[ing.id] ?? getDefaultSuggestion(ing)}
                               </span>
                               <button
                                 type="button"
                                 className="px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
-                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? suggestion)) + 1) }))}
+                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? getDefaultSuggestion(ing))) + 1) }))}
                                 aria-label="Tăng"
                               >
                                 +
                               </button>
                             </div>
                             <button
-                              className="px-2.5 py-1.5 sm:px-3 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                              className={`px-2.5 py-1.5 sm:px-3 text-sm rounded-lg text-white hover:opacity-90 disabled:opacity-50 ${
+                                purchasingIds.has(ing.id) 
+                                  ? 'bg-gray-500' 
+                                  : purchasedIds.has(ing.id) 
+                                    ? 'bg-green-600 hover:bg-green-700' 
+                                    : 'bg-red-600 hover:bg-red-700'
+                              }`}
                               onClick={() => purchaseOne(ing)}
                               disabled={purchasingIds.has(ing.id)}
                             >
-                              {purchasingIds.has(ing.id) ? 'Đang cập nhật...' : 'Đã mua'}
+                              {purchasingIds.has(ing.id) ? 'Đang cập nhật...' : purchasedIds.has(ing.id) ? 'Đã mua' : 'Mua'}
                             </button>
                           </div>
                         </div>
