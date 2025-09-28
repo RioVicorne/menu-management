@@ -82,6 +82,11 @@ export default function StoragePage() {
           const hasQuantityData = item.ton_kho_so_luong !== null && item.ton_kho_so_luong !== undefined;
           const hasWeightData = item.ton_kho_khoi_luong !== null && item.ton_kho_khoi_luong !== undefined;
           
+          // Debug log for specific ingredient
+          if (String(item.ten_nguyen_lieu).includes('cá nục') || String(item.ten_nguyen_lieu).includes('Cá nục')) {
+            console.log(`Storage Transform: ${item.ten_nguyen_lieu}: hasQuantity=${hasQuantityData}, hasWeight=${hasWeightData}, qty=${item.ton_kho_so_luong}, wgt=${item.ton_kho_khoi_luong}`);
+          }
+          
           return {
             id: String(item.id || ""),
             name: String(item.ten_nguyen_lieu || "Unknown"),
@@ -271,17 +276,24 @@ export default function StoragePage() {
         }
 
         // Transform data to match our interface
-        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => ({
-          id: String(item.id || ""),
-          name: String(item.ten_nguyen_lieu || "Unknown"),
-          source: String(item.nguon_nhap || "Nguồn chưa rõ"),
-          quantityInStock: Number(item.ton_kho_so_luong || 0),
-          quantityNeeded: Number(item.ton_kho_so_luong || 0),
-          weightInStock: Number(item.ton_kho_khoi_luong || 0),
-          weightNeeded: Number(item.ton_kho_khoi_luong || 0),
-          unit: "kg", // Default unit
-          weightUnit: "kg", // Default weight unit
-        }));
+        const transformedData: Ingredient[] = (data || []).map((item: Record<string, unknown>) => {
+          // Kiểm tra trường nào có dữ liệu thực tế (không NULL và không undefined)
+          const hasQuantityData = item.ton_kho_so_luong !== null && item.ton_kho_so_luong !== undefined;
+          const hasWeightData = item.ton_kho_khoi_luong !== null && item.ton_kho_khoi_luong !== undefined;
+          
+          return {
+            id: String(item.id || ""),
+            name: String(item.ten_nguyen_lieu || "Unknown"),
+            source: String(item.nguon_nhap || "Nguồn chưa rõ"),
+            // Chỉ gán giá trị cho trường có dữ liệu thực tế trong database
+            quantityInStock: hasQuantityData ? Number(item.ton_kho_so_luong) : -1,
+            quantityNeeded: hasQuantityData ? Number(item.ton_kho_so_luong) : -1,
+            weightInStock: hasWeightData ? Number(item.ton_kho_khoi_luong) : -1,
+            weightNeeded: hasWeightData ? Number(item.ton_kho_khoi_luong) : -1,
+            unit: "kg", // Default unit
+            weightUnit: "kg", // Default weight unit
+          };
+        });
 
         setIngredients(transformedData);
       } catch (err) {
@@ -561,10 +573,12 @@ export default function StoragePage() {
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredIngredients.map((ingredient) => {
                   const status = getStockStatus(ingredient);
+                  // Progress bar shows current stock status
+                  // 0 stock = 0%, any stock > 0 = 100%
                   const quantityNeeded = ingredient.quantityNeeded || 1;
                   const weightNeeded = ingredient.weightNeeded || 1;
-                  const quantityRatio = ingredient.quantityInStock / quantityNeeded;
-                  const weightRatio = ingredient.weightInStock / weightNeeded;
+                  const quantityRatio = ingredient.quantityInStock > 0 ? 1 : 0;
+                  const weightRatio = ingredient.weightInStock > 0 ? 1 : 0;
 
                   return (
                     <div
@@ -592,7 +606,7 @@ export default function StoragePage() {
                                     Số lượng
                                   </span>
                                   <span className="text-gray-600 dark:text-gray-400">
-                                    Còn {ingredient.quantityInStock} {ingredient.unit} / Tổng {quantityNeeded} {ingredient.unit}
+                                    Tồn kho: {ingredient.quantityInStock} {ingredient.unit} ({ingredient.quantityInStock > 0 ? '100%' : '0%'})
                                   </span>
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
@@ -620,7 +634,7 @@ export default function StoragePage() {
                                     Khối lượng
                                   </span>
                                   <span className="text-gray-600 dark:text-gray-400">
-                                    Còn {ingredient.weightInStock} {ingredient.weightUnit} / Tổng {weightNeeded} {ingredient.weightUnit}
+                                    Tồn kho: {ingredient.weightInStock} {ingredient.weightUnit} ({ingredient.weightInStock > 0 ? '100%' : '0%'})
                                   </span>
                                 </div>
                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
@@ -967,17 +981,31 @@ export default function StoragePage() {
                       const dataSrc = await resSrc.json().catch(() => ({}));
                       if (!resSrc.ok) throw new Error(dataSrc.error || 'Cập nhật nguồn thất bại');
                     }
-                    const qtyDiff = Math.max(0, editQty) - Math.max(0, Number(manageItem.quantityInStock || 0));
-                    if (qtyDiff !== 0) {
-                      const resQty = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Math.abs(qtyDiff), mode: 'quantity', op: qtyDiff > 0 ? 'increase' : 'decrease' }) });
-                      const dataQty = await resQty.json().catch(() => ({}));
-                      if (!resQty.ok) throw new Error(dataQty.error || 'Cập nhật số lượng thất bại');
+                    // Debug log before update
+                    console.log(`Before update: ${manageItem.name}, qtyStock=${manageItem.quantityInStock}, wgtStock=${manageItem.weightInStock}, editQty=${editQty}, editWgt=${editWgt}`);
+                    console.log(`Modal state: manageItem.quantityInStock=${manageItem.quantityInStock}, editQty=${editQty}`);
+                    
+                    // Only update quantity if it has real data (not -1)
+                    if (manageItem.quantityInStock >= 0) {
+                      const qtyDiff = Math.max(0, editQty) - Math.max(0, Number(manageItem.quantityInStock || 0));
+                      console.log(`Calculated qtyDiff: ${editQty} - ${manageItem.quantityInStock} = ${qtyDiff}`);
+                      if (qtyDiff !== 0) {
+                        console.log(`Updating QUANTITY: ${manageItem.name}, diff=${qtyDiff}, mode=quantity`);
+                        const resQty = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Math.abs(qtyDiff), mode: 'quantity', op: qtyDiff > 0 ? 'increase' : 'decrease' }) });
+                        const dataQty = await resQty.json().catch(() => ({}));
+                        if (!resQty.ok) throw new Error(dataQty.error || 'Cập nhật số lượng thất bại');
+                        console.log(`QUANTITY update completed`);
+                      }
                     }
-                    const wgtDiff = Math.max(0, editWgt) - Math.max(0, Number(manageItem.weightInStock || 0));
-                    if (wgtDiff !== 0) {
-                      const resWgt = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Math.abs(wgtDiff), mode: 'weight', op: wgtDiff > 0 ? 'increase' : 'decrease' }) });
-                      const dataWgt = await resWgt.json().catch(() => ({}));
-                      if (!resWgt.ok) throw new Error(dataWgt.error || 'Cập nhật khối lượng thất bại');
+                    // Only update weight if it has real data (not -1)
+                    if (manageItem.weightInStock >= 0) {
+                      const wgtDiff = Math.max(0, editWgt) - Math.max(0, Number(manageItem.weightInStock || 0));
+                      if (wgtDiff !== 0) {
+                        console.log(`Updating WEIGHT: ${manageItem.name}, diff=${wgtDiff}, mode=weight`);
+                        const resWgt = await fetch(`/api/ingredients/${manageItem.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Math.abs(wgtDiff), mode: 'weight', op: wgtDiff > 0 ? 'increase' : 'decrease' }) });
+                        const dataWgt = await resWgt.json().catch(() => ({}));
+                        if (!resWgt.ok) throw new Error(dataWgt.error || 'Cập nhật khối lượng thất bại');
+                      }
                     }
                     handleAddIngredientSuccess();
                     setManageItem(null);
