@@ -577,7 +577,7 @@ export default function StoragePage() {
                             Nguồn: {ingredient.source || "Nguồn chưa rõ"}
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-4">
                             {(ingredient.quantityInStock > 0 || ingredient.quantityNeeded > 0) && (
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm">
@@ -588,9 +588,9 @@ export default function StoragePage() {
                                     Còn {ingredient.quantityInStock} {ingredient.unit} / Tổng {quantityNeeded} {ingredient.unit}
                                   </span>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 relative">
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
                                   <div
-                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                    className={`h-3 rounded-full transition-all duration-300 ${
                                       ingredient.quantityInStock === 0
                                         ? "bg-transparent"
                                         : getStockStatus(ingredient) === "low"
@@ -602,7 +602,7 @@ export default function StoragePage() {
                                     }}
                                   />
                                   {ingredient.quantityInStock === 0 && (
-                                    <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                                    <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
                                   )}
                                 </div>
                               </div>
@@ -618,9 +618,9 @@ export default function StoragePage() {
                                     Còn {ingredient.weightInStock} {ingredient.weightUnit} / Tổng {weightNeeded} {ingredient.weightUnit}
                                   </span>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 relative">
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
                                   <div
-                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                    className={`h-3 rounded-full transition-all duration-300 ${
                                       ingredient.weightInStock === 0
                                         ? "bg-transparent"
                                         : getStockStatus(ingredient) === "low"
@@ -632,26 +632,8 @@ export default function StoragePage() {
                                     }}
                                   />
                                   {ingredient.weightInStock === 0 && (
-                                    <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                                    <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
                                   )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Show progress bar for completely empty items */}
-                            {(ingredient.quantityInStock === 0 && ingredient.weightInStock === 0 && (ingredient.quantityNeeded > 0 || ingredient.weightNeeded > 0)) && (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                                    Tồn kho
-                                  </span>
-                                  <span className="text-red-600 dark:text-red-400">
-                                    Hết hàng
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 relative">
-                                  <div className="h-2 rounded-full bg-transparent w-full"></div>
-                                  <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></div>
                                 </div>
                               </div>
                             )}
