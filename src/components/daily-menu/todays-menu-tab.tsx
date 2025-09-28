@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
 import { logger } from "@/lib/logger";
+import EditDishModal from "@/components/edit-dish-modal";
 
 interface TodaysMenuTabProps {
   onAddDish?: () => void;
@@ -22,11 +23,12 @@ interface TodaysMenuTabProps {
 
 export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
   const { dishes, loading, error, updateDish, removeDish } = useMenu();
-  const [editingDish, setEditingDish] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{
-    servings?: number;
-    notes?: string;
-  }>({});
+  const [editingDish, setEditingDish] = useState<{
+    id: string;
+    ten_mon_an: string;
+    boi_so: number;
+    ghi_chu?: string;
+  } | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedDishes, setSelectedDishes] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,25 +43,19 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     0,
   ); // Mock calories
 
-  const handleEdit = useCallback((dish: { id: string; boi_so: number; ghi_chu?: string }) => {
-    setEditingDish(dish.id);
-    setEditForm({
-      servings: dish.boi_so,
-      notes: dish.ghi_chu || "",
-    });
+  const handleEdit = useCallback((dish: { id: string; ten_mon_an: string; boi_so: number; ghi_chu?: string }) => {
+    setEditingDish(dish);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    if (editingDish) {
-      try {
-        await updateDish(editingDish, editForm);
-        setEditingDish(null);
-        setEditForm({});
-      } catch (error) {
-        logger.error("Error updating dish:", error);
-      }
+  const handleSaveDish = useCallback(async (dishId: string, data: { servings: number; notes: string }) => {
+    try {
+      await updateDish(dishId, data);
+      setEditingDish(null);
+    } catch (error) {
+      logger.error("Error updating dish:", error);
+      throw error;
     }
-  }, [editingDish, editForm, updateDish]);
+  }, [updateDish]);
 
   const handleDelete = useCallback(
     async (dishId: string) => {
@@ -273,64 +269,9 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                   key={dish.id}
                   className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
-                  {editingDish === dish.id ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Servings
-                          </label>
-                          <input
-                            type="number"
-                            value={editForm.servings || ""}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                servings: parseInt(e.target.value) || 0,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Notes
-                          </label>
-                          <input
-                            type="text"
-                            value={editForm.notes || ""}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                notes: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={handleSave}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingDish(null);
-                            setEditForm({});
-                          }}
-                          className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
                           {/* Checkbox for delete mode */}
                           {deleteMode && (
                             <button
@@ -370,7 +311,6 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                             </div>
                           )}
                         </div>
-                      </div>
 
                       {!deleteMode && (
                         <div className="flex items-center space-x-2">
@@ -389,7 +329,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))
             )}
@@ -397,6 +337,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
           </>
         )}
       </div>
+
+      {/* Edit Dish Modal */}
+      <EditDishModal
+        isOpen={Boolean(editingDish)}
+        onClose={() => setEditingDish(null)}
+        dish={editingDish}
+        onSave={handleSaveDish}
+      />
     </div>
   );
 }

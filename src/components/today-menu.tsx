@@ -181,6 +181,9 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
           return;
         }
 
+        // Simple cache to avoid duplicate API calls for same dish
+        const recipeCache = new Map<string, any[]>();
+
         // Fetch all stock once
         const stockList = await getAllIngredients();
         const stockById = new Map<string, { q: number; w: number; name: string }>();
@@ -195,9 +198,25 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
         // Aggregate needs by ingredient id
         const needMap = new Map<string, { name: string; q: number; w: number }>();
 
-        for (const item of menuItems) {
+        // Fetch all recipes in parallel instead of sequentially
+        const recipePromises = menuItems.map(item => {
+          const dishId = String(item.ma_mon_an);
+          if (recipeCache.has(dishId)) {
+            return Promise.resolve({
+              item,
+              recipe: recipeCache.get(dishId)
+            });
+          }
+          return getRecipeForDish(dishId).then(recipe => {
+            recipeCache.set(dishId, recipe);
+            return { item, recipe };
+          });
+        });
+        
+        const recipeResults = await Promise.all(recipePromises);
+        
+        for (const { item, recipe } of recipeResults) {
           const multiplier = Number(item.boi_so || 1);
-          const recipe = await getRecipeForDish(String(item.ma_mon_an));
           for (const comp of recipe) {
             const id = String(comp.ma_nguyen_lieu || "");
             if (!id) continue;

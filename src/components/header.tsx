@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, Package, ChefHat, Menu, ShoppingCart } from "lucide-react";
+import { Home, Package, ChefHat, Menu, ShoppingCart, X } from "lucide-react";
 
 interface HeaderProps {
   className?: string;
@@ -12,6 +12,7 @@ export default function Header({ className = "" }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<string>("home");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Determine active tab based on current path
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function Header({ className = "" }: HeaderProps) {
 
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
+    setIsSidebarOpen(false); // Close sidebar when navigating
     switch (tab) {
       case "home":
         router.push("/");
@@ -87,21 +89,82 @@ export default function Header({ className = "" }: HeaderProps) {
   ];
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo - Clickable to go home */}
-          <button 
-            onClick={() => router.push("/")}
-            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-          >
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </button>
+    <>
+      {/* Header */}
+      <header className={`fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm ${className}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo - Clickable to go home */}
+            <button 
+              onClick={() => router.push("/")}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white">Menu Manager</span>
+            </button>
 
-          {/* Navigation Tabs */}
-          <nav className="flex space-x-1">
+            {/* Desktop Navigation - Hidden on mobile */}
+            <nav className="hidden md:flex space-x-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab.id)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm"
+                        : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Mobile Hamburger Menu Button - Only visible on mobile */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Sidebar Overlay - Only visible on mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar - Only visible on mobile */}
+      <div className={`md:hidden fixed top-0 right-0 z-50 h-full w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl transform transition-transform duration-300 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}>
+        <div className="flex flex-col h-full">
+          {/* Sidebar Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Menu</h2>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Navigation Items */}
+          <nav className="flex-1 p-4 space-y-2">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -110,27 +173,27 @@ export default function Header({ className = "" }: HeaderProps) {
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left font-medium transition-all duration-200 ${
                     isActive
                       ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm"
                       : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  {/* Mobile: Show label only for active tab, Desktop: Show all labels */}
-                  <span className={`${
-                    isActive 
-                      ? "inline" // Always show label for active tab
-                      : "hidden lg:inline" // Only show label for inactive tabs on large screens
-                  }`}>
-                    {tab.label}
-                  </span>
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm">{tab.label}</span>
                 </button>
               );
             })}
           </nav>
+
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              Menu Management System
+            </div>
+          </div>
         </div>
       </div>
-    </header>
+    </>
   );
 }
