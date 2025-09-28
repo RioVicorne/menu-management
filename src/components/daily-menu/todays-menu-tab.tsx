@@ -43,8 +43,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     0,
   ); // Mock calories
 
-  const handleEdit = useCallback((dish: { id: string; ten_mon_an: string; boi_so: number; ghi_chu?: string }) => {
-    setEditingDish(dish);
+  const handleEdit = useCallback((dish: { id: string; ten_mon_an?: string; boi_so: number; ghi_chu?: string }) => {
+    if (!dish.ten_mon_an) return; // Don't edit if dish name is missing
+    setEditingDish({
+      id: dish.id,
+      ten_mon_an: dish.ten_mon_an,
+      boi_so: dish.boi_so,
+      ghi_chu: dish.ghi_chu
+    });
   }, []);
 
   const handleSaveDish = useCallback(async (dishId: string, data: { servings: number; notes: string }) => {

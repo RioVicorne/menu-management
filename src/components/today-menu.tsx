@@ -216,6 +216,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
         const recipeResults = await Promise.all(recipePromises);
         
         for (const { item, recipe } of recipeResults) {
+          if (!recipe) continue; // Skip if recipe is undefined
           const multiplier = Number(item.boi_so || 1);
           for (const comp of recipe) {
             const id = String(comp.ma_nguyen_lieu || "");
