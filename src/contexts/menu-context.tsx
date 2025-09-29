@@ -17,14 +17,14 @@ interface MenuContextType {
   loading: boolean;
   error: string | null
   // Actions
-  addDish: (dishId: string, servings: number, notes?: string) => Promise<void>;
+  addDish: (dish: string, servings: number, notes?: string) => Promise<void>;
   updateDish: (
-    id: string,
-    updates: { servings?: number; notes?: string },
+    dishId: string,
+    dishUpdates: { servings?: number; notes?: string },
   ) => Promise<void>;
-  removeDish: (id: string) => Promise<void>;
+  removeDish: (dishId: string) => Promise<void>;
   refreshMenu: () => Promise<void>;
-  getCalendarData: (startDate: string, endDate: string) => Promise<Record<string, unknown>[]>;
+  getCalendarData: (start: string, end: string) => Promise<Record<string, unknown>[]>;
 }
 
 const MenuContext = createContext<MenuContextType | null>(null);

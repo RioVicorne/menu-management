@@ -221,7 +221,7 @@ export default function MenuPage() {
     );
     loadRange(start, end);
     loadYearAndTop(currentDate.getFullYear(), start, end);
-  }, [currentDate, loadRange]);
+  }, [currentDate, loadRange, loadYearAndTop]);
 
 
   return (

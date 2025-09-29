@@ -134,12 +134,12 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
       .single();
 
     if (!monAnErr && monAnRow && monAnRow.cong_thuc_nau) {
-      let parsed: any[] = [];
+      let parsed: unknown[] = [];
       try {
         parsed = typeof monAnRow.cong_thuc_nau === "string"
           ? JSON.parse(monAnRow.cong_thuc_nau)
           : monAnRow.cong_thuc_nau;
-      } catch (e) {
+      } catch {
         logger.warn("cong_thuc_nau is not valid JSON; showing empty recipe");
         parsed = [];
       }
@@ -147,7 +147,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
       if (Array.isArray(parsed) && parsed.length > 0) {
         // Collect ingredient ids to resolve names
         const ids = parsed
-          .map((it) => it.ma_nguyen_lieu)
+          .map((it) => (it as any)?.ma_nguyen_lieu)
           .filter((v) => typeof v === "string" && v.length > 0);
 
         const idToName: Record<string, string> = {};
@@ -156,22 +156,25 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
             .from("nguyen_lieu")
             .select("id, ten_nguyen_lieu")
             .in("id", ids);
-          (ingRows || []).forEach((r: any) => {
-            idToName[r.id] = r.ten_nguyen_lieu;
+          (ingRows || []).forEach((r: Record<string, unknown>) => {
+            idToName[String(r.id)] = String(r.ten_nguyen_lieu);
           });
         }
 
-        const items: DishRecipeItem[] = parsed.map((it, idx) => ({
-          id: String(idx + 1),
-          ma_mon_an: dishId,
-          ma_nguyen_lieu: String(it.ma_nguyen_lieu || ""),
-          so_nguoi_an: Number(it.so_nguoi_an || 1),
-          khoi_luong_nguyen_lieu: it.khoi_luong_nguyen_lieu != null ? Number(it.khoi_luong_nguyen_lieu) : undefined,
-          so_luong_nguyen_lieu: it.so_luong_nguyen_lieu != null ? Number(it.so_luong_nguyen_lieu) : undefined,
-          created_at: new Date().toISOString(),
-          luong_calo: 0,
-          ten_nguyen_lieu: idToName[String(it.ma_nguyen_lieu || "")] || undefined,
-        }));
+        const items: DishRecipeItem[] = parsed.map((it, idx) => {
+          const item = it as any;
+          return {
+            id: String(idx + 1),
+            ma_mon_an: dishId,
+            ma_nguyen_lieu: String(item.ma_nguyen_lieu || ""),
+            so_nguoi_an: Number(item.so_nguoi_an || 1),
+            khoi_luong_nguyen_lieu: item.khoi_luong_nguyen_lieu != null ? Number(item.khoi_luong_nguyen_lieu) : undefined,
+            so_luong_nguyen_lieu: item.so_luong_nguyen_lieu != null ? Number(item.so_luong_nguyen_lieu) : undefined,
+            created_at: new Date().toISOString(),
+            luong_calo: 0,
+            ten_nguyen_lieu: idToName[String(item.ma_nguyen_lieu || "")] || undefined,
+          };
+        });
         return items;
       }
     }
@@ -192,7 +195,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
     throw compsErr;
   }
 
-  const ids = (comps || []).map((r: any) => r.ma_nguyen_lieu).filter(Boolean);
+  const ids = (comps || []).map((r: Record<string, unknown>) => r.ma_nguyen_lieu).filter(Boolean);
   const idToName: Record<string, string> = {};
   if (ids.length > 0) {
     const { data: ingRows, error: ingErr } = await supabase
@@ -200,22 +203,22 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
       .select("id, ten_nguyen_lieu")
       .in("id", ids);
     if (!ingErr) {
-      (ingRows || []).forEach((r: any) => {
-        idToName[r.id] = r.ten_nguyen_lieu;
+      (ingRows || []).forEach((r: Record<string, unknown>) => {
+        idToName[String(r.id)] = String(r.ten_nguyen_lieu);
       });
     }
   }
 
-  const items: DishRecipeItem[] = (comps || []).map((row: any) => ({
-    id: row.id,
-    ma_mon_an: row.ma_mon_an,
-    ma_nguyen_lieu: row.ma_nguyen_lieu,
-    so_nguoi_an: row.so_nguoi_an,
-    khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu,
-    so_luong_nguyen_lieu: row.so_luong_nguyen_lieu,
-    created_at: row.created_at,
+  const items: DishRecipeItem[] = (comps || []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    ma_mon_an: String(row.ma_mon_an),
+    ma_nguyen_lieu: String(row.ma_nguyen_lieu),
+    so_nguoi_an: Number(row.so_nguoi_an),
+    khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu != null ? Number(row.khoi_luong_nguyen_lieu) : undefined,
+    so_luong_nguyen_lieu: row.so_luong_nguyen_lieu != null ? Number(row.so_luong_nguyen_lieu) : undefined,
+    created_at: String(row.created_at),
     luong_calo: 0,
-    ten_nguyen_lieu: idToName[row.ma_nguyen_lieu],
+    ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
   }));
 
   return items;
@@ -427,7 +430,7 @@ export async function createDish(ten_mon_an: string, cong_thuc?: Array<Record<st
 
   if (error) {
     logger.error("Error creating dish:", error);
-    const message = (error as any)?.message || (typeof error === 'string' ? error : 'Unknown database error');
+    const message = (error as Error)?.message || (typeof error === 'string' ? error : 'Unknown database error');
     throw new Error(message);
   }
 

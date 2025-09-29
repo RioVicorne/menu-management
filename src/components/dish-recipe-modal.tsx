@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Modal from "./ui/modal";
 import { Loader2 } from "lucide-react";
-import { getRecipeForDish } from "@/lib/api";
+import { getRecipeForDish, type DishRecipeItem } from "@/lib/api";
 
 interface DishRecipeModalProps {
   isOpen: boolean;
@@ -14,13 +14,13 @@ interface DishRecipeModalProps {
 
 export default function DishRecipeModal({ isOpen, dishId, dishName, onClose }: DishRecipeModalProps) {
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<DishRecipeItem[]>([]);
 
   useEffect(() => {
     if (!isOpen || !dishId) return;
     setLoading(true);
     getRecipeForDish(dishId)
-      .then((res) => setItems(res as any))
+      .then((res) => setItems(res))
       .finally(() => setLoading(false));
   }, [isOpen, dishId]);
 

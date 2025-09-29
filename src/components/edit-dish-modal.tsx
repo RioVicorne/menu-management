@@ -14,7 +14,7 @@ interface EditDishModalProps {
     boi_so: number;
     ghi_chu?: string;
   } | null;
-  onSave: (dishId: string, data: { servings: number; notes: string }) => Promise<void>;
+  onSave: (dish: string, data: { servings: number; notes: string }) => Promise<void>;
 }
 
 export default function EditDishModal({ isOpen, onClose, dish, onSave }: EditDishModalProps) {

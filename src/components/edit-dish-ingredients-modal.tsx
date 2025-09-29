@@ -32,7 +32,7 @@ export default function EditDishIngredientsModal({ isOpen, dishId, dishName, onC
       .then(([ings, recipe]) => {
         setAllIngredients(ings.map(i => ({ id: i.id, ten_nguyen_lieu: i.ten_nguyen_lieu })));
         const init: Record<string, true> = {};
-        (recipe as any[]).forEach((r) => { if (r.ma_nguyen_lieu) init[String(r.ma_nguyen_lieu)] = true; });
+        recipe.forEach((r) => { if (r.ma_nguyen_lieu) init[String(r.ma_nguyen_lieu)] = true; });
         setSelected(init);
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Không tải được dữ liệu"))
@@ -92,7 +92,7 @@ export default function EditDishIngredientsModal({ isOpen, dishId, dishName, onC
                     className={`h-7 w-7 rounded-full border flex items-center justify-center ${isSelected ? "border-emerald-500" : "border-gray-300 hover:bg-gray-50"}`}
                     onClick={() => {
                       if (isSelected) {
-                        const { [ing.id]: _, ...rest } = selected; // eslint-disable-line @typescript-eslint/no-unused-vars
+                        const { [ing.id]: _, ...rest } = selected;
                         setSelected(rest);
                       } else {
                         setSelected(prev => ({ ...prev, [ing.id]: true }));

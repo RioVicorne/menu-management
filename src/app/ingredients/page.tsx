@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ChefHat, Plus, Search, Trash2, Loader2, Eye, Pencil } from "lucide-react";
-import { getDishes, type Dish, getRecipeForDish, deleteDish, createDish } from "@/lib/api";
+import { getDishes, type Dish, deleteDish } from "@/lib/api";
 import AddDishModal from "@/components/add-dish-modal";
 import DishRecipeModal from "@/components/dish-recipe-modal";
 import Modal from "@/components/ui/modal";

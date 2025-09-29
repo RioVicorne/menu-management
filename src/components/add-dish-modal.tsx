@@ -8,7 +8,7 @@ import { createDish, getAllIngredients } from "@/lib/api";
 interface AddDishModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (dishName: string) => void;
+  onCreated: (dish: string) => void;
 }
 
 export default function AddDishModal({ isOpen, onClose, onCreated }: AddDishModalProps) {
@@ -124,7 +124,7 @@ export default function AddDishModal({ isOpen, onClose, onCreated }: AddDishModa
                       onClick={() => {
                         if (outOfStock) return;
                         if (isSelected) {
-                          const { [ing.id]: _, ...rest } = selected; // eslint-disable-line @typescript-eslint/no-unused-vars
+                          const { [ing.id]: _, ...rest } = selected;
                           setSelected(rest);
                         } else {
                           setSelected(prev => ({ ...prev, [ing.id]: true }));
