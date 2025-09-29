@@ -80,8 +80,8 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     [removeDish],
   );
 
-  const handleDeleteClick = useCallback((dish: { id: string; ten_mon_an: string }) => {
-    setDishToDelete({ id: dish.id, name: dish.ten_mon_an });
+  const handleDeleteClick = useCallback((dish: { id: string; ten_mon_an?: string }) => {
+    setDishToDelete({ id: dish.id, name: dish.ten_mon_an || 'Unknown' });
     setShowDeleteConfirm(true);
   }, []);
 
@@ -384,7 +384,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
       >
         <div className="space-y-4">
           <p className="text-gray-600 dark:text-gray-400">
-            Bạn có chắc chắn muốn xóa món <strong>"{dishToDelete?.name}"</strong> khỏi thực đơn không?
+            Bạn có chắc chắn muốn xóa món <strong>&quot;{dishToDelete?.name}&quot;</strong> khỏi thực đơn không?
           </p>
           <p className="text-sm text-red-600 dark:text-red-400">
             Hành động này không thể hoàn tác.

@@ -36,13 +36,6 @@ export default function ShoppingPage() {
       .trim()
       .replace(/[\u0300-\u036f]/g, "");
 
-  // Optional aliases to collapse common variants to a preferred display label
-  const SOURCE_ALIASES: Record<string, string> = {
-    // keys must be normalized by normalizeSourceKey
-    [normalizeSourceKey("Co.opmart")]: "Co.opmart",
-    [normalizeSourceKey("Coopmart")]: "Co.opmart",
-    [normalizeSourceKey("Co.op mart")]: "Co.opmart",
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,6 +71,14 @@ export default function ShoppingPage() {
   }, [ingredients]);
 
   const groupedBySource: Grouped = useMemo(() => {
+    // Optional aliases to collapse common variants to a preferred display label
+    const SOURCE_ALIASES: Record<string, string> = {
+      // keys must be normalized by normalizeSourceKey
+      [normalizeSourceKey("Co.opmart")]: "Co.opmart",
+      [normalizeSourceKey("Coopmart")]: "Co.opmart",
+      [normalizeSourceKey("Co.op mart")]: "Co.opmart",
+    };
+    
     // Group by normalized key, but keep a nice display label for UI
     const byKey: Record<string, { label: string; items: Ingredient[] }> = {};
     for (const ing of needBuy) {
@@ -153,7 +154,7 @@ export default function ShoppingPage() {
       setCopiedModal(true);
       setCopyZooming(true);
       window.setTimeout(() => setCopyZooming(false), 800);
-    } catch (_) {
+    } catch {
       alert("Sao chép thất bại");
     }
   };

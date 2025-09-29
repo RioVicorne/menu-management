@@ -57,7 +57,6 @@ export default function AddIngredientModal({ isOpen, onClose, onSuccess }: AddIn
 
   // Unit classification helpers
   const countableUnits = ["cái", "gói", "chai", "lon", "hộp", "túi"];
-  const weightOrVolumeUnits = ["kg", "g", "l", "ml"]; // stored in ton_kho_khoi_luong
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

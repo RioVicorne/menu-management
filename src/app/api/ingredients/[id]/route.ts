@@ -56,12 +56,12 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const currentWgt = Number(data?.ton_kho_khoi_luong || 0);
 
     // Debug log
-    console.log(`API PATCH: id=${id}, mode=${mode}, op=${op}, amount=${amount}, currentQty=${currentQty}, currentWgt=${currentWgt}`);
-    console.log(`Request body:`, JSON.stringify(body));
+    logger.debug(`API PATCH: id=${id}, mode=${mode}, op=${op}, amount=${amount}, currentQty=${currentQty}, currentWgt=${currentWgt}`);
+    logger.debug(`Request body:`, JSON.stringify(body));
 
     if (mode === 'quantity') {
       const newQty = op === 'increase' ? currentQty + amount : Math.max(0, currentQty - amount);
-      console.log(`Updating quantity: ${currentQty} -> ${newQty}`);
+      logger.debug(`Updating quantity: ${currentQty} -> ${newQty}`);
       const { error } = await supabaseAdmin
         .from('nguyen_lieu')
         .update({ ton_kho_so_luong: newQty })
@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     } else {
       const newWgt = op === 'increase' ? currentWgt + amount : Math.max(0, currentWgt - amount);
-      console.log(`Updating weight: ${currentWgt} -> ${newWgt}`);
+      logger.debug(`Updating weight: ${currentWgt} -> ${newWgt}`);
       const { error } = await supabaseAdmin
         .from('nguyen_lieu')
         .update({ ton_kho_khoi_luong: newWgt })

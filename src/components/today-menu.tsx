@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, ChefHat, Users, Zap, Plus } from "lucide-react";
+import { Calendar, ChefHat, Users, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
-import { getCalendarData, getMenuItems, getAllIngredients, getRecipeForDish } from "@/lib/api";
+import { getCalendarData, getMenuItems, getAllIngredients, getRecipeForDish, type DishRecipeItem } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 interface TodayMenuDish {
@@ -182,7 +182,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
         }
 
         // Simple cache to avoid duplicate API calls for same dish
-        const recipeCache = new Map<string, any[]>();
+        const recipeCache = new Map<string, DishRecipeItem[]>();
 
         // Fetch all stock once
         const stockList = await getAllIngredients();
