@@ -16,6 +16,7 @@ import {
 import { useMenu } from "@/contexts/menu-context";
 import { logger } from "@/lib/logger";
 import EditDishModal from "@/components/edit-dish-modal";
+import Modal from "@/components/ui/modal";
 
 interface TodaysMenuTabProps {
   onAddDish?: () => void;
@@ -32,6 +33,11 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedDishes, setSelectedDishes] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dishToDelete, setDishToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const totalDishes = dishes.length;
   const totalServings = dishes.reduce(
@@ -73,6 +79,28 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     },
     [removeDish],
   );
+
+  const handleDeleteClick = useCallback((dish: { id: string; ten_mon_an: string }) => {
+    setDishToDelete({ id: dish.id, name: dish.ten_mon_an });
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!dishToDelete) return;
+    
+    try {
+      await handleDelete(dishToDelete.id);
+      setShowDeleteConfirm(false);
+      setDishToDelete(null);
+    } catch (error) {
+      logger.error("Error confirming delete:", error);
+    }
+  }, [dishToDelete, handleDelete]);
+
+  const cancelDelete = useCallback(() => {
+    setShowDeleteConfirm(false);
+    setDishToDelete(null);
+  }, []);
 
   // Delete mode functions
   const toggleDeleteMode = useCallback(() => {
@@ -305,18 +333,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                           </span>
                         </div>
 
-                        <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center space-x-1">
-                            <Zap className="h-4 w-4" />
-                            <span>{(dish.boi_so || 0) * 300} cal total</span>
-                          </div>
-                          {dish.ghi_chu && (
-                            <div className="flex items-center space-x-1">
-                              <StickyNote className="h-4 w-4" />
-                              <span>{dish.ghi_chu}</span>
+                        {dish.ghi_chu && (
+                          <div className="mt-2">
+                            <div className="flex items-center space-x-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md text-sm">
+                              <StickyNote className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                              <span className="font-medium text-blue-800 dark:text-blue-200 break-words">{dish.ghi_chu}</span>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
 
                       {!deleteMode && (
                         <div className="flex items-center space-x-2">
@@ -327,7 +351,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(dish.id)}
+                            onClick={() => handleDeleteClick(dish)}
                             className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -351,6 +375,36 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         dish={editingDish}
         onSave={handleSaveDish}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={cancelDelete}
+        title="Xác nhận xóa món ăn"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 dark:text-gray-400">
+            Bạn có chắc chắn muốn xóa món <strong>"{dishToDelete?.name}"</strong> khỏi thực đơn không?
+          </p>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Hành động này không thể hoàn tác.
+          </p>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              onClick={cancelDelete}
+              className="px-4 py-2 text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Xóa
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

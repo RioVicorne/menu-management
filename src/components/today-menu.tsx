@@ -366,21 +366,6 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             </div>
           </div>
 
-          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                  Tổng calo
-                </p>
-                <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                  {menuData.totalCalories}
-                </p>
-              </div>
-            </div>
-          </div>
 
           <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
             <div className="flex items-center space-x-3">
@@ -470,9 +455,11 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
                     </span>
                   </div>
                   {dish.description && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-words">
-                      {dish.description}
-                    </p>
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md whitespace-pre-wrap break-words">
+                        {dish.description}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
