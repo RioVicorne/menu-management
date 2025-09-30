@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Plus, ChefHat } from "lucide-react";
 import Link from "next/link";
 
@@ -14,16 +14,33 @@ interface MenuData {
 interface MonthlyCalendarProps {
   menuData?: MenuData[];
   onDateClick?: (date: string) => void;
+  onMonthChange?: (year: number, month: number) => void;
 }
 
 export function MonthlyCalendar({
   menuData = [],
+  onDateClick,
+  onMonthChange,
 }: MonthlyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const isInitialMount = useRef(true);
 
   const today = new Date();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  // Notify parent component when month changes (using useEffect to avoid setState during render)
+  useEffect(() => {
+    // Skip the initial mount to avoid unnecessary callback
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    if (onMonthChange) {
+      onMonthChange(year, month);
+    }
+  }, [year, month, onMonthChange]);
 
   // Get first day of month and number of days
   const firstDay = new Date(year, month, 1);
@@ -65,6 +82,7 @@ export function MonthlyCalendar({
       } else {
         newDate.setMonth(prev.getMonth() + 1);
       }
+      
       return newDate;
     });
   };

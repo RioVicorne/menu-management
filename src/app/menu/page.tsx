@@ -33,7 +33,7 @@ export default function MenuPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [yearEvents, setYearEvents] = useState<Event[]>([]);
-  const [currentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [totalDishes, setTotalDishes] = useState(0);
   const [activeTab, setActiveTab] = useState<'calendar' | 'stats'>('calendar');
   const [topDishes, setTopDishes] = useState<{ name: string; count: number }[]>([]);
@@ -220,6 +220,12 @@ export default function MenuPage() {
     [],
   );
 
+  // Handle month change from calendar navigation
+  const handleMonthChange = useCallback((year: number, month: number) => {
+    const newDate = new Date(year, month, 1);
+    setCurrentDate(newDate);
+  }, []);
+
 
 
 
@@ -368,6 +374,7 @@ export default function MenuPage() {
                 const day = String(d.getDate()).padStart(2, "0");
                 router.push(`/menu/${y}-${m}-${day}`);
               }}
+              onMonthChange={handleMonthChange}
             />
           </HydrationBoundary>
         ) : (
