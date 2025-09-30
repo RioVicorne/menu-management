@@ -186,7 +186,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
   const { data: comps, error: compsErr } = await supabase
     .from("thanh_phan")
     .select(
-      "id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, created_at"
+      "id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, luong_calo, created_at"
     )
     .eq("ma_mon_an", dishId);
 
@@ -217,7 +217,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
     khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu != null ? Number(row.khoi_luong_nguyen_lieu) : undefined,
     so_luong_nguyen_lieu: row.so_luong_nguyen_lieu != null ? Number(row.so_luong_nguyen_lieu) : undefined,
     created_at: String(row.created_at),
-    luong_calo: 0,
+    luong_calo: row.luong_calo != null ? Number(row.luong_calo) : 0,
     ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
   }));
 
@@ -338,6 +338,49 @@ export async function addDishToMenu(
   }
 
   return data;
+}
+
+// Add multiple dishes to menu for a specific date in one request
+export async function addMenuItemsBatch(
+  date: string,
+  items: Array<{ dishId: string; servings: number; notes?: string }>,
+): Promise<MenuItem[]> {
+  if (!supabase) {
+    const dishes = await getDishes();
+    return items.map((it, idx) => {
+      const selectedDish = dishes.find((d) => d.id === it.dishId);
+      return {
+        id: (Date.now() + idx).toString(),
+        ma_mon_an: it.dishId,
+        ngay: date,
+        boi_so: it.servings,
+        ghi_chu: it.notes,
+        created_at: new Date().toISOString(),
+        ten_mon_an: selectedDish?.ten_mon_an || "Unknown dish",
+      } as MenuItem;
+    });
+  }
+
+  if (!items || items.length === 0) return [];
+
+  const payload = items.map((it) => ({
+    ma_mon_an: it.dishId,
+    ngay: date,
+    boi_so: it.servings,
+    ghi_chu: it.notes,
+  }));
+
+  const { data, error } = await supabase
+    .from("thuc_don")
+    .insert(payload)
+    .select("*");
+
+  if (error) {
+    logger.error("Error adding dishes batch to menu:", error);
+    throw error;
+  }
+
+  return (data || []) as MenuItem[];
 }
 
 // Update a menu item

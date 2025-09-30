@@ -7,6 +7,7 @@ import {
   updateMenuItem,
   deleteMenuItem,
   getCalendarData,
+  addMenuItemsBatch,
   MenuItem,
 } from "@/lib/api";
 import { logger } from "@/lib/logger";
@@ -18,12 +19,14 @@ interface MenuContextType {
   error: string | null
   // Actions
   addDish: (dish: string, servings: number, notes?: string) => Promise<void>;
+  addDishesBatch: (items: Array<{ dishId: string; servings: number; notes?: string }>) => Promise<void>;
   updateDish: (
     dishId: string,
     dishUpdates: { servings?: number; notes?: string },
   ) => Promise<void>;
   removeDish: (dishId: string) => Promise<void>;
   refreshMenu: () => Promise<void>;
+  applyChangesWithSingleRefresh: (fn: () => Promise<void>) => Promise<void>;
   getCalendarData: (start: string, end: string) => Promise<Record<string, unknown>[]>;
 }
 
@@ -95,6 +98,17 @@ export function MenuProvider({
     }
   };
 
+  // Add many dishes in one DB call (uses current selectedDate)
+  const addDishesBatch = async (items: Array<{ dishId: string; servings: number; notes?: string }>) => {
+    try {
+      await addMenuItemsBatch(selectedDate, items);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to add dishes";
+      setError(errorMessage);
+      logger.error("Error adding dishes batch:", errorMessage);
+    }
+  };
+
   // Remove a dish
   const removeDish = async (id: string) => {
     try {
@@ -112,6 +126,15 @@ export function MenuProvider({
   // Refresh menu items
   const refreshMenu = async () => {
     await loadMenuItems();
+  };
+
+  // Helper to run multiple ops then refresh once
+  const applyChangesWithSingleRefresh = async (fn: () => Promise<void>) => {
+    try {
+      await fn();
+    } finally {
+      await refreshMenu();
+    }
   };
 
   // Get calendar data
@@ -141,9 +164,11 @@ export function MenuProvider({
     loading,
     error,
     addDish,
+    addDishesBatch,
     updateDish,
     removeDish,
     refreshMenu,
+    applyChangesWithSingleRefresh,
     getCalendarData: getCalendarDataForRange,
   };
 
