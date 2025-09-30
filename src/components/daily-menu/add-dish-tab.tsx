@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
-import { getDishes, Dish, consumeIngredientsForDish } from "@/lib/api";
+import { getDishes, Dish, consumeIngredientsForDish, addMenuItemsBatch, getRecipeForDish } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 interface SelectedDishItem {
@@ -24,7 +24,7 @@ interface AddDishTabProps {
 }
 
 export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
-  const { addDish, dishes: currentMenuDishes, updateDish } = useMenu();
+  const { addDish, addDishesBatch, dishes: currentMenuDishes, updateDish, applyChangesWithSingleRefresh } = useMenu();
   const [availableDishes, setAvailableDishes] = useState<Dish[]>([]);
   const [selectedDishes, setSelectedDishes] = useState<SelectedDishItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
@@ -33,6 +33,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   const [successMessage, setSuccessMessage] = useState("");
   const [showAllDishes, setShowAllDishes] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dishCalories, setDishCalories] = useState<Record<string, number>>({});
 
   // Load available dishes from database
   useEffect(() => {
@@ -102,28 +103,45 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
     setIsAdding(true);
 
     try {
-      // Process all selected dishes
-      const results = [];
-      const addedDishes = [];
-      const updatedDishes = [];
-      
-      for (const item of selectedDishes) {
-        const result = await addOrUpdateDishInMenu(item.dish.id, item.servings, item.notes);
-        results.push({ dish: item.dish, result });
-        
-        if (result.action === 'added') {
-          addedDishes.push(item.dish.ten_mon_an);
-        } else {
-          updatedDishes.push({
-            name: item.dish.ten_mon_an,
-            newServings: result.servings,
-            addedServings: item.servings
-          });
+      // Process all selected dishes with a single refresh at the end
+      const results: Array<{ dish: Dish; result: { action: 'added' | 'updated'; servings: number; originalServings?: number } }> = [];
+      const addedDishes: string[] = [];
+      const updatedDishes: Array<{ name: string; newServings: number; addedServings: number }> = [];
+
+      await applyChangesWithSingleRefresh(async () => {
+        // First handle updates for dishes already in menu to avoid insert conflicts
+        const toInsert: Array<{ dishId: string; servings: number; notes?: string }> = [];
+
+        for (const item of selectedDishes) {
+          const existingMenuItem = currentMenuDishes.find(m => m.ma_mon_an === item.dish.id);
+          if (existingMenuItem) {
+            const newServings = existingMenuItem.boi_so + item.servings;
+            const newNotes = existingMenuItem.ghi_chu 
+              ? `${existingMenuItem.ghi_chu}; ${item.notes}`.replace(/^; /, '').replace(/; $/, '')
+              : item.notes;
+            await updateDish(existingMenuItem.id, { servings: newServings, notes: newNotes });
+            results.push({ dish: item.dish, result: { action: 'updated', servings: newServings, originalServings: existingMenuItem.boi_so } });
+            updatedDishes.push({ name: item.dish.ten_mon_an, newServings, addedServings: item.servings });
+          } else {
+            toInsert.push({ dishId: item.dish.id, servings: item.servings, notes: item.notes });
+          }
         }
-      }
-      // After successfully adding/updating in menu, deduct inventory accordingly
-      // Only deduct for the servings just added
-      await Promise.all(selectedDishes.map(it => consumeIngredientsForDish(it.dish.id, it.servings)));
+
+        if (toInsert.length > 0) {
+          // Use context's selectedDate-aware batch add to avoid wrong date
+          await addDishesBatch(toInsert);
+          for (const item of selectedDishes) {
+            const exists = currentMenuDishes.find(m => m.ma_mon_an === item.dish.id);
+            if (!exists) {
+              results.push({ dish: item.dish, result: { action: 'added', servings: item.servings } });
+              addedDishes.push(item.dish.ten_mon_an);
+            }
+          }
+        }
+
+        // Deduct inventory for all just-added servings
+        await Promise.all(selectedDishes.map(it => consumeIngredientsForDish(it.dish.id, it.servings)));
+      });
 
       
       // Create success message
@@ -159,8 +177,33 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
 
   const totalCalories = selectedDishes.reduce((total, item) => {
-    return total + ((item.dish.calories || 0) * item.servings);
+    const perDishCals = dishCalories[item.dish.id] != null ? dishCalories[item.dish.id] : 0;
+    return total + perDishCals * item.servings;
   }, 0);
+  const hasAnyCalories = selectedDishes.some(item => dishCalories[item.dish.id] && dishCalories[item.dish.id] > 0);
+
+  // When selection changes, fetch recipe calories for new dishes and cache
+  useEffect(() => {
+    const fetchMissingCalories = async () => {
+      const missing = selectedDishes
+        .map(it => it.dish.id)
+        .filter(id => dishCalories[id] == null);
+      if (missing.length === 0) return;
+
+      const entries: Array<[string, number]> = [];
+      await Promise.all(missing.map(async (dishId) => {
+        try {
+          const recipe = await getRecipeForDish(dishId);
+          const sum = recipe.reduce((acc, r) => acc + (Number(r.luong_calo) || 0), 0);
+          entries.push([dishId, sum]);
+        } catch {
+          entries.push([dishId, 0]);
+        }
+      }));
+      setDishCalories(prev => ({ ...prev, ...Object.fromEntries(entries) }));
+    };
+    fetchMissingCalories();
+  }, [selectedDishes, dishCalories]);
 
   // Filter dishes based on search query
   const filteredDishes = availableDishes.filter(dish =>
@@ -225,9 +268,13 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Tổng calories
                     </span>
-                    <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                      {totalCalories.toLocaleString()}
-                    </span>
+                    {hasAnyCalories ? (
+                      <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                        {totalCalories.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-500 dark:text-gray-400">—</span>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
