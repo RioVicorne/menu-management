@@ -18,7 +18,7 @@ export default function AppSectionLayout({
     <html lang="vi">
       <body className="min-h-dvh bg-white text-gray-900 antialiased">
         <div className="min-h-dvh bg-white text-gray-900">
-          <Header />
+          <Header/>
           <main className="flex-1 pt-16">{children}</main>
         </div>
       </body>
