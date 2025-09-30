@@ -332,7 +332,6 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                             {dish.boi_so || 0} Khẩu phần
                           </span>
                         </div>
-
                         {dish.ghi_chu && (
                           <div className="mt-2">
                             <div className="flex items-center space-x-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md text-sm">
@@ -341,24 +340,26 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                             </div>
                           </div>
                         )}
-
-                      {!deleteMode && (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleEdit(dish)}
-                            className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(dish)}
-                            className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
                     </div>
+
+                    {!deleteMode && (
+                      <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
+                        <button
+                          onClick={() => handleEdit(dish)}
+                          className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          title="Sửa món"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(dish)}
+                          className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          title="Xóa món"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
