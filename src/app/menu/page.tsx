@@ -25,6 +25,8 @@ interface Event {
   end: Date;
   allDay: boolean;
   count?: number;
+  // Keep the original ISO date string to avoid timezone-related off-by-one issues
+  dateIso?: string;
 }
 
 export default function MenuPage() {
@@ -40,8 +42,14 @@ export default function MenuPage() {
   const loadRange = useCallback(
     async (start: Date, end: Date) => {
       try {
-        const from = start.toISOString().slice(0, 10);
-        const to = end.toISOString().slice(0, 10);
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        const from = formatLocal(start);
+        const to = formatLocal(end);
 
         if (!supabase) {
           // Use API function when Supabase is not available
@@ -53,6 +61,7 @@ export default function MenuPage() {
               title: `${Number(item.dishCount || 0)} dishes`,
               count: Number(item.dishCount || 0),
               allDay: true,
+              dateIso: String(item.date || ""),
             })),
           );
           return;
@@ -75,6 +84,7 @@ export default function MenuPage() {
               title: `${Number(item.dishCount || 0)} dishes`,
               count: Number(item.dishCount || 0),
               allDay: true,
+              dateIso: String(item.date || ""),
             })),
           );
           return;
@@ -96,6 +106,7 @@ export default function MenuPage() {
             end: d,
             allDay: true,
             count,
+            dateIso: iso,
           };
         });
         setEvents(evs);
@@ -142,8 +153,14 @@ export default function MenuPage() {
         setYearEvents(yEvents);
 
         // Top dishes in current month
-        const mFrom = monthStart.toISOString().slice(0, 10);
-        const mTo = monthEnd.toISOString().slice(0, 10);
+        const formatLocal = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        const mFrom = formatLocal(monthStart);
+        const mTo = formatLocal(monthEnd);
         const { data: monthRows, error: monthErr } = await supabase
           .from("thuc_don")
           .select("ma_mon_an")
@@ -338,7 +355,8 @@ export default function MenuPage() {
           >
             <MonthlyCalendar
               menuData={events.map((event) => ({
-                date: event.start.toISOString().split("T")[0],
+                // Prefer the original ISO date string to avoid timezone drift
+                date: (event.dateIso || event.start.toISOString()).split("T")[0],
                 dishCount: event.count || 0,
                 totalCalories: (event.count || 0) * 300, // Mock calories
                 totalServings: (event.count || 0) * 2, // Mock servings
