@@ -386,35 +386,7 @@ export default function MenuPage() {
             topIngredients={topIngredients}
           />
         )}
-
-        {/* Legend - only show on calendar tab */}
-        {activeTab === 'calendar' && events.length > 0 && (
-          <div className="mt-6 bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Chú thích
-            </h3>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  1-2 món
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-amber-500 rounded"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  3-4 món
-                </span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-green-500 rounded"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  5+ món
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+      
       </div>
     </div>
   );
