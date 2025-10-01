@@ -29,12 +29,10 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("vi-VN", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const tabs = [
@@ -64,7 +62,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
 
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h1 className="text-xl font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg">
                     {formatDate(selectedDate)}
                   </h1>
                 </div>

@@ -334,8 +334,8 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Thực đơn hôm nay
               </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                {format(today, "EEEE, dd MMMM yyyy", { locale: vi })}
+              <p className="text-lg font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg inline-block">
+                {format(today, "dd/MM/yyyy")}
               </p>
             </div>
           </div>
