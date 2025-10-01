@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Package,
   AlertTriangle,
@@ -48,6 +48,15 @@ export default function StoragePage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
   const [showAllSources, setShowAllSources] = useState(false);
+
+  // Helpers to avoid duplicate sources due to casing/spacing differences
+  const collapseSpaces = (value: string) =>
+    String(value || "")
+      .normalize("NFC")
+      .replace(/\s+/g, " ")
+      .trim();
+  const normalizeSourceName = (value: string) =>
+    collapseSpaces(value).toLocaleLowerCase("vi");
 
   // Fetch ingredients from Supabase
   useEffect(() => {
@@ -151,20 +160,32 @@ export default function StoragePage() {
     });
   };
 
-  // Group ingredients by source for restocking
-  const getRestockBySource = () => {
-    const restockIngredients = getIngredientsNeedingRestock();
-    const groupedBySource: { [key: string]: Ingredient[] } = {};
-    
-    restockIngredients.forEach(ingredient => {
-      const source = ingredient.source || 'Nguồn chưa rõ';
-      if (!groupedBySource[source]) {
-        groupedBySource[source] = [];
-      }
-      groupedBySource[source].push(ingredient);
+  // Group all ingredients by a normalized source key
+  const groupedSources = useMemo(() => {
+    const map = new Map<string, { display: string; items: Ingredient[] }>();
+    ingredients.forEach((ing) => {
+      const key = normalizeSourceName(ing.source);
+      const display = collapseSpaces(ing.source) || "Nguồn chưa rõ";
+      const entry = map.get(key) || { display, items: [] };
+      entry.items.push(ing);
+      map.set(key, entry);
     });
-    
-    return groupedBySource;
+    return map;
+  }, [ingredients]);
+
+  // Group ingredients needing restock by normalized source key
+  const getRestockBySource = () => {
+    const result: { [display: string]: Ingredient[] } = {};
+    groupedSources.forEach(({ display, items }) => {
+      const restock = items.filter((i) => {
+        const status = getStockStatus(i);
+        return status === 'out-of-stock' || status === 'low';
+      });
+      if (restock.length > 0) {
+        result[display] = restock;
+      }
+    });
+    return result;
   };
 
   // Get month name in Vietnamese
@@ -274,11 +295,13 @@ export default function StoragePage() {
     return status === "low" || status === "out-of-stock";
   }).length;
 
-  const sourceCounts = ingredients.reduce((acc, ing) => {
-    const key = ing.source || 'Không rõ nguồn';
-    acc[key] = (acc[key] || 0) + 1;
-    return acc as Record<string, number>;
-  }, {} as Record<string, number>);
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    groupedSources.forEach(({ display, items }) => {
+      counts[display] = items.length;
+    });
+    return counts;
+  }, [groupedSources]);
 
   // Show loading state
   if (loading) {
@@ -791,7 +814,7 @@ export default function StoragePage() {
                         {Object.entries(sourceCounts)
                           .slice(0, showAllSources ? undefined : 5)
                           .map(([src, count]) => {
-                            const sourceIngredients = ingredients.filter(i => i.source === src);
+                            const sourceIngredients = ingredients.filter(i => normalizeSourceName(i.source) === normalizeSourceName(src));
                             const restockCount = sourceIngredients.filter(i => {
                               const status = getStockStatus(i);
                               return status === 'out-of-stock' || status === 'low';

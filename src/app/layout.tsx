@@ -1,5 +1,6 @@
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "./globals.css";
+import { Inter } from "next/font/google";
 
 import { Header } from "@/components";
 import type { Metadata } from "next";
@@ -9,13 +10,15 @@ export const metadata: Metadata = {
   description: "Ứng dụng quản lý thực đơn hàng ngày",
 };
 
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+
 export default function AppSectionLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi">
+    <html lang="vi" className={`${inter.variable}`}>
       <body className="min-h-dvh bg-white text-gray-900 antialiased">
         <div className="min-h-dvh bg-white text-gray-900">
           <Header/>
