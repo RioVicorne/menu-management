@@ -179,12 +179,8 @@ export default function ShoppingPage() {
   // removed print feature per request
 
   const getDefaultSuggestion = (ing: Ingredient) => {
-    const qty = Number(ing.ton_kho_so_luong || 0);
-    const wgt = Number(ing.ton_kho_khoi_luong || 0);
-    const value = Math.max(qty, wgt);
-    // Fixed target for suggestion to keep storage page simple
-    const targetLevel = 3;
-    return value === 0 ? 1 : Math.max(1, targetLevel - value);
+    // Always return 1 as requested
+    return 1;
   };
 
   const getMode = (ing: Ingredient): "quantity" | "weight" => {
