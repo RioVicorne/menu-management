@@ -211,6 +211,7 @@ export default function ShoppingPage() {
           return { ...i, ton_kho_khoi_luong: cur + amount } as Ingredient;
         }
       }));
+      // Remove from selected but keep in purchased for visual feedback
       setSelectedIds(prev => { const n = new Set(prev); n.delete(ing.id); return n; });
       setPurchasedIds(prev => new Set(prev).add(ing.id));
     } catch (e) {
@@ -343,37 +344,32 @@ export default function ShoppingPage() {
                           </label>
                           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                             <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Tồn: {value}</span>
-                            <div className="inline-flex items-center border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
-                              <button
-                                type="button"
-                                className="px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
-                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? getDefaultSuggestion(ing))) - 1) }))}
-                                aria-label="Giảm"
-                              >
-                                −
-                              </button>
-                              <span className="w-10 text-center text-sm text-gray-900 dark:text-white">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
                                 {qtyById[ing.id] ?? getDefaultSuggestion(ing)}
-                              </span>
-                              <button
-                                type="button"
-                                className="px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 select-none text-gray-700 dark:text-gray-200"
-                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, Number((prev[ing.id] ?? getDefaultSuggestion(ing))) + 1) }))}
-                                aria-label="Tăng"
-                              >
-                                +
-                              </button>
+                              </div>
+                              <input
+                                type="range"
+                                min="1"
+                                max="25"
+                                value={qtyById[ing.id] ?? getDefaultSuggestion(ing)}
+                                onChange={(e) => setQtyById((prev) => ({ ...prev, [ing.id]: Number(e.target.value) }))}
+                                className="w-28 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                                style={{
+                                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((qtyById[ing.id] ?? getDefaultSuggestion(ing)) - 1) * 4.17}%, #e5e7eb ${((qtyById[ing.id] ?? getDefaultSuggestion(ing)) - 1) * 4.17}%, #e5e7eb 100%)`
+                                }}
+                              />
                             </div>
                             <button
                               className={`px-2.5 py-1.5 sm:px-3 text-sm rounded-lg text-white hover:opacity-90 disabled:opacity-50 ${
                                 purchasingIds.has(ing.id) 
                                   ? 'bg-gray-500' 
                                   : purchasedIds.has(ing.id) 
-                                    ? 'bg-green-600 hover:bg-green-700' 
+                                    ? 'bg-green-600' 
                                     : 'bg-red-600 hover:bg-red-700'
                               }`}
                               onClick={() => purchaseOne(ing)}
-                              disabled={purchasingIds.has(ing.id)}
+                              disabled={purchasingIds.has(ing.id) || purchasedIds.has(ing.id)}
                             >
                               {purchasingIds.has(ing.id) ? 'Đang cập nhật...' : purchasedIds.has(ing.id) ? 'Đã mua' : 'Mua'}
                             </button>
@@ -421,6 +417,38 @@ export default function ShoppingPage() {
           </div>
         </div>
       )}
+      
+      {/* Custom slider styles */}
+      <style jsx>{`
+        .slider::-webkit-slider-thumb {
+          appearance: none;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .slider::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #3b82f6;
+          cursor: pointer;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .slider:focus {
+          outline: none;
+        }
+        
+        .slider:focus::-webkit-slider-thumb {
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+      `}</style>
     </div>
   );
 }
