@@ -165,7 +165,7 @@ export default function StatsTab({ monthEvents, yearEvents, currentDate, topDish
                   <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300 text-gray-800' : i === 2 ? 'bg-amber-600 text-white' : 'bg-blue-100 text-blue-700'}`}>{i + 1}</span>
                   <span className="text-sm text-gray-900 dark:text-gray-100">{d.name}</span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{d.count} lần</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{d.count} Lần</span>
               </li>
             ))}
           </ol>
@@ -184,7 +184,7 @@ export default function StatsTab({ monthEvents, yearEvents, currentDate, topDish
                   <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${i === 0 ? 'bg-emerald-400 text-emerald-900' : i === 1 ? 'bg-emerald-200 text-emerald-900' : i === 2 ? 'bg-teal-400 text-teal-900' : 'bg-green-100 text-green-700'}`}>{i + 1}</span>
                   <span className="text-sm text-gray-900 dark:text-gray-100">{d.name}</span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{d.count} lần xuất hiện</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{d.count} Lần</span>
               </li>
             ))}
           </ol>
