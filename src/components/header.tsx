@@ -46,6 +46,22 @@ export default function Header({ className = "" }: HeaderProps) {
     }
   }, [pathname]);
 
+  // Sync body classes with sidebar state for layout shift
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isCollapsed) {
+      root.classList.add("sidebar-collapsed");
+      root.classList.remove("sidebar-expanded");
+    } else {
+      root.classList.add("sidebar-expanded");
+      root.classList.remove("sidebar-collapsed");
+    }
+    return () => {
+      root.classList.remove("sidebar-expanded");
+      root.classList.remove("sidebar-collapsed");
+    };
+  }, [isCollapsed]);
+
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
     setIsSidebarOpen(false);
@@ -116,7 +132,7 @@ export default function Header({ className = "" }: HeaderProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className={`hidden lg:flex fixed left-0 top-0 h-full z-40 transition-all duration-300 ${
+      <div className={`hidden lg:flex fixed left-0 top-16 h-[calc(100%-4rem)] z-20 transition-all duration-300 ${
         isCollapsed ? 'w-16' : 'w-64'
       }`}>
         <div className="glass-card w-full h-full flex flex-col border-r border-gray-200/20 dark:border-gray-700/20">
@@ -147,20 +163,36 @@ export default function Header({ className = "" }: HeaderProps) {
             {navigationItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+
+              const buttonClasses = isCollapsed
+                ? `w-full flex items-center justify-center px-2 py-3 rounded-xl font-medium transition-all duration-300 hover-lift ${
+                    isActive
+                      ? "text-white"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/10"
+                  }`
+                : `w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift ${
+                    isActive
+                      ? "gradient-primary text-white shadow-lg"
+                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/10"
+                  }`;
+
+              const iconWrapperClasses = isCollapsed
+                ? `${isActive ? 'gradient-primary' : item.bgColor} w-10 aspect-square rounded-xl flex items-center justify-center shrink-0`
+                : `p-2 rounded-lg ${isActive ? 'bg-white/20' : item.bgColor}`;
+
+              const iconClasses = isCollapsed
+                ? `w-5 h-5 ${isActive ? 'text-white' : item.color} shrink-0`
+                : `h-4 w-4 ${isActive ? 'text-white' : item.color}`;
               
               return (
                 <button
                   key={item.id}
                   onClick={() => handleTabClick(item.id)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift ${
-                    isActive
-                      ? "gradient-primary text-white shadow-lg"
-                      : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/10"
-                  }`}
+                  className={buttonClasses}
                   title={isCollapsed ? item.label : undefined}
                 >
-                  <div className={`p-2 rounded-lg ${isActive ? 'bg-white/20' : item.bgColor}`}>
-                    <Icon className={`h-4 w-4 ${isActive ? 'text-white' : item.color}`} />
+                  <div className={iconWrapperClasses}>
+                    <Icon className={iconClasses} />
                   </div>
                   {!isCollapsed && <span className="text-sm">{item.label}</span>}
                 </button>
