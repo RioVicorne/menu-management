@@ -578,14 +578,18 @@ input[type="number"] {
 /* Container adjustments for sidebar */
 .sidebar-container {
   transition: margin-left 0.3s ease;
+  margin-left: 0; /* mobile/default */
 }
 
-.sidebar-collapsed .sidebar-container {
-  margin-left: 4rem;
-}
+/* Only offset content for the desktop sidebar */
+@media (min-width: 1024px) {
+  .sidebar-collapsed .sidebar-container {
+    margin-left: 4rem;
+  }
 
-.sidebar-expanded .sidebar-container {
-  margin-left: 16rem;
+  .sidebar-expanded .sidebar-container {
+    margin-left: 16rem;
+  }
 }
 
 /* Loading animations */
