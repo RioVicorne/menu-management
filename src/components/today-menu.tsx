@@ -322,7 +322,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
   }
 
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 ${className}`}>
+    <div className={`card-modern ${className}`}>
       {/* Header */}
       <div className="p-6 border-b border-gray-200 dark:border-slate-700">
         <div className="flex items-center justify-between mb-4">
@@ -341,7 +341,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
           </div>
           <button 
             onClick={handleAddDish}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="btn-primary inline-flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
             <span>Thêm món</span>

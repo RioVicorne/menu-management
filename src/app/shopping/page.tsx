@@ -235,23 +235,22 @@ export default function ShoppingPage() {
   }, [groupedBySource]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ShoppingCart className="h-6 w-6 text-blue-600" />
+          <div className="flex items-center space-x-4">
+            <div className="p-3 gradient-primary rounded-2xl shadow-lg">
+              <ShoppingCart className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Danh sách mua sắm</h1>
-              <p className="text-gray-600 mt-1">Tự động tổng hợp theo tồn kho và nguồn nhập</p>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">Danh sách mua sắm</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">Tự động tổng hợp theo tồn kho và nguồn nhập</p>
             </div>
           </div>
 
           {/* Summary + Actions */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="card-modern p-6 hover-lift">
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-xs text-gray-500">Nguồn</div>
@@ -269,12 +268,12 @@ export default function ShoppingPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 justify-start md:justify-end">
-              <button onClick={selectAll} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">Chọn tất cả</button>
-              <button onClick={clearAll} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">Bỏ chọn</button>
-              <button onClick={handleCopy} className="inline-flex items-center space-x-2 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+              <button onClick={selectAll} className="btn-secondary text-sm">Chọn tất cả</button>
+              <button onClick={clearAll} className="btn-secondary text-sm">Bỏ chọn</button>
+              <button onClick={handleCopy} className="btn-primary text-sm inline-flex items-center space-x-2">
               <Copy className="h-4 w-4" /><span>Sao chép</span>
             </button>
-              <button onClick={handleExportCsv} className="inline-flex items-center space-x-2 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+              <button onClick={handleExportCsv} className="btn-secondary text-sm inline-flex items-center space-x-2">
               <Download className="h-4 w-4" /><span>Xuất CSV</span>
             </button>
             </div>
@@ -307,7 +306,7 @@ export default function ShoppingPage() {
               const allSelected = list.every((i) => selectedIds.has(i.id));
 
               return (
-                <div key={src} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
+                <div key={src} className="card-modern hover-lift">
                   <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-slate-700 rounded-t-xl bg-gray-50 dark:bg-slate-800/60">
                     <div className="flex items-center gap-3">
                       <h3 className="font-semibold text-gray-900 dark:text-white">{src}</h3>
@@ -319,7 +318,7 @@ export default function ShoppingPage() {
                         Chọn nguồn này
                       </label>
                       <button
-                        className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
+                        className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => purchaseSource(src)}
                         disabled={(groupedBySource[src] || []).every(i => !selectedIds.has(i.id))}
                       >
@@ -361,12 +360,12 @@ export default function ShoppingPage() {
                               />
                             </div>
                             <button
-                              className={`px-2.5 py-1.5 sm:px-3 text-sm rounded-lg text-white hover:opacity-90 disabled:opacity-50 ${
+                              className={`px-3 py-2 text-sm rounded-xl font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                                 purchasingIds.has(ing.id) 
                                   ? 'bg-gray-500' 
                                   : purchasedIds.has(ing.id) 
-                                    ? 'bg-green-600' 
-                                    : 'bg-red-600 hover:bg-red-700'
+                                    ? 'gradient-success shadow-lg' 
+                                    : 'gradient-primary hover:shadow-lg hover:scale-105'
                               }`}
                               onClick={() => purchaseOne(ing)}
                               disabled={purchasingIds.has(ing.id) || purchasedIds.has(ing.id)}
@@ -390,12 +389,11 @@ export default function ShoppingPage() {
             })}
           </div>
         )}
-      </div>
 
       {/* Copy Modal (mobile-friendly) */}
       {copiedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl shadow-xl w-[90%] max-w-sm p-6 text-center pop-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="glass-card rounded-2xl shadow-xl w-[90%] max-w-sm p-6 text-center pop-in">
             <div className={`mx-auto mb-3 h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center ${copyZooming ? 'pulse-once' : ''}` }>
               <svg
                 className="h-8 w-8 text-emerald-600"
@@ -408,7 +406,7 @@ export default function ShoppingPage() {
             <p className="mt-1 text-sm text-gray-600">Bạn có thể dán vào Zalo/Notes/Email.</p>
             <div className="mt-5">
               <button
-                className="w-full px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                className="btn-primary w-full"
                 onClick={() => setCopiedModal(false)}
               >
                 OK
@@ -452,5 +450,3 @@ export default function ShoppingPage() {
     </div>
   );
 }
-
-

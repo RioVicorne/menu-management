@@ -3,30 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #1f2937;
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
-  --border: #e5e7eb;
-  --input: #f3f4f6;
-  --primary: #f59e0b;
+  --background: #fefefe;
+  --foreground: #0f172a;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #f1f5f9;
+  --primary: #f97316;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #1f2937;
-  --accent: #fef3c7;
-  --accent-foreground: #92400e;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --accent: #fed7aa;
+  --accent-foreground: #c2410c;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --ring: #f59e0b;
-  --radius: 0.75rem;
+  --ring: #f97316;
+  --radius: 1rem;
 
-  /* Food-themed colors */
-  --food-orange: #f59e0b;
-  --food-orange-light: #fef3c7;
-  --food-orange-dark: #d97706;
-  --food-green: #10b981;
-  --food-green-light: #d1fae5;
-  --food-green-dark: #059669;
+  /* Enhanced Food-themed colors */
+  --food-orange: #f97316;
+  --food-orange-light: #fed7aa;
+  --food-orange-dark: #ea580c;
+  --food-green: #22c55e;
+  --food-green-light: #bbf7d0;
+  --food-green-dark: #16a34a;
   --food-red: #ef4444;
   --food-red-light: #fecaca;
   --food-red-dark: #dc2626;
@@ -36,79 +36,103 @@
   --food-purple: #8b5cf6;
   --food-purple-light: #ede9fe;
   --food-purple-dark: #7c3aed;
+  --food-yellow: #eab308;
+  --food-yellow-light: #fef3c7;
+  --food-yellow-dark: #ca8a04;
+
+  /* Glass morphism */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #111827;
-    --foreground: #f9fafb;
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
-    --border: #374151;
-    --input: #1f2937;
-    --primary: #f59e0b;
-    --primary-foreground: #1f2937;
-    --secondary: #1f2937;
-    --secondary-foreground: #f9fafb;
-    --accent: #92400e;
-    --accent-foreground: #fef3c7;
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --border: #334155;
+    --input: #1e293b;
+    --primary: #f97316;
+    --primary-foreground: #0f172a;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --accent: #c2410c;
+    --accent-foreground: #fed7aa;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --ring: #f59e0b;
+    --ring: #f97316;
 
     /* Food-themed dark colors */
-    --food-orange: #f59e0b;
-    --food-orange-light: #92400e;
-    --food-orange-dark: #d97706;
-    --food-green: #10b981;
-    --food-green-light: #064e3b;
-    --food-green-dark: #059669;
+    --food-orange: #f97316;
+    --food-orange-light: #c2410c;
+    --food-orange-dark: #ea580c;
+    --food-green: #22c55e;
+    --food-green-light: #15803d;
+    --food-green-dark: #16a34a;
     --food-red: #ef4444;
-    --food-red-light: #7f1d1d;
+    --food-red-light: #991b1b;
     --food-red-dark: #dc2626;
     --food-blue: #3b82f6;
-    --food-blue-light: #1e3a8a;
+    --food-blue-light: #1e40af;
     --food-blue-dark: #2563eb;
     --food-purple: #8b5cf6;
-    --food-purple-light: #581c87;
+    --food-purple-light: #7c2d12;
     --food-purple-dark: #7c3aed;
+    --food-yellow: #eab308;
+    --food-yellow-light: #a16207;
+    --food-yellow-dark: #ca8a04;
+
+    /* Glass morphism dark */
+    --glass-bg: rgba(15, 23, 42, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 }
 
 /* Also support class-based dark mode via next-themes (html.dark) */
 .dark {
-  --background: #111827;
-  --foreground: #f9fafb;
-  --muted: #1f2937;
-  --muted-foreground: #9ca3af;
-  --border: #374151;
-  --input: #1f2937;
-  --primary: #f59e0b;
-  --primary-foreground: #1f2937;
-  --secondary: #1f2937;
-  --secondary-foreground: #f9fafb;
-  --accent: #92400e;
-  --accent-foreground: #fef3c7;
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --input: #1e293b;
+  --primary: #f97316;
+  --primary-foreground: #0f172a;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  --accent: #c2410c;
+  --accent-foreground: #fed7aa;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --ring: #f59e0b;
+  --ring: #f97316;
 
   /* Food-themed dark colors */
-  --food-orange: #f59e0b;
-  --food-orange-light: #92400e;
-  --food-orange-dark: #d97706;
-  --food-green: #10b981;
-  --food-green-light: #064e3b;
-  --food-green-dark: #059669;
+  --food-orange: #f97316;
+  --food-orange-light: #c2410c;
+  --food-orange-dark: #ea580c;
+  --food-green: #22c55e;
+  --food-green-light: #15803d;
+  --food-green-dark: #16a34a;
   --food-red: #ef4444;
-  --food-red-light: #7f1d1d;
+  --food-red-light: #991b1b;
   --food-red-dark: #dc2626;
   --food-blue: #3b82f6;
-  --food-blue-light: #1e3a8a;
+  --food-blue-light: #1e40af;
   --food-blue-dark: #2563eb;
   --food-purple: #8b5cf6;
-  --food-purple-light: #581c87;
+  --food-purple-light: #7c2d12;
   --food-purple-dark: #7c3aed;
+  --food-yellow: #eab308;
+  --food-yellow-light: #a16207;
+  --food-yellow-dark: #ca8a04;
+
+  /* Glass morphism dark */
+  --glass-bg: rgba(15, 23, 42, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
 * {
@@ -430,4 +454,157 @@ input[type="number"] {
 .pulse-once {
   animation: pulse-scale-once 420ms ease-out;
   will-change: transform;
+}
+
+/* Glass morphism utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Enhanced hover effects */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    var(--food-orange-dark) 100%
+  );
+}
+
+.gradient-secondary {
+  background: linear-gradient(
+    135deg,
+    var(--food-blue) 0%,
+    var(--food-purple) 100%
+  );
+}
+
+.gradient-success {
+  background: linear-gradient(
+    135deg,
+    var(--food-green) 0%,
+    var(--food-green-dark) 100%
+  );
+}
+
+/* Button enhancements */
+.btn-primary {
+  @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300;
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    var(--food-orange-dark) 100%
+  );
+  box-shadow: 0 4px 14px 0 rgba(249, 115, 22, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px 0 rgba(249, 115, 22, 0.4);
+}
+
+.btn-secondary {
+  @apply px-6 py-3 rounded-xl font-semibold border-2 transition-all duration-300;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.btn-secondary:hover {
+  background: var(--accent);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+/* Card enhancements */
+.card-modern {
+  @apply rounded-2xl border transition-all duration-300;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-color: var(--glass-border);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.card-modern:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Sidebar responsive adjustments */
+@media (max-width: 1024px) {
+  .sidebar-adjust {
+    margin-left: 0 !important;
+  }
+}
+
+/* Mobile bottom navigation spacing */
+@media (max-width: 1024px) {
+  .mobile-bottom-spacing {
+    padding-bottom: 5rem;
+  }
+}
+
+/* Container adjustments for sidebar */
+.sidebar-container {
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar-collapsed .sidebar-container {
+  margin-left: 4rem;
+}
+
+.sidebar-expanded .sidebar-container {
+  margin-left: 16rem;
+}
+
+/* Loading animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
 }

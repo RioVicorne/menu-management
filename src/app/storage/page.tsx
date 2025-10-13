@@ -343,8 +343,7 @@ export default function StoragePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -873,7 +872,6 @@ export default function StoragePage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* Add Ingredient Modal */}
       <AddIngredientModal

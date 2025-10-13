@@ -19,10 +19,15 @@ export default function AppSectionLayout({
 }) {
   return (
     <html lang="vi" className={`${inter.variable}`}>
-      <body className="min-h-dvh bg-white text-gray-900 antialiased">
-        <div className="min-h-dvh bg-white text-gray-900">
+      <body className="min-h-dvh bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-gray-900 antialiased">
+        <div className="min-h-dvh">
           <Header/>
-          <main className="flex-1 pt-16">{children}</main>
+          {/* Main content area with proper spacing for sidebar */}
+          <main className="lg:ml-64 lg:pt-16 pt-16 pb-20 lg:pb-0 min-h-screen transition-all duration-300">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              {children}
+            </div>
+          </main>
         </div>
       </body>
     </html>

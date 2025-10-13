@@ -44,26 +44,25 @@ export default function IngredientsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 gradient-primary rounded-2xl shadow-lg">
+                <ChefHat className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">
                   Quản lý món ăn
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
                   Thêm và chỉnh sửa thông tin món ăn
                 </p>
               </div>
             </div>
             <button
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="btn-primary inline-flex items-center space-x-2"
               onClick={() => setIsAddOpen(true)}
             >
               <Plus className="h-4 w-4" />
@@ -73,7 +72,7 @@ export default function IngredientsPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+            <div className="card-modern p-6 hover-lift">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                   <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -106,7 +105,7 @@ export default function IngredientsPage() {
         </div>
 
         {/* List */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="card-modern">
           {loading ? (
             <div className="p-12 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600 mx-auto mb-3" />
@@ -124,7 +123,7 @@ export default function IngredientsPage() {
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {filtered.map((dish) => (
-                <div key={dish.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div key={dish.id} className="p-6 hover:bg-white/50 dark:hover:bg-white/5 transition-all duration-300 hover-lift">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug">
@@ -136,7 +135,7 @@ export default function IngredientsPage() {
                     </div>
                     <div className="flex items-center space-x-2 flex-shrink-0">
                       <button
-                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                        className="p-3 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all duration-300 hover:scale-110"
                         onClick={async () => {
                           setSelectedDishId(dish.id);
                           setSelectedDishName(dish.ten_mon_an);
@@ -147,14 +146,14 @@ export default function IngredientsPage() {
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-300 hover:scale-110"
                         onClick={() => { setEditDishId(dish.id); setEditDishName(dish.ten_mon_an); }}
                         title="Chỉnh sửa nguyên liệu món"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-300 hover:scale-110"
                         onClick={() => {
                           setDeleteDishId(dish.id);
                           setDeleteDishName(dish.ten_mon_an);
@@ -171,7 +170,6 @@ export default function IngredientsPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* Add Dish Modal */}
       <AddDishModal
