@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { Home, Package, ChefHat, Calendar, ShoppingCart, User, Menu } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
@@ -79,7 +79,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-2 rounded-lg hover:bg-white/10 transition-colors"
             >
-              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              <Menu className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -123,19 +123,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         </nav>
 
         {/* User Section */}
-        {!isCollapsed && (
-          <div className="p-4 border-t border-gray-200/20 dark:border-gray-700/20">
-            <div className="flex items-center space-x-3 p-3 rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Admin User</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">admin@example.com</p>
-              </div>
-            </div>
-          </div>
-        )}
+        
       </div>
     </div>
   );

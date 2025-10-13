@@ -1,152 +1,170 @@
 "use client";
 
-import { } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { } from "next/navigation";
 import { 
   Calendar, 
   ChefHat, 
   Package, 
   ShoppingCart, 
-  Plus, 
-  TrendingUp, 
   Users, 
-  Clock,
-  ArrowRight,
   BarChart3,
   Bell
 } from "lucide-react";
 import TodayMenu from "@/components/today-menu";
+import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
+import { getMenuItems, getCalendarData, getRecipeForDish } from "@/lib/api";
 
 export default function HomePage() {
-  const router = useRouter();
+  const [inventoryCount, setInventoryCount] = useState<number>(0);
+  const [shoppingCount, setShoppingCount] = useState<number>(0);
+  const [todayDishCount, setTodayDishCount] = useState<number>(0);
+  const [todayServingCount, setTodayServingCount] = useState<number>(0);
+  const [weeklyDishCount, setWeeklyDishCount] = useState<number>(0);
+  const [weeklyIngredientUsed, setWeeklyIngredientUsed] = useState<number>(0);
+  const [weeklyEstimatedCost, setWeeklyEstimatedCost] = useState<number>(0);
 
-  const quickActions = [
-    {
-      title: "Thêm món ăn",
-      description: "Thêm món mới vào thực đơn",
-      icon: Plus,
-      color: "bg-blue-500",
-      href: "/ingredients"
-    },
-    {
-      title: "Lập thực đơn",
-      description: "Tạo thực đơn cho ngày mai",
-      icon: Calendar,
-      color: "bg-green-500",
-      href: "/menu"
-    },
-    {
-      title: "Kiểm tra kho",
-      description: "Xem tình trạng nguyên liệu",
-      icon: Package,
-      color: "bg-purple-500",
-      href: "/storage"
-    },
-    {
-      title: "Danh sách mua sắm",
-      description: "Xem những gì cần mua",
-      icon: ShoppingCart,
-      color: "bg-orange-500",
-      href: "/shopping"
-    }
-  ];
+  useEffect(() => {
+    const fetchInventoryCount = async () => {
+      try {
+        if (!supabase) {
+          setInventoryCount(0);
+          return;
+        }
+        const { count, error } = await supabase
+          .from("nguyen_lieu")
+          .select("id", { count: "exact", head: true });
+        if (error) throw error;
+        setInventoryCount(Number(count || 0));
+      } catch (err) {
+        logger.error("Failed to fetch inventory count", err);
+        setInventoryCount(0);
+      }
+    };
+    fetchInventoryCount();
+  }, []);
+
+  useEffect(() => {
+    const fetchTodayStats = async () => {
+      try {
+        const todayString = new Date().toISOString().split("T")[0];
+        if (!supabase) {
+          const cal = await getCalendarData(todayString, todayString);
+          const count = cal && cal.length > 0 ? Number((cal[0] as any)?.dishCount || 0) : 0;
+          setTodayDishCount(count);
+          setTodayServingCount(count * 2);
+          return;
+        }
+
+        const items = await getMenuItems(todayString);
+        const count = items?.length || 0;
+        const servings = items?.reduce((sum, it) => sum + Number(it.boi_so || 0), 0) || 0;
+        setTodayDishCount(count);
+        setTodayServingCount(servings);
+      } catch (err) {
+        logger.error("Failed to fetch today's stats", err);
+        setTodayDishCount(0);
+        setTodayServingCount(0);
+      }
+    };
+    fetchTodayStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchWeeklyStats = async () => {
+      try {
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(today.getDate() - 6);
+        const fmt = (d: Date) => d.toISOString().split("T")[0];
+        const startDate = fmt(start);
+        const endDate = fmt(today);
+
+        if (!supabase) {
+          const cal = await getCalendarData(startDate, endDate);
+          const dishCount = Array.isArray(cal) ? cal.reduce((sum, item: any) => sum + Number(item?.dishCount || 0), 0) : 0;
+          setWeeklyDishCount(dishCount);
+          setWeeklyIngredientUsed(dishCount * 5); // simple heuristic in mock mode
+          setWeeklyEstimatedCost(dishCount * 75000); // mock cost
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("thuc_don")
+          .select("id, ma_mon_an, boi_so, ngay")
+          .gte("ngay", startDate)
+          .lte("ngay", endDate);
+        if (error) throw error;
+        const items = data || [];
+        setWeeklyDishCount(items.length);
+
+        // Aggregate ingredient usage by recipe lines * servings
+        const recipeCache = new Map<string, any[]>();
+        let used = 0;
+        const promises = items.map(async (it: any) => {
+          const dishId = String(it.ma_mon_an);
+          let recipe = recipeCache.get(dishId);
+          if (!recipe) {
+            recipe = await getRecipeForDish(dishId);
+            recipeCache.set(dishId, recipe);
+          }
+          const lines = Array.isArray(recipe) ? recipe.length : 0;
+          used += lines * Number(it.boi_so || 1);
+        });
+        await Promise.all(promises);
+        setWeeklyIngredientUsed(used);
+
+        // If you have pricing per component, compute real cost here. Keep 0 for now.
+        setWeeklyEstimatedCost(0);
+      } catch (err) {
+        logger.error("Failed to fetch weekly stats", err);
+        setWeeklyDishCount(0);
+        setWeeklyIngredientUsed(0);
+        setWeeklyEstimatedCost(0);
+      }
+    };
+    fetchWeeklyStats();
+  }, []);
+
+  useEffect(() => {
+    const fetchShoppingCount = async () => {
+      try {
+        if (!supabase) {
+          setShoppingCount(0);
+          return;
+        }
+        const { data, error } = await supabase
+          .from("nguyen_lieu")
+          .select("id, ton_kho_so_luong, ton_kho_khoi_luong");
+        if (error) throw error;
+        const list = (data || []) as Array<{ id: string; ton_kho_so_luong?: number | null; ton_kho_khoi_luong?: number | null }>; 
+        const count = list.filter((ing) => {
+          const qty = Number(ing.ton_kho_so_luong || 0);
+          const wgt = Number(ing.ton_kho_khoi_luong || 0);
+          const value = Math.max(qty, wgt);
+          return value === 0 || (value >= 1 && value <= 5);
+        }).length;
+        setShoppingCount(count);
+      } catch (err) {
+        logger.error("Failed to fetch shopping count", err);
+        setShoppingCount(0);
+      }
+    };
+    fetchShoppingCount();
+  }, []);
+  
 
   const stats = [
-    { label: "Món ăn hôm nay", value: "5", icon: ChefHat, color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
-    { label: "Nguyên liệu trong kho", value: "24", icon: Package, color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30" },
-    { label: "Cần mua sắm", value: "8", icon: ShoppingCart, color: "text-orange-600", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
-    { label: "Người ăn", value: "12", icon: Users, color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" }
+    { label: "Món ăn hôm nay", value: String(todayDishCount), icon: ChefHat, color: "text-blue-600", bgColor: "bg-blue-100 dark:bg-blue-900/30" },
+    { label: "Nguyên liệu trong kho", value: String(inventoryCount), icon: Package, color: "text-green-600", bgColor: "bg-green-100 dark:bg-green-900/30" },
+    { label: "Cần mua sắm", value: String(shoppingCount), icon: ShoppingCart, color: "text-orange-600", bgColor: "bg-orange-100 dark:bg-orange-900/30" },
+    { label: "Người ăn", value: String(todayServingCount), icon: Users, color: "text-purple-600", bgColor: "bg-purple-100 dark:bg-purple-900/30" }
   ];
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="card-modern p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">
-              Chào mừng trở lại! 👋
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Hôm nay là một ngày tuyệt vời để quản lý thực đơn
-            </p>
-          </div>
-          <div className="mt-4 lg:mt-0">
-            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-              <Clock className="h-4 w-4" />
-              <span>{new Date().toLocaleDateString('vi-VN', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="card-modern p-6 hover-lift">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {stat.label}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {stat.value}
-                  </p>
-                </div>
-                <div className={`p-3 rounded-xl ${stat.bgColor}`}>
-                  <Icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="card-modern p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Thao tác nhanh
-          </h2>
-          <TrendingUp className="h-5 w-5 text-gray-400" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={index}
-                onClick={() => router.push(action.href)}
-                className="group p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-300 hover-lift"
-              >
-                <div className="flex items-start space-x-3">
-                  <div className={`p-3 rounded-lg ${action.color} group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 transition-colors">
-                      {action.title}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {action.description}
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all duration-300" />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Today's Menu */}
+      {/* Today's Menu - moved to top */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <TodayMenu />
@@ -154,6 +172,27 @@ export default function HomePage() {
         
         {/* Right Sidebar */}
         <div className="space-y-6">
+          {/* Summary Stats (moved to right) */}
+          <div className="card-modern p-4">
+            <div className="grid grid-cols-2 gap-3">
+              {stats.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                  <div key={index} className="p-4 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-gray-200/40 dark:border-slate-700/40 hover-lift">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
+                        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
+                      </div>
+                      <div className={`${stat.bgColor} p-2.5 rounded-xl`}>
+                        <Icon className={`h-5 w-5 ${stat.color}`} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           {/* Notifications */}
           <div className="card-modern p-6">
             <div className="flex items-center justify-between mb-4">
@@ -170,7 +209,7 @@ export default function HomePage() {
                     Cần bổ sung nguyên liệu
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    8 nguyên liệu sắp hết
+                    {shoppingCount} nguyên liệu sắp hết
                   </p>
                 </div>
               </div>
@@ -199,20 +238,25 @@ export default function HomePage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Món ăn đã nấu</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">32</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{weeklyDishCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Nguyên liệu đã dùng</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">156</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{weeklyIngredientUsed}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Chi phí ước tính</span>
-                <span className="text-sm font-semibold text-gray-900 dark:text-white">2.4M</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{weeklyEstimatedCost === 0 ? "—" : weeklyEstimatedCost.toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+      
+
+      
+
+      
     </div>
   );
 }

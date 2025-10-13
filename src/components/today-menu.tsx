@@ -108,15 +108,15 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
             const dishes: TodayMenuDish[] = menuItems.map((item, index: number) => ({
               id: item.id || `dish-${index + 1}`,
               name: item.ten_mon_an || `Món ăn ${index + 1}`,
-              calories: 300, // Mock calories since MenuItem doesn't have this field
-              servings: item.boi_so || 2,
-              category: "Món chính", // Mock category since MenuItem doesn't have this field
+              calories: 0,
+              servings: item.boi_so || 1,
+              category: "",
               description: item.ghi_chu || undefined,
             }));
 
             const totalDishes = dishes.length;
-            const totalCalories = dishes.reduce((sum, dish) => sum + dish.calories, 0);
-            const totalServings = dishes.reduce((sum, dish) => sum + dish.servings, 0);
+            const totalCalories = 0;
+            const totalServings = dishes.reduce((sum, dish) => sum + Number(dish.servings || 0), 0);
 
             setMenuData({
               date: todayString,
@@ -435,7 +435,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Danh sách món ăn
         </h3>
-        <div className="space-y-4">
+          <div className="space-y-4">
           {menuData.dishes.map((dish, index) => (
             <div
               key={dish.id}
@@ -446,21 +446,15 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
                   {index + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug min-w-0">
-                      {dish.name}
-                    </h4>
-                    <span className="px-2 py-1 text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-full flex-shrink-0">
-                      {dish.category}
-                    </span>
+                  <h4 className="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug min-w-0">
+                    {dish.name}
+                  </h4>
+                  <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 flex flex-wrap gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">Khẩu phần: {dish.servings}</span>
+                    {dish.description && (
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Ghi chú: {dish.description}</span>
+                    )}
                   </div>
-                  {dish.description && (
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md whitespace-pre-wrap break-words">
-                        {dish.description}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
               {/* Right-side metrics removed per request */}

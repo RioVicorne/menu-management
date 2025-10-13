@@ -9,13 +9,11 @@ import {
   Calendar, 
   ShoppingCart, 
   X, 
-  Menu as MenuIcon,
   Search,
   Bell,
   User,
   Settings,
-  ChevronLeft,
-  ChevronRight
+  Menu
 } from "lucide-react";
 
 interface HeaderProps {
@@ -153,7 +151,7 @@ export default function Header({ className = "" }: HeaderProps) {
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
               >
-                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                <Menu className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -297,7 +295,7 @@ export default function Header({ className = "" }: HeaderProps) {
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/10 transition-colors"
             >
-              <MenuIcon className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             </button>
             
             {/* Search Bar */}
