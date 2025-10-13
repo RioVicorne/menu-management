@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
-export default function AppSectionLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ export default function AppSectionLayout({
         <div className="min-h-dvh">
           <Header/>
           {/* Main content area with proper spacing for sidebar */}
-          <main className="lg:ml-64 lg:pt-16 pt-16 pb-20 lg:pb-0 min-h-screen transition-all duration-300">
+          <main className="lg:ml-64 pt-16 pb-20 lg:pb-0 min-h-screen transition-all duration-300">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
               {children}
             </div>

@@ -257,9 +257,7 @@ export default function Header({ className = "" }: HeaderProps) {
       </div>
 
       {/* Top Header */}
-      <header className={`fixed top-0 right-0 z-30 glass border-b border-gray-200/20 dark:border-gray-700/20 transition-all duration-300 ${
-        isCollapsed ? 'left-16' : 'left-64'
-      } lg:left-0 lg:right-0 ${className}`}>
+      <header className={`fixed top-0 left-0 right-0 z-30 glass border-b border-gray-200/20 dark:border-gray-700/20 transition-all duration-300 ${className}`}>
         <div className="h-16 flex items-center justify-between px-3 sm:px-4 lg:px-6">
           {/* Left side - Mobile menu button */}
           <div className="flex items-center space-x-2 sm:space-x-4">
