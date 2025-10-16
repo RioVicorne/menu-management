@@ -13,7 +13,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
-import { getDishes, Dish, consumeIngredientsForDish, consumeIngredientsForDishesBatch, addMenuItemsBatch, getRecipeForDish } from "@/lib/api";
+import { getDishes, Dish, consumeIngredientsForDishesBatch, getRecipeForDish } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import Modal from "@/components/ui/modal";
 
@@ -28,14 +28,13 @@ interface AddDishTabProps {
 }
 
 export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
-  const { addDish, addDishesBatch, dishes: currentMenuDishes, updateDish, applyChangesWithSingleRefresh } = useMenu();
+  const { addDishesBatch, dishes: currentMenuDishes, updateDish, applyChangesWithSingleRefresh } = useMenu();
   const [availableDishes, setAvailableDishes] = useState<Dish[]>([]);
   const [selectedDishes, setSelectedDishes] = useState<SelectedDishItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [showAllDishes, setShowAllDishes] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dishCalories, setDishCalories] = useState<Record<string, number>>({});
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
@@ -59,7 +58,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
     };
 
     loadDishes();
-  }, []);
+  }, [availableDishes.length]);
 
   const handleDishSelect = (dish: Dish) => {
     // Check if dish is already selected
@@ -83,30 +82,6 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
 
 
-  // Helper function to check if dish exists in current menu and merge if needed
-  const addOrUpdateDishInMenu = async (dishId: string, servings: number, notes?: string) => {
-    // Check if dish already exists in current menu
-    const existingMenuItem = currentMenuDishes.find(item => item.ma_mon_an === dishId);
-    
-    if (existingMenuItem) {
-      // If dish exists, update its servings and merge notes
-      const newServings = existingMenuItem.boi_so + servings;
-      const newNotes = existingMenuItem.ghi_chu 
-        ? `${existingMenuItem.ghi_chu}; ${notes}`.replace(/^; /, '').replace(/; $/, '')
-        : notes;
-      
-      await updateDish(existingMenuItem.id, {
-        servings: newServings,
-        notes: newNotes
-      });
-      
-      return { action: 'updated', servings: newServings, originalServings: existingMenuItem.boi_so };
-    } else {
-      // If dish doesn't exist, add new dish
-      await addDish(dishId, servings, notes);
-      return { action: 'added', servings };
-    }
-  };
 
   const handleAddToMenu = async () => {
     if (selectedDishes.length === 0) return;
@@ -244,7 +219,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 px-4 pb-24">
+    <div className="max-w-6xl mx-auto space-y-6 px-4 pb-24">
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-foreground mb-2">
@@ -292,9 +267,9 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Dish Selection */}
-        <div className="space-y-4">
+        <div className="lg:col-span-2 space-y-4">
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-foreground flex items-center space-x-2">
               <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -310,7 +285,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {filteredDishes.length === 0 && searchQuery ? (
                 <div className="p-8 text-center">
                   <Search className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -326,37 +301,119 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                 </div>
               ) : (
                 filteredDishes.map((dish) => {
-                const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
-                
-                return (
-                  <div
-                    key={dish.id}
-                    onClick={() => handleDishSelect(dish)}
-                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 backdrop-blur-xl border border-gray-300 dark:border-gray-700/30
-                      ${isSelected
-                        ? "bg-blue-500/25 border-blue-500/50 ring-1 ring-blue-600/30 shadow-[0_8px_30px_rgba(31,38,135,0.18)]"
-                        : "bg-white/5 hover:bg-white/10 hover:border-gray-400 dark:hover:border-gray-600/50 hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)]"}
-                    `}
-                  >
-                    <div className="flex items-center">
-                      <h4 className="font-medium text-foreground drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
-                        {dish.ten_mon_an}
-                      </h4>
-                      {isSelected && (
-                        <Check className="h-5 w-5 text-green-600 dark:text-green-400 ml-2 animate-in zoom-in duration-200" />
-                      )}
-                    </div>
-                  </div>
-                );
+                  const isSelected = selectedDishes.some(item => item.dish.id === dish.id);
+
+                  return (
+                    <button
+                      key={dish.id}
+                      type="button"
+                      onClick={() => handleDishSelect(dish)}
+                      aria-pressed={isSelected}
+                      className={`w-full text-left px-5 py-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-4
+                        ${isSelected
+                          ? "bg-blue-50 border-blue-300 text-blue-800 focus:ring-blue-300/40 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200"
+                          : "bg-white/60 border-gray-200 hover:bg-white shadow-sm hover:shadow-md focus:ring-blue-300/30 dark:bg-gray-800/40 dark:border-gray-700 dark:hover:bg-gray-800"}
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        {isSelected ? (
+                          <Check className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        ) : (
+                          <span className="h-5 w-5 rounded-full border border-gray-300 dark:border-gray-600" />
+                        )}
+                        <span className="font-medium text-foreground truncate">
+                          {dish.ten_mon_an}
+                        </span>
+                      </div>
+                    </button>
+                  );
                 })
               )}
             </div>
           )}
         </div>
+
+        {/* Desktop Overview Sidebar */}
+        <div className="hidden lg:block">
+          <div className="sticky top-24 space-y-6">
+            <div className="bg-background border border-border rounded-2xl p-5 shadow-sm">
+              <h3 className="text-lg font-semibold mb-4">Tổng quan menu</h3>
+              {selectedDishes.length > 0 ? (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-muted rounded-xl p-3 border border-border">
+                      <p className="text-xs text-muted-foreground">Số món</p>
+                      <p className="text-xl font-semibold text-foreground">{selectedDishes.length}</p>
+                    </div>
+                    <div className="bg-muted rounded-xl p-3 border border-border">
+                      <p className="text-xs text-muted-foreground">Khẩu phần</p>
+                      <p className="text-xl font-semibold text-foreground">{selectedDishes.reduce((t, i) => t + i.servings, 0)}</p>
+                    </div>
+                    <div className="bg-muted rounded-xl p-3 border border-border">
+                      <p className="text-xs text-muted-foreground">Calories</p>
+                      {hasAnyCalories ? (
+                        <p className="text-xl font-semibold text-orange-600 dark:text-orange-400">{totalCalories.toLocaleString()}</p>
+                      ) : (
+                        <p className="text-xl font-semibold text-muted-foreground">—</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium">Danh sách món</h4>
+                      {selectedDishes.length > 5 && (
+                        <button
+                          onClick={() => setIsDishListExpanded(!isDishListExpanded)}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {isDishListExpanded ? 'Thu gọn' : `Xem tất cả (${selectedDishes.length})`}
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {(isDishListExpanded ? selectedDishes : selectedDishes.slice(0, 5)).map((item, index) => (
+                        <div key={`${item.dish.id}-sb-${index}`} className="flex justify-between text-sm bg-background/50 border border-border rounded-lg p-2">
+                          <span className="text-foreground truncate mr-3">{item.dish.ten_mon_an}</span>
+                          <span className="text-muted-foreground whitespace-nowrap">x{item.servings}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleAddToMenu}
+                      disabled={isAdding || selectedDishes.length === 0}
+                      className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium"
+                    >
+                      {isAdding ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                          <span>Đang thêm...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4" />
+                          <span>Thêm {selectedDishes.length} món</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <ChefHat className="h-10 w-10 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">Chọn món để xem tổng quan và thêm vào menu</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Floating Overview Button */}
-      <div className="fixed bottom-32 right-4 sm:bottom-5 sm:right-5 z-50">
+      {/* Floating Overview Button (mobile only) */}
+      <div className="fixed bottom-32 right-4 sm:bottom-5 sm:right-5 z-50 lg:hidden">
         <button
           onClick={() => setIsOverviewOpen(true)}
           className="relative flex items-center justify-center h-14 w-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white/20 transition-colors"

@@ -274,7 +274,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                   <button
                     onClick={handleDeleteSelected}
                     disabled={selectedDishes.size === 0 || isDeleting}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-muted text-white rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:opacity-75 text-white rounded-lg text-sm font-medium transition-colors"
                   >
                     {isDeleting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -289,80 +289,85 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
               </div>
             )}
             
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            <div>
             {dishes.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="p-10 text-center">
                 <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  Chưa có món.
-                </p>
+                <p className="text-muted-foreground">Chưa có món.</p>
               </div>
             ) : (
-              dishes.map((dish) => (
-                <div
-                  key={dish.id}
-                  className="p-6 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
-                          {/* Checkbox for delete mode */}
-                          {deleteMode && (
-                            <button
-                              onClick={() => toggleSelectDish(dish.id)}
-                              disabled={isDeleting}
-                              className="flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {selectedDishes.has(dish.id) ? (
-                                <CheckSquare className="h-5 w-5 text-red-600" />
-                              ) : (
-                                <Square className="h-5 w-5 text-gray-400 hover:text-red-600" />
-                              )}
-                            </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                {dishes.map((dish) => {
+                  const isSelected = selectedDishes.has(dish.id);
+                  return (
+                    <div
+                      key={dish.id}
+                      className={`group relative rounded-xl border border-border bg-background/80 backdrop-blur-sm p-5 shadow-sm transition-all hover:shadow-md ${
+                        deleteMode && isSelected ? "ring-2 ring-red-500/60" : ""
+                      }`}
+                    >
+                      {deleteMode && (
+                        <button
+                          onClick={() => toggleSelectDish(dish.id)}
+                          disabled={isDeleting}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 disabled:opacity-50"
+                          aria-label="Chọn để xóa"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400 hover:text-red-600" />
                           )}
-                          
-                          <h3 className={`text-lg font-medium whitespace-normal break-words leading-snug min-w-0 ${
-                            deleteMode && selectedDishes.has(dish.id) 
-                              ? "text-red-600 line-through" 
-                              : "text-foreground"
-                          }`}>
+                        </button>
+                      )}
+
+                      <div className={`pr-10 ${deleteMode ? "pl-9" : ""}`}>
+                        <div className="flex items-start gap-2">
+                          <h3
+                            className={`text-base font-semibold flex-1 break-words ${
+                              deleteMode && isSelected ? "text-red-600 line-through" : "text-foreground"
+                            }`}
+                          >
                             {dish.ten_mon_an || "Món chưa đặt tên"}
                           </h3>
-                          <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full flex-shrink-0">
-                            {dish.boi_so || 0} Khẩu phần
+                          <span className="ml-2 inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-200">
+                            {dish.boi_so || 0} khẩu phần
                           </span>
                         </div>
                         {dish.ghi_chu && (
-                          <div className="mt-2">
-                            <div className="flex items-center space-x-2 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-md text-sm">
-                              <StickyNote className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                              <span className="font-medium text-blue-800 dark:text-blue-200 break-words">{dish.ghi_chu}</span>
+                          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm dark:border-blue-800 dark:bg-blue-900/20">
+                            <div className="flex items-center gap-2">
+                              <StickyNote className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                              <span className="text-blue-800 dark:text-blue-200 break-words">
+                                {dish.ghi_chu}
+                              </span>
                             </div>
                           </div>
                         )}
-                    </div>
-
-                    {!deleteMode && (
-                      <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
-                        <button
-                          onClick={() => handleEdit(dish)}
-                          className="p-2 text-muted-foreground hover:text-blue-600 transition-colors"
-                          title="Sửa món"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(dish)}
-                          className="p-2 text-muted-foreground hover:text-red-600 transition-colors"
-                          title="Xóa món"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))
+
+                      {!deleteMode && (
+                        <div className="mt-4 flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleEdit(dish)}
+                            className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-blue-600 hover:border-blue-300 transition-colors"
+                            title="Sửa món"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(dish)}
+                            className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-red-600 hover:border-red-300 transition-colors"
+                            title="Xóa món"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
             </div>
           </>
