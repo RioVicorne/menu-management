@@ -3,30 +3,65 @@
 @tailwind utilities;
 
 :root {
-  --background: #fefefe;
-  --foreground: #0f172a;
-  --muted: #f8fafc;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
-  --input: #f1f5f9;
-  --primary: #f97316;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --accent: #fed7aa;
-  --accent-foreground: #c2410c;
+  /* Modern culinary theme - Light mode */
+  --background: #fefdfb;
+  --foreground: #2d352d;
+  --muted: #f6f7f6;
+  --muted-foreground: #617861;
+  --border: #e3e7e3;
+  --input: #f6f7f6;
+  --primary: #4c5f4c;
+  --primary-foreground: #fefdfb;
+  --secondary: #f2ede8;
+  --secondary-foreground: #57423a;
+  --accent: #c7d2c7;
+  --accent-foreground: #3e4d3e;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --ring: #f97316;
+  --ring: #4c5f4c;
   --radius: 1rem;
 
-  /* Enhanced Food-themed colors */
-  --food-orange: #f97316;
-  --food-orange-light: #fed7aa;
-  --food-orange-dark: #ea580c;
+  /* Modern culinary colors */
+  --sage-50: #f6f7f6;
+  --sage-100: #e3e7e3;
+  --sage-200: #c7d2c7;
+  --sage-300: #a3b4a3;
+  --sage-400: #7d947d;
+  --sage-500: #617861;
+  --sage-600: #4c5f4c;
+  --sage-700: #3e4d3e;
+  --sage-800: #343f34;
+  --sage-900: #2d352d;
+
+  --cream-50: #fefdfb;
+  --cream-100: #fdf9f2;
+  --cream-200: #faf1e0;
+  --cream-300: #f5e5c7;
+  --cream-400: #eed5a6;
+  --cream-500: #e4c284;
+
+  --wood-50: #faf8f6;
+  --wood-100: #f2ede8;
+  --wood-200: #e3d8ce;
+  --wood-300: #d1c0b0;
+  --wood-400: #bca48d;
+  --wood-500: #a8896f;
+  --wood-600: #96745c;
+
+  --mint-50: #f0fdf4;
+  --mint-100: #dcfce7;
+  --mint-200: #bbf7d0;
+  --mint-300: #86efac;
+  --mint-400: #4ade80;
+  --mint-500: #22c55e;
+
+  /* Legacy food colors for compatibility */
+  --food-orange: #96745c;
+  --food-orange-light: #f5e5c7;
+  --food-orange-dark: #7e614e;
   --food-green: #22c55e;
   --food-green-light: #bbf7d0;
-  --food-green-dark: #16a34a;
+  --food-green-dark: #15803d;
   --food-red: #ef4444;
   --food-red-light: #fecaca;
   --food-red-dark: #dc2626;
@@ -36,38 +71,70 @@
   --food-purple: #8b5cf6;
   --food-purple-light: #ede9fe;
   --food-purple-dark: #7c3aed;
-  --food-yellow: #eab308;
-  --food-yellow-light: #fef3c7;
-  --food-yellow-dark: #ca8a04;
 
   /* Glass morphism */
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.2);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  --glass-bg: rgba(254, 253, 251, 0.85);
+  --glass-border: rgba(227, 231, 227, 0.3);
+  --glass-shadow: 0 8px 32px 0 rgba(45, 53, 45, 0.15);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f172a;
-    --foreground: #f8fafc;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-    --border: #334155;
-    --input: #1e293b;
-    --primary: #f97316;
-    --primary-foreground: #0f172a;
-    --secondary: #1e293b;
-    --secondary-foreground: #f8fafc;
-    --accent: #c2410c;
-    --accent-foreground: #fed7aa;
+    /* Modern culinary theme - Dark mode */
+    --background: #171c17;
+    --foreground: #f6f7f6;
+    --muted: #2d352d;
+    --muted-foreground: #a3b4a3;
+    --border: #343f34;
+    --input: #2d352d;
+    --primary: #a3b4a3;
+    --primary-foreground: #171c17;
+    --secondary: #343f34;
+    --secondary-foreground: #f6f7f6;
+    --accent: #3e4d3e;
+    --accent-foreground: #e3e7e3;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
-    --ring: #f97316;
+    --ring: #a3b4a3;
 
-    /* Food-themed dark colors */
-    --food-orange: #f97316;
-    --food-orange-light: #c2410c;
-    --food-orange-dark: #ea580c;
+    /* Modern culinary dark colors */
+    --sage-50: #171c17;
+    --sage-100: #2d352d;
+    --sage-200: #343f34;
+    --sage-300: #3e4d3e;
+    --sage-400: #4c5f4c;
+    --sage-500: #617861;
+    --sage-600: #7d947d;
+    --sage-700: #a3b4a3;
+    --sage-800: #c7d2c7;
+    --sage-900: #e3e7e3;
+
+    --cream-50: #171c17;
+    --cream-100: #2d352d;
+    --cream-200: #343f34;
+    --cream-300: #3e4d3e;
+    --cream-400: #4c5f4c;
+    --cream-500: #617861;
+
+    --wood-50: #171c17;
+    --wood-100: #2d352d;
+    --wood-200: #343f34;
+    --wood-300: #3e4d3e;
+    --wood-400: #4c5f4c;
+    --wood-500: #617861;
+    --wood-600: #7d947d;
+
+    --mint-50: #052e16;
+    --mint-100: #14532d;
+    --mint-200: #166534;
+    --mint-300: #15803d;
+    --mint-400: #16a34a;
+    --mint-500: #22c55e;
+
+    /* Legacy food colors for compatibility */
+    --food-orange: #96745c;
+    --food-orange-light: #7e614e;
+    --food-orange-dark: #695043;
     --food-green: #22c55e;
     --food-green-light: #15803d;
     --food-green-dark: #16a34a;
@@ -78,41 +145,73 @@
     --food-blue-light: #1e40af;
     --food-blue-dark: #2563eb;
     --food-purple: #8b5cf6;
-    --food-purple-light: #7c2d12;
-    --food-purple-dark: #7c3aed;
-    --food-yellow: #eab308;
-    --food-yellow-light: #a16207;
-    --food-yellow-dark: #ca8a04;
+    --food-purple-light: #7c3aed;
+    --food-purple-dark: #6d28d9;
 
     /* Glass morphism dark */
-    --glass-bg: rgba(15, 23, 42, 0.8);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(23, 28, 23, 0.85);
+    --glass-border: rgba(52, 63, 52, 0.3);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 }
 
 /* Also support class-based dark mode via next-themes (html.dark) */
 .dark {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --border: #334155;
-  --input: #1e293b;
-  --primary: #f97316;
-  --primary-foreground: #0f172a;
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
-  --accent: #c2410c;
-  --accent-foreground: #fed7aa;
+  /* Modern culinary theme - Dark mode */
+  --background: #171c17;
+  --foreground: #f6f7f6;
+  --muted: #2d352d;
+  --muted-foreground: #a3b4a3;
+  --border: #343f34;
+  --input: #2d352d;
+  --primary: #a3b4a3;
+  --primary-foreground: #171c17;
+  --secondary: #343f34;
+  --secondary-foreground: #f6f7f6;
+  --accent: #3e4d3e;
+  --accent-foreground: #e3e7e3;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --ring: #f97316;
+  --ring: #a3b4a3;
 
-  /* Food-themed dark colors */
-  --food-orange: #f97316;
-  --food-orange-light: #c2410c;
-  --food-orange-dark: #ea580c;
+  /* Modern culinary dark colors */
+  --sage-50: #171c17;
+  --sage-100: #2d352d;
+  --sage-200: #343f34;
+  --sage-300: #3e4d3e;
+  --sage-400: #4c5f4c;
+  --sage-500: #617861;
+  --sage-600: #7d947d;
+  --sage-700: #a3b4a3;
+  --sage-800: #c7d2c7;
+  --sage-900: #e3e7e3;
+
+  --cream-50: #171c17;
+  --cream-100: #2d352d;
+  --cream-200: #343f34;
+  --cream-300: #3e4d3e;
+  --cream-400: #4c5f4c;
+  --cream-500: #617861;
+
+  --wood-50: #171c17;
+  --wood-100: #2d352d;
+  --wood-200: #343f34;
+  --wood-300: #3e4d3e;
+  --wood-400: #4c5f4c;
+  --wood-500: #617861;
+  --wood-600: #7d947d;
+
+  --mint-50: #052e16;
+  --mint-100: #14532d;
+  --mint-200: #166534;
+  --mint-300: #15803d;
+  --mint-400: #16a34a;
+  --mint-500: #22c55e;
+
+  /* Legacy food colors for compatibility */
+  --food-orange: #96745c;
+  --food-orange-light: #7e614e;
+  --food-orange-dark: #695043;
   --food-green: #22c55e;
   --food-green-light: #15803d;
   --food-green-dark: #16a34a;
@@ -123,15 +222,12 @@
   --food-blue-light: #1e40af;
   --food-blue-dark: #2563eb;
   --food-purple: #8b5cf6;
-  --food-purple-light: #7c2d12;
-  --food-purple-dark: #7c3aed;
-  --food-yellow: #eab308;
-  --food-yellow-light: #a16207;
-  --food-yellow-dark: #ca8a04;
+  --food-purple-light: #7c3aed;
+  --food-purple-dark: #6d28d9;
 
   /* Glass morphism dark */
-  --glass-bg: rgba(15, 23, 42, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(23, 28, 23, 0.85);
+  --glass-border: rgba(52, 63, 52, 0.3);
   --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
@@ -456,7 +552,7 @@ input[type="number"] {
   will-change: transform;
 }
 
-/* Glass morphism utilities */
+/* Modern Glass morphism utilities */
 .glass {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
@@ -475,6 +571,27 @@ input[type="number"] {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* Modern culinary gradient backgrounds */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--sage-600) 0%, var(--wood-600) 100%);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, var(--mint-500) 0%, var(--sage-500) 100%);
+}
+
+.gradient-warm {
+  background: linear-gradient(
+    135deg,
+    var(--wood-500) 0%,
+    var(--cream-500) 100%
+  );
+}
+
+.gradient-fresh {
+  background: linear-gradient(135deg, var(--sage-400) 0%, var(--mint-400) 100%);
+}
+
 /* Enhanced hover effects */
 .hover-lift {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -483,68 +600,61 @@ input[type="number"] {
 .hover-lift:hover {
   transform: translateY(-2px);
   box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
-/* Gradient backgrounds */
-.gradient-primary {
-  background: linear-gradient(
-    135deg,
-    var(--primary) 0%,
-    var(--food-orange-dark) 100%
-  );
+.hover-scale {
+  transition: transform 0.2s ease-in-out;
 }
 
-.gradient-secondary {
-  background: linear-gradient(
-    135deg,
-    var(--food-blue) 0%,
-    var(--food-purple) 100%
-  );
+.hover-scale:hover {
+  transform: scale(1.02);
 }
 
-.gradient-success {
-  background: linear-gradient(
-    135deg,
-    var(--food-green) 0%,
-    var(--food-green-dark) 100%
-  );
-}
-
-/* Button enhancements */
+/* Modern button styles */
 .btn-primary {
-  @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300;
-  background: linear-gradient(
-    135deg,
-    var(--primary) 0%,
-    var(--food-orange-dark) 100%
-  );
-  box-shadow: 0 4px 14px 0 rgba(249, 115, 22, 0.3);
+  @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300 shadow-soft;
+  background: linear-gradient(135deg, var(--sage-600) 0%, var(--wood-600) 100%);
 }
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px 0 rgba(249, 115, 22, 0.4);
+  box-shadow:
+    0 10px 25px -5px rgba(76, 95, 76, 0.4),
+    0 8px 10px -6px rgba(76, 95, 76, 0.1);
 }
 
 .btn-secondary {
-  @apply px-6 py-3 rounded-xl font-semibold border-2 transition-all duration-300;
+  @apply px-6 py-3 rounded-xl font-semibold border-2 transition-all duration-300 shadow-soft;
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
-  border-color: var(--border);
+  border-color: var(--sage-300);
   color: var(--foreground);
 }
 
 .btn-secondary:hover {
-  background: var(--accent);
-  border-color: var(--primary);
+  background: var(--sage-100);
+  border-color: var(--sage-400);
   transform: translateY(-1px);
 }
 
-/* Card enhancements */
+.btn-outline {
+  @apply px-6 py-3 rounded-xl font-semibold border-2 transition-all duration-300;
+  border-color: var(--sage-300);
+  color: var(--sage-700);
+  background: transparent;
+}
+
+.btn-outline:hover {
+  background: var(--sage-100);
+  border-color: var(--sage-500);
+  color: var(--sage-800);
+}
+
+/* Modern card styles */
 .card-modern {
-  @apply rounded-2xl border transition-all duration-300;
+  @apply rounded-2xl border transition-all duration-300 shadow-soft;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   border-color: var(--glass-border);
@@ -557,8 +667,38 @@ input[type="number"] {
   transform: translateY(-2px);
   box-shadow:
     0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.card-culinary {
+  @apply rounded-2xl border transition-all duration-300 shadow-soft;
+  background: linear-gradient(135deg, var(--cream-50) 0%, var(--sage-50) 100%);
+  border-color: var(--sage-200);
+}
+
+.card-culinary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Modern input styles */
+.input-modern {
+  @apply w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 focus:outline-none focus:ring-0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border-color: var(--sage-200);
+  color: var(--foreground);
+}
+
+.input-modern:focus {
+  border-color: var(--sage-400);
+  box-shadow: 0 0 0 3px rgba(199, 210, 199, 0.1);
+}
+
+.input-modern::placeholder {
+  color: var(--muted-foreground);
 }
 
 /* Sidebar responsive adjustments */

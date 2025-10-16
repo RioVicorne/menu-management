@@ -11,10 +11,16 @@ import {
   Search,
   X,
   Settings,
+  TrendingUp,
+  Sparkles,
+  BarChart3
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import AddIngredientModal from "@/components/add-ingredient-modal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface Ingredient {
   id: string;
@@ -295,6 +301,19 @@ export default function StoragePage() {
     return status === "low" || status === "out-of-stock";
   }).length;
 
+  // Calculate stats for the cards
+  const lowStockCount = ingredients.filter((ingredient) => {
+    const status = getStockStatus(ingredient);
+    return status === "low" || status === "out-of-stock";
+  }).length;
+
+  const goodStockCount = ingredients.filter((ingredient) => {
+    const status = getStockStatus(ingredient);
+    return status === "in-stock";
+  }).length;
+
+  const uniqueSources = Array.from(new Set(ingredients.map(ing => normalizeSourceName(ing.source))));
+
   const sourceCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     groupedSources.forEach(({ display, items }) => {
@@ -343,109 +362,137 @@ export default function StoragePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
         {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Package className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Quản lý kho
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                  Quản lý nguyên liệu và tồn kho
-                </p>
-              </div>
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-4">
+            <div className="p-4 gradient-primary rounded-3xl shadow-soft">
+              <Package className="h-8 w-8 text-white" />
             </div>
-            <button 
-              onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm nguyên liệu</span>
-            </button>
-          </div>
-
-          {/* Tabs - placed at top under header */}
-          <div className="mt-2">
-            <div className="bg-gray-100 dark:bg-gray-800/40 rounded-xl p-1 inline-flex">
-              <button
-                onClick={() => setActiveTab('manage')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  activeTab === 'manage'
-                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                Quản lý
-              </button>
-              <button
-                onClick={() => setActiveTab('sources')}
-                className={`ml-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
-                  activeTab === 'sources'
-                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                Nguồn nhập
-              </button>
-            </div>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <Package className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Tổng nguyên liệu
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {ingredients.length}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Cần chú ý
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {alertCount}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                  <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Hết hàng
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {ingredients.filter(ing => getStockStatus(ing) === "out-of-stock").length}
-                  </p>
-                </div>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent">
+                Quản lý kho
+              </h1>
+              <p className="text-muted-foreground">
+                Quản lý nguyên liệu và tồn kho
+              </p>
             </div>
           </div>
         </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Tổng nguyên liệu</p>
+                  <p className="text-2xl font-bold text-foreground">{ingredients.length}</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-sage-500 to-sage-600 shadow-soft">
+                  <Package className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Cần nhập hàng</p>
+                  <p className="text-2xl font-bold text-foreground">{lowStockCount}</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-wood-500 to-wood-600 shadow-soft">
+                  <AlertTriangle className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Đã nhập đủ</p>
+                  <p className="text-2xl font-bold text-foreground">{goodStockCount}</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-mint-500 to-mint-600 shadow-soft">
+                  <CheckCircle className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Nguồn nhập</p>
+                  <p className="text-2xl font-bold text-foreground">{uniqueSources.length}</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-cream-500 to-cream-600 shadow-soft">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                variant="modern"
+                type="text"
+                placeholder="Tìm kiếm nguyên liệu..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              variant={showLowOnly ? "default" : "outline"}
+              onClick={() => setShowLowOnly(!showLowOnly)}
+              size="sm"
+            >
+              {showLowOnly ? "Hiển thị tất cả" : "Chỉ hiện cần nhập"}
+            </Button>
+          </div>
+          <Button
+            variant="default"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Thêm nguyên liệu</span>
+          </Button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex justify-center">
+          <div className="flex space-x-2 glass-card p-2 rounded-2xl">
+            <Button
+              variant={activeTab === 'manage' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('manage')}
+              className="px-6 py-3"
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Quản lý kho
+            </Button>
+            <Button
+              variant={activeTab === 'sources' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('sources')}
+              className="px-6 py-3"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Theo nguồn nhập
+            </Button>
+          </div>
+        </div>
+
 
         {/* Main Content */}
         <div className="space-y-6">
@@ -526,119 +573,146 @@ export default function StoragePage() {
 
           {/* Ingredients List */}
           {activeTab === 'manage' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-            {filteredIngredients.length === 0 ? (
-              <div className="p-8 text-center">
-                {searchQuery ? (
-                  <>
-                    <Search className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 mb-2">
-                      Không tìm thấy nguyên liệu nào phù hợp với &quot;{searchQuery}&quot;
-                    </p>
-                    <button
-                      onClick={handleClearSearch}
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium transition-colors"
-                    >
-                      Xóa bộ lọc tìm kiếm
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Package className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400">
-                      Không có nguyên liệu nào.
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredIngredients.map((ingredient) => {
-                  // Progress bar shows current stock status
-                  // 0 stock = 0%, any stock > 0 = 100%
-                  const quantityRatio = ingredient.quantityInStock > 0 ? 1 : 0;
-                  const weightRatio = ingredient.weightInStock > 0 ? 1 : 0;
+          <Card variant="modern" className="hover-lift">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-sage-600" />
+                Danh sách nguyên liệu
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredIngredients.length === 0 ? (
+                <div className="p-12 text-center">
+                  {searchQuery ? (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-full bg-sage-100 dark:bg-sage-900/30 w-fit mx-auto">
+                        <Search className="h-12 w-12 text-sage-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Không tìm thấy kết quả</h3>
+                        <p className="text-muted-foreground mb-4">
+                          Không có nguyên liệu nào phù hợp với &quot;{searchQuery}&quot;
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={handleClearSearch}
+                          size="sm"
+                        >
+                          Xóa bộ lọc tìm kiếm
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-full bg-sage-100 dark:bg-sage-900/30 w-fit mx-auto">
+                        <Package className="h-12 w-12 text-sage-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Chưa có nguyên liệu</h3>
+                        <p className="text-muted-foreground">Hãy thêm nguyên liệu đầu tiên vào kho.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredIngredients.map((ingredient, index) => {
+                    const status = getStockStatus(ingredient);
+                    const quantityRatio = ingredient.quantityInStock > 0 ? 1 : 0;
+                    const weightRatio = ingredient.weightInStock > 0 ? 1 : 0;
 
-                  return (
-                    <div
-                      key={ingredient.id}
-                      className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                              {ingredient.name}
-                            </h3>
-                          </div>
-
-                          <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                            Nguồn: {ingredient.source || "Nguồn chưa rõ"}
-                          </div>
-
-                          <div className="space-y-4">
-                            {/* Show quantity progress bar ONLY if ton_kho_so_luong has data (>= 0) */}
-                            {ingredient.quantityInStock >= 0 && (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                                    Số lượng
-                                  </span>
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    Tồn kho: {ingredient.quantityInStock} {ingredient.unit} ({ingredient.quantityInStock > 0 ? '100%' : '0%'})
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
-                                  <div
-                                    className={`h-3 rounded-full transition-all duration-300 ${
-                                      ingredient.quantityInStock === 0
-                                        ? "bg-red-500"
-                                        : ingredient.quantityInStock <= 5
-                                          ? "bg-yellow-500"
-                                          : "bg-green-500"
-                                    }`}
-                                    style={{
-                                      width: `${Math.min(quantityRatio * 100, 100)}%`,
-                                    }}
-                                  />
-                                </div>
+                    return (
+                      <div
+                        key={ingredient.id}
+                        className="p-4 rounded-2xl border border-sage-200/50 dark:border-sage-700/50 hover:bg-sage-50/50 dark:hover:bg-sage-900/20 transition-all duration-300 hover-lift"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h3 className="text-lg font-semibold text-foreground whitespace-normal break-words leading-snug">
+                                {ingredient.name}
+                              </h3>
+                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                status === 'in-stock' 
+                                  ? 'bg-mint-100 text-mint-700 dark:bg-mint-900/30 dark:text-mint-400'
+                                  : status === 'low'
+                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                {status === 'in-stock' ? 'Đủ hàng' : status === 'low' ? 'Sắp hết' : 'Hết hàng'}
                               </div>
-                            )}
+                            </div>
 
-                            {/* Show weight progress bar ONLY if ton_kho_khoi_luong has data (>= 0) AND no quantity data */}
-                            {ingredient.weightInStock >= 0 && ingredient.quantityInStock < 0 && (
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                                    Khối lượng
-                                  </span>
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    Tồn kho: {ingredient.weightInStock} {ingredient.weightUnit} ({ingredient.weightInStock > 0 ? '100%' : '0%'})
-                                  </span>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                              <Package className="h-4 w-4" />
+                              <span>Nguồn: {ingredient.source || "Nguồn chưa rõ"}</span>
+                            </div>
+
+                            <div className="space-y-4">
+                              {/* Show quantity progress bar ONLY if ton_kho_so_luong has data (>= 0) */}
+                              {ingredient.quantityInStock >= 0 && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-foreground">
+                                      Số lượng
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      Tồn kho: {ingredient.quantityInStock} {ingredient.unit} ({ingredient.quantityInStock > 0 ? '100%' : '0%'})
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-sage-200 dark:bg-sage-700 rounded-full h-3 relative overflow-hidden">
+                                    <div
+                                      className={`h-3 rounded-full transition-all duration-500 ${
+                                        ingredient.quantityInStock === 0
+                                          ? "bg-gradient-to-r from-red-500 to-red-600"
+                                          : ingredient.quantityInStock <= 5
+                                            ? "bg-gradient-to-r from-yellow-500 to-yellow-600"
+                                            : "bg-gradient-to-r from-mint-500 to-mint-600"
+                                      }`}
+                                      style={{
+                                        width: `${Math.min(quantityRatio * 100, 100)}%`,
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
-                                  <div
-                                    className={`h-3 rounded-full transition-all duration-300 ${
-                                      ingredient.weightInStock === 0
-                                        ? "bg-red-500"
-                                        : ingredient.weightInStock <= 5
-                                          ? "bg-yellow-500"
-                                          : "bg-green-500"
-                                    }`}
-                                    style={{
-                                      width: `${Math.min(weightRatio * 100, 100)}%`,
-                                    }}
-                                  />
+                              )}
+
+                              {/* Show weight progress bar ONLY if ton_kho_khoi_luong has data (>= 0) AND no quantity data */}
+                              {ingredient.weightInStock >= 0 && ingredient.quantityInStock < 0 && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-foreground">
+                                      Khối lượng
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      Tồn kho: {ingredient.weightInStock} {ingredient.weightUnit} ({ingredient.weightInStock > 0 ? '100%' : '0%'})
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-sage-200 dark:bg-sage-700 rounded-full h-3 relative overflow-hidden">
+                                    <div
+                                      className={`h-3 rounded-full transition-all duration-500 ${
+                                        ingredient.weightInStock === 0
+                                          ? "bg-gradient-to-r from-red-500 to-red-600"
+                                          : ingredient.weightInStock <= 5
+                                            ? "bg-gradient-to-r from-yellow-500 to-yellow-600"
+                                            : "bg-gradient-to-r from-mint-500 to-mint-600"
+                                      }`}
+                                      style={{
+                                        width: `${Math.min(weightRatio * 100, 100)}%`,
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                          <div className="relative">
-                            <button
-                              aria-label="Cài đặt"
-                              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                          
+                          <div className="flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-10 w-10 text-sage-600 hover:text-sage-700 hover:bg-sage-100 dark:hover:bg-sage-900/30"
                               onClick={() => {
                                 setManageItem(ingredient);
                                 const presets = ["Nhà bà nội", "Nhà bà ngoại", "Nhà anh Thơ"]; 
@@ -655,18 +729,19 @@ export default function StoragePage() {
                                 setEditQty(Math.max(0, Number(ingredient.quantityInStock || 0)));
                                 setEditWgt(Math.max(0, Number(ingredient.weightInStock || 0)));
                               }}
+                              title="Cài đặt nguyên liệu"
                             >
                               <Settings className="h-4 w-4" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
           )}
 
           {activeTab === 'sources' && (

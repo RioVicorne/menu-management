@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, Copy, Download, ShoppingCart } from "lucide-react";
+import { AlertTriangle, Check, Copy, Download, ShoppingCart, Package, Store, Plus, Minus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type Ingredient = {
   id: string;
@@ -224,9 +226,73 @@ export default function ShoppingPage() {
 
   const purchaseSource = async (src: string) => {
     const list = (groupedBySource[src] || []).filter(i => selectedIds.has(i.id));
-    for (const ing of list) {
-      // eslint-disable-next-line no-await-in-loop
-      await purchaseOne(ing);
+    if (list.length === 0) return;
+    
+    try {
+      // Mark all items as purchasing
+      setPurchasingIds(prev => {
+        const next = new Set(prev);
+        list.forEach(ing => next.add(ing.id));
+        return next;
+      });
+
+      // Prepare all purchase requests
+      const purchasePromises = list.map(async (ing) => {
+        const amount = Math.max(1, Number(qtyById[ing.id] ?? getDefaultSuggestion(ing)) || 1);
+        const mode = getMode(ing);
+        
+        const res = await fetch(`/api/ingredients/${ing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, mode, op: 'increase' })
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Cập nhật thất bại');
+        
+        return { ing, amount, mode };
+      });
+
+      // Execute all purchases simultaneously
+      const results = await Promise.all(purchasePromises);
+
+      // Update ingredients state with all results
+      setIngredients(prev => prev.map(i => {
+        const result = results.find(r => r.ing.id === i.id);
+        if (!result) return i;
+        
+        if (result.mode === 'quantity') {
+          const cur = Number(i.ton_kho_so_luong || 0);
+          return { ...i, ton_kho_so_luong: cur + result.amount } as Ingredient;
+        } else {
+          const cur = Number(i.ton_kho_khoi_luong || 0);
+          return { ...i, ton_kho_khoi_luong: cur + result.amount } as Ingredient;
+        }
+      }));
+
+      // Remove from selected and mark as purchased
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        list.forEach(ing => next.delete(ing.id));
+        return next;
+      });
+      
+      setPurchasedIds(prev => {
+        const next = new Set(prev);
+        list.forEach(ing => next.add(ing.id));
+        return next;
+      });
+
+    } catch (e) {
+      logger.error('purchaseSource error', e);
+      alert(e instanceof Error ? e.message : 'Cập nhật thất bại');
+    } finally {
+      // Clear purchasing state
+      setPurchasingIds(prev => {
+        const next = new Set(prev);
+        list.forEach(ing => next.delete(ing.id));
+        return next;
+      });
     }
   };
 
@@ -235,69 +301,112 @@ export default function ShoppingPage() {
   }, [groupedBySource]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 gradient-primary rounded-2xl shadow-lg">
-              <ShoppingCart className="h-7 w-7 text-white" />
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-4">
+            <div className="p-4 gradient-primary rounded-3xl shadow-soft">
+              <ShoppingCart className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">Danh sách mua sắm</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">Tự động tổng hợp theo tồn kho và nguồn nhập</p>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent">
+                Danh sách mua sắm
+              </h1>
+              <p className="text-muted-foreground">
+                Tự động tổng hợp theo tồn kho và nguồn nhập
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Summary + Actions */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="card-modern p-6 hover-lift">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-xs text-gray-500">Nguồn</div>
-                  <div className="text-lg font-semibold text-gray-900">{totalBySource.length}</div>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Nguồn nhập</p>
+                  <p className="text-2xl font-bold text-foreground">{totalBySource.length}</p>
                 </div>
-                <div>
-                  <div className="text-xs text-gray-500">Nguyên liệu</div>
-                  <div className="text-lg font-semibold text-gray-900">{needBuy.length}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-gray-500">Đã chọn</div>
-                  <div className="text-lg font-semibold text-blue-600">{Array.from(selectedIds).length}</div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-sage-500 to-sage-600 shadow-soft">
+                  <Store className="h-5 w-5 text-white" />
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="flex flex-wrap items-center gap-3 justify-start md:justify-end">
-              <button onClick={selectAll} className="btn-secondary text-sm">Chọn tất cả</button>
-              <button onClick={clearAll} className="btn-secondary text-sm">Bỏ chọn</button>
-              <button onClick={handleCopy} className="btn-primary text-sm inline-flex items-center space-x-2">
-              <Copy className="h-4 w-4" /><span>Sao chép</span>
-            </button>
-              <button onClick={handleExportCsv} className="btn-secondary text-sm inline-flex items-center space-x-2">
-              <Download className="h-4 w-4" /><span>Xuất CSV</span>
-            </button>
-            </div>
-          </div>
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Nguyên liệu</p>
+                  <p className="text-2xl font-bold text-foreground">{needBuy.length}</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-mint-500 to-mint-600 shadow-soft">
+                  <Package className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card variant="culinary" className="hover-lift">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Đã chọn</p>
+                  <p className="text-2xl font-bold text-foreground">{Array.from(selectedIds).length}</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-wood-500 to-wood-600 shadow-soft">
+                  <Check className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3 justify-center">
+          <Button variant="outline" onClick={selectAll} size="sm">
+            Chọn tất cả
+          </Button>
+          <Button variant="outline" onClick={clearAll} size="sm">
+            Bỏ chọn
+          </Button>
+          <Button variant="default" onClick={handleCopy} size="sm" className="inline-flex items-center gap-2">
+            <Copy className="h-4 w-4" />
+            Sao chép
+          </Button>
+          <Button variant="secondary" onClick={handleExportCsv} size="sm" className="inline-flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Xuất CSV
+          </Button>
         </div>
 
         {/* Content */}
         {loading ? (
           <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Đang tải dữ liệu...</p>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sage-600 mx-auto mb-4" />
+            <p className="text-muted-foreground">Đang tải dữ liệu...</p>
           </div>
         ) : error ? (
-          <div className="p-8 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <p className="text-red-700">{error}</p>
-            </div>
-          </div>
+          <Card variant="modern" className="border-red-200 dark:border-red-800">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <p className="text-red-700">{error}</p>
+              </div>
+            </CardContent>
+          </Card>
         ) : needBuy.length === 0 ? (
-          <div className="p-12 text-center">
-            <Check className="h-10 w-10 text-green-600 mx-auto mb-3" />
-            <p className="text-gray-600">Kho hiện đủ, không cần mua thêm.</p>
-          </div>
+          <Card variant="modern" className="border-green-200 dark:border-green-800">
+            <CardContent className="p-12 text-center">
+              <div className="p-4 rounded-full bg-green-100 dark:bg-green-900/30 w-fit mx-auto mb-4">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Kho đủ nguyên liệu</h3>
+              <p className="text-muted-foreground">Hiện tại không cần mua thêm nguyên liệu nào.</p>
+            </CardContent>
+          </Card>
         ) : (
           <div className="space-y-6">
             {Object.entries(groupedBySource).map(([src, list]) => {
@@ -306,147 +415,132 @@ export default function ShoppingPage() {
               const allSelected = list.every((i) => selectedIds.has(i.id));
 
               return (
-                <div key={src} className="card-modern hover-lift">
-                  <div className="p-4 flex items-center justify-between border-b border-gray-100 dark:border-slate-700 rounded-t-xl bg-gray-50 dark:bg-slate-800/60">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{src}</h3>
-                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">{list.length} nguyên liệu</span>
+                <Card key={src} variant="modern" className="hover-lift">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-sage-100 dark:bg-sage-900/30">
+                          <Store className="h-4 w-4 text-sage-600" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{src}</CardTitle>
+                          <p className="text-sm text-muted-foreground">{list.length} nguyên liệu</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm text-muted-foreground flex items-center gap-2 select-none cursor-pointer">
+                          <input className="scale-110" type="checkbox" checked={allSelected} onChange={() => toggleSourceAll(src)} />
+                          Chọn tất cả
+                        </label>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => purchaseSource(src)}
+                          disabled={(groupedBySource[src] || []).every(i => !selectedIds.has(i.id))}
+                        >
+                          Mua nguồn này
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2 select-none">
-                        <input className="scale-110" type="checkbox" checked={allSelected} onChange={() => toggleSourceAll(src)} />
-                        Chọn nguồn này
-                      </label>
-                      <button
-                        className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => purchaseSource(src)}
-                        disabled={(groupedBySource[src] || []).every(i => !selectedIds.has(i.id))}
-                      >
-                        Đã mua tất cả đã chọn
-                      </button>
-                    </div>
-                  </div>
+                  </CardHeader>
 
-                  <div className="px-2 sm:px-4 pb-2 divide-y divide-gray-100 dark:divide-slate-700/70">
+                  <CardContent className="space-y-2">
                     {display.map((ing) => {
                       const qty = Number(ing.ton_kho_so_luong || 0);
                       const wgt = Number(ing.ton_kho_khoi_luong || 0);
                       const value = Math.max(qty, wgt);
                       const checked = selectedIds.has(ing.id);
+                      const currentQty = qtyById[ing.id] ?? getDefaultSuggestion(ing);
+                      
                       return (
-                        <div key={ing.id} className="py-2 sm:py-3 flex items-center justify-between gap-4 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 px-2 sm:px-3">
-                          <label className="flex flex-wrap items-center gap-2 sm:gap-3 cursor-pointer min-w-0 flex-1">
-                            <input className="scale-110" type="checkbox" checked={checked} onChange={() => toggleItem(ing.id)} />
-                            <span className="font-medium text-gray-900 dark:text-white whitespace-normal break-words leading-snug min-w-0">
-                              {ing.ten_nguyen_lieu}
-                            </span>
-                          </label>
-                          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                            <span className="hidden sm:inline text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300">Tồn: {value}</span>
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                {qtyById[ing.id] ?? getDefaultSuggestion(ing)}
+                        <div key={ing.id} className="flex items-center justify-between gap-4 p-4 rounded-xl border border-sage-200/50 dark:border-sage-700/50 hover:bg-sage-50/50 dark:hover:bg-sage-900/20 transition-all duration-300">
+                          <label className="flex items-center gap-3 cursor-pointer min-w-0 flex-1">
+                            <input 
+                              className="scale-110 accent-sage-600" 
+                              type="checkbox" 
+                              checked={checked} 
+                              onChange={() => toggleItem(ing.id)} 
+                            />
+                            <div>
+                              <span className="font-medium text-foreground whitespace-normal break-words leading-snug">
+                                {ing.ten_nguyen_lieu}
+                              </span>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Tồn kho: {value}
                               </div>
-                              <input
-                                type="range"
-                                min="1"
-                                max="25"
-                                value={qtyById[ing.id] ?? getDefaultSuggestion(ing)}
-                                onChange={(e) => setQtyById((prev) => ({ ...prev, [ing.id]: Number(e.target.value) }))}
-                                className="w-28 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                                style={{
-                                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((qtyById[ing.id] ?? getDefaultSuggestion(ing)) - 1) * 4.17}%, #e5e7eb ${((qtyById[ing.id] ?? getDefaultSuggestion(ing)) - 1) * 4.17}%, #e5e7eb 100%)`
-                                }}
-                              />
                             </div>
-                            <button
-                              className={`px-3 py-2 text-sm rounded-xl font-semibold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
-                                purchasingIds.has(ing.id) 
-                                  ? 'bg-gray-500' 
-                                  : purchasedIds.has(ing.id) 
-                                    ? 'gradient-success shadow-lg' 
-                                    : 'gradient-primary hover:shadow-lg hover:scale-105'
-                              }`}
+                          </label>
+                          
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <div className="flex items-center gap-2 bg-sage-100 dark:bg-sage-900/30 rounded-xl p-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.max(1, currentQty - 1) }))}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-sm font-medium text-foreground min-w-[2rem] text-center">
+                                {currentQty}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setQtyById((prev) => ({ ...prev, [ing.id]: Math.min(25, currentQty + 1) }))}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            
+                            <Button
+                              variant={purchasedIds.has(ing.id) ? "secondary" : "default"}
+                              size="sm"
                               onClick={() => purchaseOne(ing)}
                               disabled={purchasingIds.has(ing.id) || purchasedIds.has(ing.id)}
+                              className="min-w-[80px]"
                             >
                               {purchasingIds.has(ing.id) ? 'Đang cập nhật...' : purchasedIds.has(ing.id) ? 'Đã mua' : 'Mua'}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       );
                     })}
+                    
                     {list.length > 5 && (
                       <div className="pt-3 text-center">
-                        <button className="text-blue-600 text-sm" onClick={() => toggleSource(src)}>
-                          {isExpanded ? "Thu gọn" : `Xem thêm ${list.length - 5}`}
-                        </button>
+                        <Button variant="ghost" onClick={() => toggleSource(src)} size="sm">
+                          {isExpanded ? "Thu gọn" : `Xem thêm ${list.length - 5} nguyên liệu`}
+                        </Button>
                       </div>
                     )}
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
         )}
 
-      {/* Copy Modal (mobile-friendly) */}
+      {/* Copy Modal */}
       {copiedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="glass-card rounded-2xl shadow-xl w-[90%] max-w-sm p-6 text-center pop-in">
-            <div className={`mx-auto mb-3 h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center ${copyZooming ? 'pulse-once' : ''}` }>
-              <svg
-                className="h-8 w-8 text-emerald-600"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-              >
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-sage-900/30 backdrop-blur-md">
+          <div className="glass-card rounded-3xl shadow-glass w-[90%] max-w-sm p-6 text-center animate-scale-in">
+            <div className={`mx-auto mb-4 h-16 w-16 rounded-full bg-mint-100 dark:bg-mint-900/30 flex items-center justify-center ${copyZooming ? 'animate-pulse' : ''}`}>
+              <Check className="h-8 w-8 text-mint-600" />
             </div>
-            <h3 className="text-base font-semibold text-gray-900">Đã sao chép danh sách</h3>
-            <p className="mt-1 text-sm text-gray-600">Bạn có thể dán vào Zalo/Notes/Email.</p>
-            <div className="mt-5">
-              <button
-                className="btn-primary w-full"
-                onClick={() => setCopiedModal(false)}
-              >
-                OK
-              </button>
-            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Đã sao chép danh sách</h3>
+            <p className="text-sm text-muted-foreground mb-6">Bạn có thể dán vào Zalo/Notes/Email.</p>
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={() => setCopiedModal(false)}
+            >
+              Hoàn thành
+            </Button>
           </div>
         </div>
       )}
-      
-      {/* Custom slider styles */}
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: pointer;
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        .slider::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: #3b82f6;
-          cursor: pointer;
-          border: 2px solid white;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        .slider:focus {
-          outline: none;
-        }
-        
-        .slider:focus::-webkit-slider-thumb {
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-        }
-      `}</style>
     </div>
   );
 }

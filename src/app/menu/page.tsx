@@ -11,12 +11,18 @@ import {
   ChefHat,
   Users,
   Loader2,
+  TrendingUp,
+  Sparkles,
+  BarChart3,
+  Clock
 } from "lucide-react";
 import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
 import { getCalendarData } from "@/lib/api";
 import { HydrationBoundary } from "@/components/hydration-boundary";
 import StatsTab from "@/components/daily-menu/stats-tab";
 import { getDishes, getRecipeForDish } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 
 interface Event {
@@ -248,142 +254,153 @@ export default function MenuPage() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
         {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 gradient-primary rounded-2xl shadow-lg">
-                <CalendarIcon className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">
-                  Thực đơn
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
-                  Lập kế hoạch thực đơn và quản lý kho
-                </p>
-              </div>
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-4">
+            <div className="p-4 gradient-primary rounded-3xl shadow-soft">
+              <CalendarIcon className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent">
+                Lịch thực đơn
+              </h1>
+              <p className="text-muted-foreground">
+                Lập kế hoạch và quản lý thực đơn hàng ngày
+              </p>
             </div>
           </div>
-
-          {/* Tab Navigation */}
-          <div className="flex space-x-2 glass p-2 rounded-2xl w-fit">
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                activeTab === 'calendar'
-                  ? 'gradient-primary text-white shadow-lg'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-white/10'
-              }`}
-            >
-              Lịch thực đơn
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                activeTab === 'stats'
-                  ? 'gradient-primary text-white shadow-lg'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-white/10'
-              }`}
-            >
-              Thống kê
-            </button>
-          </div>
-
-          {/* Stats Cards - only show on calendar tab */}
-          {activeTab === 'calendar' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="card-modern p-6 hover-lift">
-              <div className="flex items-center">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <ChefHat className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Tổng món
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {totalDishes}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-modern p-6 hover-lift">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Ngày có thực đơn
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {events.length}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="card-modern p-6 hover-lift">
-              <div className="flex items-center">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Tháng này
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {format(currentDate, "MMMM yyyy", {
-                      locale: vi,
-                    })}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          )}
         </div>
+
+        {/* Tab Navigation */}
+        <div className="flex justify-center">
+          <div className="flex space-x-2 glass-card p-2 rounded-2xl">
+            <Button
+              variant={activeTab === 'calendar' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('calendar')}
+              className="px-6 py-3"
+            >
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Lịch thực đơn
+            </Button>
+            <Button
+              variant={activeTab === 'stats' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('stats')}
+              className="px-6 py-3"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Thống kê
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats Cards - only show on calendar tab */}
+        {activeTab === 'calendar' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card variant="culinary" className="hover-lift">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Tổng món</p>
+                    <p className="text-2xl font-bold text-foreground">{totalDishes}</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-wood-500 to-wood-600 shadow-soft">
+                    <ChefHat className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card variant="culinary" className="hover-lift">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Ngày có thực đơn</p>
+                    <p className="text-2xl font-bold text-foreground">{events.length}</p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-sage-500 to-sage-600 shadow-soft">
+                    <CalendarIcon className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card variant="culinary" className="hover-lift">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Tháng này</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {format(currentDate, "MMMM yyyy", { locale: vi })}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-mint-500 to-mint-600 shadow-soft">
+                    <Clock className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Content Section */}
         {activeTab === 'calendar' ? (
-            <HydrationBoundary
-              fallback={
-                <div className="card-modern p-6">
+          <Card variant="modern" className="hover-lift">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-sage-600" />
+                Lịch thực đơn hàng tháng
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <HydrationBoundary
+                fallback={
                   <div className="flex items-center justify-center h-96">
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+                    <div className="text-center space-y-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-sage-600 mx-auto" />
+                      <p className="text-muted-foreground">Đang tải lịch thực đơn...</p>
+                    </div>
                   </div>
-                </div>
-              }
-            >
-            <MonthlyCalendar
-              menuData={events.map((event) => ({
-                // Prefer the original ISO date string to avoid timezone drift
-                date: (event.dateIso || event.start.toISOString()).split("T")[0],
-                dishCount: event.count || 0,
-                totalCalories: (event.count || 0) * 300, // Mock calories
-                totalServings: (event.count || 0) * 2, // Mock servings
-              }))}
-              onDateClick={(date) => {
-                const d = new Date(date);
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, "0");
-                const day = String(d.getDate()).padStart(2, "0");
-                router.push(`/menu/${y}-${m}-${day}`);
-              }}
-              onMonthChange={handleMonthChange}
-            />
-          </HydrationBoundary>
+                }
+              >
+                <MonthlyCalendar
+                  menuData={events.map((event) => ({
+                    // Prefer the original ISO date string to avoid timezone drift
+                    date: (event.dateIso || event.start.toISOString()).split("T")[0],
+                    dishCount: event.count || 0,
+                    totalCalories: (event.count || 0) * 300, // Mock calories
+                    totalServings: (event.count || 0) * 2, // Mock servings
+                  }))}
+                  onDateClick={(date) => {
+                    const d = new Date(date);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, "0");
+                    const day = String(d.getDate()).padStart(2, "0");
+                    router.push(`/menu/${y}-${m}-${day}`);
+                  }}
+                  onMonthChange={handleMonthChange}
+                />
+              </HydrationBoundary>
+            </CardContent>
+          </Card>
         ) : (
-          <StatsTab
-            monthEvents={events}
-            yearEvents={yearEvents}
-            currentDate={currentDate}
-            topDishes={topDishes}
-            topIngredients={topIngredients}
-          />
+          <Card variant="modern" className="hover-lift">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-sage-600" />
+                Thống kê và phân tích
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatsTab
+                monthEvents={events}
+                yearEvents={yearEvents}
+                currentDate={currentDate}
+                topDishes={topDishes}
+                topIngredients={topIngredients}
+              />
+            </CardContent>
+          </Card>
         )}
     </div>
   );

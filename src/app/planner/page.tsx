@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Phone, Video, MoreVertical, Smile, Paperclip, Mic } from "lucide-react";
+import { Send, Bot, User, Phone, Video, MoreVertical, Smile, Paperclip, Mic, Sparkles, MessageCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type Message = {
   id: string;
@@ -105,35 +107,54 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <Bot className="h-6 w-6 text-white" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-slate-800"></div>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Menu Assistant</h1>
-              <p className="text-sm text-green-600 dark:text-green-400">Đang hoạt động</p>
-            </div>
+    <div className="space-y-8 animate-fade-in">
+      {/* Header Section */}
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-4">
+          <div className="p-4 gradient-primary rounded-3xl shadow-soft">
+            <MessageCircle className="h-8 w-8 text-white" />
           </div>
-          <div className="flex items-center space-x-2">
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors">
-              <Phone className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors">
-              <Video className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            </button>
-            <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors">
-              <MoreVertical className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-            </button>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent">
+              AI Planner
+            </h1>
+            <p className="text-muted-foreground">
+              Trợ lý thông minh giúp lập kế hoạch thực đơn
+            </p>
           </div>
         </div>
       </div>
+
+      {/* Chat Container */}
+      <Card variant="modern" className="hover-lift h-[calc(100vh-200px)] flex flex-col">
+        <CardHeader className="border-b border-sage-200/50 dark:border-sage-700/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-sage-500 to-sage-600 shadow-soft">
+                  <Bot className="h-5 w-5 text-white" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-mint-500 rounded-full border-2 border-background"></div>
+              </div>
+              <div>
+                <CardTitle className="text-lg">Menu Assistant</CardTitle>
+                <p className="text-sm text-mint-600">Đang hoạt động</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Phone className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Video className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="flex-1 flex flex-col p-0">
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -244,6 +265,8 @@ export default function ChatPage() {
           ))}
         </div>
       </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

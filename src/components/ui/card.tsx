@@ -1,12 +1,22 @@
 import { HTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "modern" | "culinary" | "glass";
+}
+
+const Card = forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant = "default", ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "rounded-lg border bg-card text-card-foreground shadow-sm",
+        "rounded-2xl border transition-all duration-300",
+        {
+          "bg-background border-border shadow-soft": variant === "default",
+          "card-modern": variant === "modern",
+          "card-culinary": variant === "culinary",
+          "glass-card": variant === "glass",
+        },
         className,
       )}
       {...props}
@@ -19,7 +29,7 @@ const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("flex flex-col space-y-1.5 p-6", className)}
+      className={cn("flex flex-col space-y-2 p-6", className)}
       {...props}
     />
   ),
@@ -33,7 +43,7 @@ const CardTitle = forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-xl font-semibold leading-tight tracking-tight text-foreground",
       className,
     )}
     {...props}
@@ -47,7 +57,7 @@ const CardDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-muted-foreground leading-relaxed", className)}
     {...props}
   />
 ));
