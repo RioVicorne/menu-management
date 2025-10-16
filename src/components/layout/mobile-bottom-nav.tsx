@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, Package, ChefHat, Calendar, ShoppingCart } from "lucide-react";
 
@@ -8,6 +8,9 @@ export default function MobileBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<string>("home");
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (pathname === "/") {
@@ -24,6 +27,73 @@ export default function MobileBottomNav() {
       setActiveTab("home");
     }
   }, [pathname]);
+
+  // Scroll detection for hiding/showing navigation
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const documentHeight = document.documentElement.scrollHeight;
+      const windowHeight = window.innerHeight;
+      const scrollPercentage = (currentScrollY + windowHeight) / documentHeight;
+
+      // Clear any existing timeout
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+
+      // Show navigation if at the bottom of the page (within 5% of the end)
+      if (scrollPercentage >= 0.95) {
+        setIsVisible(true);
+        return;
+      }
+
+      // Determine scroll direction
+      const isScrollingDown = currentScrollY > lastScrollY.current;
+      const isScrollingUp = currentScrollY < lastScrollY.current;
+
+      // Only hide/show if there's a significant scroll difference (more than 5px)
+      const scrollDifference = Math.abs(currentScrollY - lastScrollY.current);
+      
+      if (scrollDifference > 5) {
+        if (isScrollingDown && currentScrollY > 100) {
+          // Hide navigation when scrolling down (but not at the very top)
+          setIsVisible(false);
+        } else if (isScrollingUp) {
+          // Show navigation when scrolling up
+          setIsVisible(true);
+        }
+      }
+
+      lastScrollY.current = currentScrollY;
+
+      // Debounce the scroll event
+      scrollTimeout.current = setTimeout(() => {
+        // Optional: Show navigation after scroll stops (uncomment if needed)
+        // setIsVisible(true);
+      }, 150);
+    };
+
+    // Throttled scroll handler for better performance
+    let ticking = false;
+    const throttledHandleScroll = () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', throttledHandleScroll);
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
 
   const navigationItems = [
     { 
@@ -74,7 +144,9 @@ export default function MobileBottomNav() {
   };
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-card border-t border-sage-200/30 dark:border-sage-700/30">
+    <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-card border-t border-sage-200/30 dark:border-sage-700/30 transition-transform duration-300 ease-in-out ${
+      isVisible ? 'translate-y-0' : 'translate-y-full'
+    }`}>
       <div className="flex items-center justify-around px-2 py-2">
         {navigationItems.map((item) => {
           const Icon = item.icon;
