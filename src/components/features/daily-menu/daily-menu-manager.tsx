@@ -41,76 +41,66 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   ];
 
   return (
-    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-10 bg-background min-h-dvh">
-      <div className="min-h-dvh px-4 sm:px-6 lg:px-8 flex flex-col">
-        {/* Header */}
-        <div className="bg-background border-b border-border">
-          <div className="w-full">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <Link
-                  href="/menu"
-                  className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  <span className="text-sm font-medium">
-                    Trở ra
-                  </span>
-                </Link>
-
-                <div className="h-6 w-px bg-border" />
-
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  <h1 className="text-xl font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-lg">
-                    {formatDate(selectedDate)}
-                  </h1>
-                </div>
-              </div>
+    <div className="min-h-dvh bg-background">
+      <div className="container mx-auto px-4 py-6 flex flex-col gap-6">
+        {/* Top bar */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/menu"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span className="text-sm font-medium">Trở ra</span>
+            </Link>
+            <span className="h-4 w-px bg-border" />
+            <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1">
+              <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-semibold text-foreground">
+                {formatDate(selectedDate)}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-background border-b border-border">
-          <div className="w-full">
-            <nav className="flex space-x-8">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`
-                      flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                      ${
-                        activeTab === tab.id
-                          ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                          : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                      }
-                    `}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+        {/* Tabs */}
+        <div className="w-full">
+          <div className="inline-flex rounded-lg border bg-card p-1">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Tab Content */}
-        <div className="w-full py-8 flex-1">
-          {activeTab === "menu" && (
-            <TodaysMenuTab
-              onAddDish={() => {
-                setActiveTab("add-dish");
-              }}
-            />
-          )}
-          {activeTab === "add-dish" && (
-            <AddDishTab onDishAdded={() => setActiveTab("menu")} />
-          )}
+        {/* Content */}
+        <div className="w-full">
+          <div className="rounded-xl border bg-card p-4 md:p-6">
+            {activeTab === "menu" && (
+              <TodaysMenuTab
+                onAddDish={() => {
+                  setActiveTab("add-dish");
+                }}
+              />
+            )}
+            {activeTab === "add-dish" && (
+              <AddDishTab onDishAdded={() => setActiveTab("menu")} />
+            )}
+          </div>
         </div>
       </div>
     </div>

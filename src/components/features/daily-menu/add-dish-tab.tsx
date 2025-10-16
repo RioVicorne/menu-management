@@ -8,10 +8,12 @@ import {
   CheckCircle,
   Search,
   X,
+  Check,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
 import { getDishes, Dish, consumeIngredientsForDish, addMenuItemsBatch, getRecipeForDish } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import Modal from "@/components/ui/modal";
 
 interface SelectedDishItem {
   dish: Dish;
@@ -34,6 +36,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   const [showAllDishes, setShowAllDishes] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dishCalories, setDishCalories] = useState<Record<string, number>>({});
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
 
   // Load available dishes from database
   useEffect(() => {
@@ -215,7 +218,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 px-4 pb-24">
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-foreground mb-2">
@@ -234,155 +237,43 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        {/* Customization & Preview - Show first on mobile */}
-        <div className="space-y-4 order-1 lg:order-2 lg:col-span-1 lg:fixed lg:top-1/2 lg:right-4 lg:-translate-y-1/2 lg:w-96 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
-          {selectedDishes.length > 0 ? (
-            <>
-              {/* Preview - Moved to top */}
-              <div className="bg-muted rounded-xl p-4 border-2 border-border">
-                <h3 className="text-lg font-semibold text-foreground mb-4">
-                  Tổng quan menu
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
-                      Số món đã chọn
-                    </span>
-                    <span className="text-sm text-foreground">
-                      {selectedDishes.length}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
-                      Tổng khẩu phần
-                    </span>
-                    <span className="text-sm text-foreground">
-                      {selectedDishes.reduce((total, item) => total + item.servings, 0)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">
-                      Tổng calories
-                    </span>
-                    {hasAnyCalories ? (
-                      <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
-                        {totalCalories.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-border">
-                    <span className="text-sm font-medium text-foreground block mb-2">
-                      Danh sách món:
-                    </span>
-                    <div className="space-y-1">
-                      {(showAllDishes ? selectedDishes : selectedDishes.slice(0, 4)).map((item, index) => (
-                        <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm">
-                          <span className="text-foreground">
-                            {item.dish.ten_mon_an}
-                          </span>
-                          <span className="text-muted-foreground">
-                            x{item.servings}
-                          </span>
-                        </div>
-                      ))}
-                      {selectedDishes.length > 4 && (
-                        <button
-                          onClick={() => setShowAllDishes(!showAllDishes)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium mt-2 transition-colors"
-                        >
-                          {showAllDishes 
-                            ? `Thu gọn (hiện ${selectedDishes.length} món)` 
-                            : `Xem thêm ${selectedDishes.length - 4} món nữa...`
-                          }
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* Add Button */}
-              <div className="space-y-3">
-                <button
-                  onClick={handleAddToMenu}
-                  disabled={isAdding}
-                  className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium"
-                >
-                  {isAdding ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                      <span>Đang thêm {selectedDishes.length} món...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      <span>Thêm {selectedDishes.length} món vào menu</span>
-                    </>
-                  )}
-                </button>
-                
-                <p className="text-xs text-muted-foreground text-center">
-                  💡 Nhấn vào món để chọn/bỏ chọn. Mỗi món chỉ có thể chọn một lần
-                </p>
-              </div>
-            </>
-          ) : (
-            <div className="bg-muted rounded-xl p-8 text-center">
-              <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Chọn các món từ danh sách bên phải để tùy chỉnh và thêm vào menu
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Bạn có thể chọn nhiều món cùng lúc. Nhấn vào món để chọn/bỏ chọn
-              </p>
-            </div>
-          )}
+      {/* Search Bar */}
+      <div className="relative max-w-md mx-auto mb-6">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-blue-500" />
         </div>
+        <input
+          type="text"
+          placeholder="Tìm kiếm món ăn..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-12 py-3 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-foreground placeholder-gray-400 shadow-lg focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+        />
+        {searchQuery && (
+          <button
+            onClick={handleClearSearch}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+      
+      {/* Search Results Count */}
+      {searchQuery && (
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          Tìm thấy {filteredDishes.length} món ăn
+        </p>
+      )}
 
-        {/* Dish Selection - Show second on mobile */}
-        <div className="space-y-4 order-2 lg:order-1 lg:col-span-1 lg:max-w-96">
+      <div className="grid grid-cols-1 gap-4 lg:gap-6">
+        {/* Dish Selection */}
+        <div className="space-y-4">
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-foreground flex items-center space-x-2">
               <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <span>Chọn món</span>
             </h3>
-            
-            {/* Search Bar */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <input
-                type="text"
-                placeholder="Tìm kiếm món ăn..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            
-            {/* Search Results Count */}
-            {searchQuery && (
-              <p className="text-sm text-muted-foreground">
-                Tìm thấy {filteredDishes.length} món ăn
-              </p>
-            )}
           </div>
 
           {loading ? (
@@ -415,26 +306,19 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                   <div
                     key={dish.id}
                     onClick={() => handleDishSelect(dish)}
-                    className={`
-                      p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md
-                      ${
-                        isSelected
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-border hover:border-border"
-                      }
+                    className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 backdrop-blur-xl border border-gray-300 dark:border-gray-700/30
+                      ${isSelected
+                        ? "bg-blue-500/25 border-blue-500/50 ring-1 ring-blue-600/30 shadow-[0_8px_30px_rgba(31,38,135,0.18)]"
+                        : "bg-white/5 hover:bg-white/10 hover:border-gray-400 dark:hover:border-gray-600/50 hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)]"}
                     `}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-foreground">
-                          {dish.ten_mon_an}
-                        </h4>
-                        {isSelected && (
-                          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                            Đã chọn
-                          </p>
-                        )}
-                      </div>
+                    <div className="flex items-center">
+                      <h4 className="font-medium text-foreground drop-shadow-[0_1px_1px_rgba(0,0,0,0.2)]">
+                        {dish.ten_mon_an}
+                      </h4>
+                      {isSelected && (
+                        <Check className="h-5 w-5 text-green-600 dark:text-green-400 ml-2 animate-in zoom-in duration-200" />
+                      )}
                     </div>
                   </div>
                 );
@@ -444,6 +328,90 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           )}
         </div>
       </div>
+
+      {/* Floating Overview Button */}
+      <div className="fixed bottom-32 right-4 sm:bottom-5 sm:right-5 z-50">
+        <button
+          onClick={() => setIsOverviewOpen(true)}
+          className="relative flex items-center justify-center h-14 w-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_8px_30px_rgba(0,0,0,0.25)] hover:bg-white/20 transition-colors"
+          aria-label="Mở tổng quan menu"
+        >
+          <ChefHat className="h-6 w-6 text-blue-400" />
+          {selectedDishes.length > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">
+              {selectedDishes.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Overview Modal */}
+      <Modal
+        isOpen={isOverviewOpen}
+        onClose={() => setIsOverviewOpen(false)}
+        title="Tổng quan menu"
+        size="lg"
+      >
+        {selectedDishes.length > 0 ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <p className="text-sm text-muted-foreground">Số món đã chọn</p>
+                <p className="text-2xl font-semibold text-foreground">{selectedDishes.length}</p>
+              </div>
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <p className="text-sm text-muted-foreground">Tổng khẩu phần</p>
+                <p className="text-2xl font-semibold text-foreground">{selectedDishes.reduce((total, item) => total + item.servings, 0)}</p>
+              </div>
+              <div className="bg-muted rounded-xl p-4 border border-border">
+                <p className="text-sm text-muted-foreground">Tổng calories</p>
+                {hasAnyCalories ? (
+                  <p className="text-2xl font-semibold text-orange-600 dark:text-orange-400">{totalCalories.toLocaleString()}</p>
+                ) : (
+                  <p className="text-2xl font-semibold text-muted-foreground">—</p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium mb-2">Danh sách món</h4>
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {selectedDishes.map((item, index) => (
+                  <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm bg-background/50 border border-border rounded-lg p-2">
+                    <span className="text-foreground">{item.dish.ten_mon_an}</span>
+                    <span className="text-muted-foreground">x{item.servings}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={handleAddToMenu}
+                disabled={isAdding}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors font-medium"
+              >
+                {isAdding ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    <span>Đang thêm {selectedDishes.length} món...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    <span>Thêm {selectedDishes.length} món vào menu</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <p className="text-muted-foreground">Chọn món từ danh sách để xem tổng quan và thêm vào menu</p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

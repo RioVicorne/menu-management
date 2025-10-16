@@ -57,8 +57,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       label: "Trang chủ", 
       icon: Home, 
       path: "/", 
-      color: "text-sage-600", 
-      bgColor: "bg-sage-100 dark:bg-sage-900/30",
+      color: "text-blue-600", 
+      bgColor: "bg-blue-100 dark:bg-blue-900/30",
       activeColor: "text-white"
     },
     { 
@@ -66,8 +66,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       label: "Lịch thực đơn", 
       icon: Calendar, 
       path: "/menu", 
-      color: "text-mint-600", 
-      bgColor: "bg-mint-100 dark:bg-mint-900/30",
+      color: "text-green-600", 
+      bgColor: "bg-green-100 dark:bg-green-900/30",
       activeColor: "text-white"
     },
     { 
@@ -75,8 +75,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       label: "Món ăn", 
       icon: ChefHat, 
       path: "/ingredients", 
-      color: "text-wood-600", 
-      bgColor: "bg-wood-100 dark:bg-wood-900/30",
+      color: "text-orange-600", 
+      bgColor: "bg-orange-100 dark:bg-orange-900/30",
       activeColor: "text-white"
     },
     { 
@@ -84,8 +84,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       label: "Quản lý kho", 
       icon: Package, 
       path: "/storage", 
-      color: "text-sage-500", 
-      bgColor: "bg-sage-100 dark:bg-sage-900/30",
+      color: "text-purple-600", 
+      bgColor: "bg-purple-100 dark:bg-purple-900/30",
       activeColor: "text-white"
     },
     { 
@@ -93,8 +93,8 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       label: "Mua sắm", 
       icon: ShoppingCart, 
       path: "/shopping", 
-      color: "text-cream-700", 
-      bgColor: "bg-cream-100 dark:bg-cream-900/30",
+      color: "text-pink-600", 
+      bgColor: "bg-pink-100 dark:bg-pink-900/30",
       activeColor: "text-white"
     },
   ];
