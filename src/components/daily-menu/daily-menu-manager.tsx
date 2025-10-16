@@ -41,16 +41,16 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-10 bg-background min-h-dvh">
+      <div className="min-h-dvh px-4 sm:px-6 lg:px-8 flex flex-col">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-background border-b border-border">
+          <div className="w-full">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4">
                 <Link
-                  href="/"
-                  className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  href="/menu"
+                  className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ArrowLeft className="h-5 w-5" />
                   <span className="text-sm font-medium">
@@ -58,7 +58,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
                   </span>
                 </Link>
 
-                <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+                <div className="h-6 w-px bg-border" />
 
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -72,8 +72,8 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-background border-b border-border">
+          <div className="w-full">
             <nav className="flex space-x-8">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -86,7 +86,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
                       ${
                         activeTab === tab.id
                           ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                          : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                          : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                       }
                     `}
                   >
@@ -100,7 +100,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
         </div>
 
         {/* Tab Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="w-full py-8 flex-1">
           {activeTab === "menu" && (
             <TodaysMenuTab
               onAddDish={() => {

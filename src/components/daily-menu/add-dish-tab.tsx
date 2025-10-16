@@ -218,10 +218,10 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+        <h2 className="text-2xl font-bold text-foreground mb-2">
           Hôm nay ăn gì
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-muted-foreground">
           {"Chọn món và tùy chỉnh cho thực đơn hôm nay"}
         </p>
       </div>
@@ -240,32 +240,32 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           {selectedDishes.length > 0 ? (
             <>
               {/* Preview - Moved to top */}
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border-2 border-black dark:border-white">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              <div className="bg-muted rounded-xl p-4 border-2 border-border">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                   Tổng quan menu
                 </h3>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-medium text-foreground">
                       Số món đã chọn
                     </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
+                    <span className="text-sm text-foreground">
                       {selectedDishes.length}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-medium text-foreground">
                       Tổng khẩu phần
                     </span>
-                    <span className="text-sm text-gray-900 dark:text-white">
+                    <span className="text-sm text-foreground">
                       {selectedDishes.reduce((total, item) => total + item.servings, 0)}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-medium text-foreground">
                       Tổng calories
                     </span>
                     {hasAnyCalories ? (
@@ -273,21 +273,21 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                         {totalCalories.toLocaleString()}
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-500 dark:text-gray-400">—</span>
+                      <span className="text-sm text-muted-foreground">—</span>
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                  <div className="pt-2 border-t border-border">
+                    <span className="text-sm font-medium text-foreground block mb-2">
                       Danh sách món:
                     </span>
                     <div className="space-y-1">
                       {(showAllDishes ? selectedDishes : selectedDishes.slice(0, 4)).map((item, index) => (
                         <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm">
-                          <span className="text-gray-900 dark:text-white">
+                          <span className="text-foreground">
                             {item.dish.ten_mon_an}
                           </span>
-                          <span className="text-gray-600 dark:text-gray-400">
+                          <span className="text-muted-foreground">
                             x{item.servings}
                           </span>
                         </div>
@@ -329,18 +329,18 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                   )}
                 </button>
                 
-                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                <p className="text-xs text-muted-foreground text-center">
                   💡 Nhấn vào món để chọn/bỏ chọn. Mỗi món chỉ có thể chọn một lần
                 </p>
               </div>
             </>
           ) : (
-            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-8 text-center">
+            <div className="bg-muted rounded-xl p-8 text-center">
               <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-muted-foreground">
                 Chọn các món từ danh sách bên phải để tùy chỉnh và thêm vào menu
               </p>
-              <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+              <p className="text-sm text-muted-foreground mt-2">
                 Bạn có thể chọn nhiều món cùng lúc. Nhấn vào món để chọn/bỏ chọn
               </p>
             </div>
@@ -350,7 +350,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         {/* Dish Selection - Show second on mobile */}
         <div className="space-y-4 order-2 lg:order-1 lg:col-span-1 lg:max-w-96">
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
+            <h3 className="text-lg font-semibold text-foreground flex items-center space-x-2">
               <ChefHat className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <span>Chọn món</span>
             </h3>
@@ -358,19 +358,19 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
             {/* Search Bar */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <Search className="h-4 w-4 text-muted-foreground" />
               </div>
               <input
                 type="text"
                 placeholder="Tìm kiếm món ăn..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
               {searchQuery && (
                 <button
                   onClick={handleClearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -379,7 +379,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
             
             {/* Search Results Count */}
             {searchQuery && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 Tìm thấy {filteredDishes.length} món ăn
               </p>
             )}
@@ -388,7 +388,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           {loading ? (
             <div className="p-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-500 dark:text-gray-400">
+              <p className="text-muted-foreground">
                 Đang tải món ăn...
               </p>
             </div>
@@ -420,13 +420,13 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                       ${
                         isSelected
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                          : "border-border hover:border-border"
                       }
                     `}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 dark:text-white">
+                        <h4 className="font-medium text-foreground">
                           {dish.ten_mon_an}
                         </h4>
                         {isSelected && (

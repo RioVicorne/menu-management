@@ -155,48 +155,48 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <ChefHat className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-sm font-medium text-muted-foreground">
                 Tổng món
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-2xl font-bold text-foreground">
                 {totalDishes}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
               <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-sm font-medium text-muted-foreground">
                 Tổng khẩu phần
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-2xl font-bold text-foreground">
                 {totalServings}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <Zap className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-sm font-medium text-muted-foreground">
                 Tổng calo
               </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-2xl font-bold text-foreground">
                 {totalCalories.toLocaleString()}
               </p>
             </div>
@@ -205,10 +205,10 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
       </div>
 
       {/* Dishes List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-background rounded-xl shadow-sm border border-border">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold text-foreground">
               Món ăn
             </h2>
             <div className="flex items-center space-x-3">
@@ -238,7 +238,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         {loading ? (
           <div className="p-8 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-muted-foreground">
               Loading dishes...
             </p>
           </div>
@@ -265,7 +265,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                         }
                       }}
                       disabled={isDeleting}
-                      className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    className="h-4 w-4 text-blue-600 bg-muted border-border rounded focus:ring-blue-500 focus:ring-2"
                     />
                     <label htmlFor="select-all" className="text-sm font-medium text-orange-800 dark:text-orange-200 cursor-pointer">
                       Chọn tất cả ({selectedDishes.size}/{dishes.length})
@@ -274,7 +274,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                   <button
                     onClick={handleDeleteSelected}
                     disabled={selectedDishes.size === 0 || isDeleting}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-muted text-white rounded-lg text-sm font-medium transition-colors"
                   >
                     {isDeleting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,7 +293,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
             {dishes.length === 0 ? (
               <div className="p-8 text-center">
                 <ChefHat className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   Chưa có món.
                 </p>
               </div>
@@ -301,7 +301,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
               dishes.map((dish) => (
                 <div
                   key={dish.id}
-                  className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  className="p-6 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -324,7 +324,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                           <h3 className={`text-lg font-medium whitespace-normal break-words leading-snug min-w-0 ${
                             deleteMode && selectedDishes.has(dish.id) 
                               ? "text-red-600 line-through" 
-                              : "text-gray-900 dark:text-white"
+                              : "text-foreground"
                           }`}>
                             {dish.ten_mon_an || "Món chưa đặt tên"}
                           </h3>
@@ -346,14 +346,14 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
                       <div className="flex items-center space-x-2 ml-4 flex-shrink-0">
                         <button
                           onClick={() => handleEdit(dish)}
-                          className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          className="p-2 text-muted-foreground hover:text-blue-600 transition-colors"
                           title="Sửa món"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteClick(dish)}
-                          className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          className="p-2 text-muted-foreground hover:text-red-600 transition-colors"
                           title="Xóa món"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -384,7 +384,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
         title="Xác nhận xóa món ăn"
       >
         <div className="space-y-4">
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground">
             Bạn có chắc chắn muốn xóa món <strong>&quot;{dishToDelete?.name}&quot;</strong> khỏi thực đơn không?
           </p>
           <p className="text-sm text-red-600 dark:text-red-400">
@@ -393,7 +393,7 @@ export default function TodaysMenuTab({ onAddDish }: TodaysMenuTabProps) {
           <div className="flex justify-end space-x-3 pt-4">
             <button
               onClick={cancelDelete}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="px-4 py-2 text-muted-foreground bg-muted rounded-lg hover:bg-muted transition-colors"
             >
               Hủy
             </button>

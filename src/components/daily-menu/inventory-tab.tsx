@@ -127,7 +127,7 @@ export default function InventoryTab() {
       case "out-of-stock":
         return "text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30";
       default:
-        return "text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-900/30";
+        return "text-muted-foreground bg-muted";
     }
   };
 
@@ -209,10 +209,10 @@ export default function InventoryTab() {
       {/* Header with Filter */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-2xl font-bold text-foreground">
             Nguyên liệu trong ngày
           </h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             {`${filteredIngredients.length} nguyên liệu cần cho thực đơn hôm nay`}
           </p>
         </div>
@@ -223,9 +223,9 @@ export default function InventoryTab() {
               type="checkbox"
               checked={showLowOnly}
               onChange={(e) => setShowLowOnly(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+              className="rounded border-border text-blue-600 focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <span className="text-sm text-foreground">
               Chỉ hiển thị thiếu/hết
             </span>
           </label>
@@ -246,7 +246,7 @@ export default function InventoryTab() {
       )}
 
       {/* Ingredients List */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <div className="bg-background rounded-xl shadow-sm border border-border">
         {filteredIngredients.length === 0 ? (
           <div className="p-8 text-center">
             <Package className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />

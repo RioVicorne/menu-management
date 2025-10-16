@@ -129,62 +129,62 @@ export default function StatsTab({ monthEvents, yearEvents, currentDate, topDish
 
   return (
     <div className="space-y-8">
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+      <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thống kê theo tuần</h3>
+          <h3 className="text-lg font-semibold text-foreground">Thống kê theo tuần</h3>
           <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
             Tuần cao nhất: {weekly.labels[weeklyBestIdx]} ({weekly.values[weeklyBestIdx]})
           </span>
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">Số món mỗi ngày trong tuần hiện tại</div>
+        <div className="text-xs text-muted-foreground mb-4">Số món mỗi ngày trong tuần hiện tại</div>
         <BarChart labels={weekly.labels} values={weekly.values} />
-        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">Chú thích: Cột xanh là số món trong ngày. Huy hiệu hiển thị ngày cao nhất trong tuần.</div>
+        <div className="mt-3 text-xs text-muted-foreground">Chú thích: Cột xanh là số món trong ngày. Huy hiệu hiển thị ngày cao nhất trong tuần.</div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
+      <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thống kê theo tháng</h3>
+          <h3 className="text-lg font-semibold text-foreground">Thống kê theo tháng</h3>
           <span className="inline-flex items-center px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
             Tháng nhiều nhất: {monthly.labels[monthlyBestIdx]} ({monthly.values[monthlyBestIdx]})
           </span>
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">Tổng số món theo tháng trong năm hiện tại</div>
+        <div className="text-xs text-muted-foreground mb-4">Tổng số món theo tháng trong năm hiện tại</div>
         <BarChart labels={monthly.labels} values={monthly.values} />
-        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">Chú thích: Cột xanh là tổng món mỗi tháng. Huy hiệu hiển thị tháng cao nhất.</div>
+        <div className="mt-3 text-xs text-muted-foreground">Chú thích: Cột xanh là tổng món mỗi tháng. Huy hiệu hiển thị tháng cao nhất.</div>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Bảng xếp hạng món trong tháng</h3>
+      <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Bảng xếp hạng món trong tháng</h3>
         {topDishes.length === 0 ? (
-          <div className="text-sm text-gray-500 dark:text-gray-400">Chưa có dữ liệu.</div>
+          <div className="text-sm text-muted-foreground">Chưa có dữ liệu.</div>
         ) : (
           <ol className="space-y-2">
             {topDishes.map((d, i) => (
-              <li key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2">
+              <li key={i} className="flex items-center justify-between bg-muted border border-border rounded-lg px-3 py-2">
                 <div className="flex items-center space-x-2">
                   <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${i === 0 ? 'bg-yellow-400 text-yellow-900' : i === 1 ? 'bg-gray-300 text-gray-800' : i === 2 ? 'bg-amber-600 text-white' : 'bg-blue-100 text-blue-700'}`}>{i + 1}</span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100">{d.name}</span>
+                  <span className="text-sm text-foreground">{d.name}</span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{d.count} Lần</span>
+                <span className="text-sm font-medium text-foreground">{d.count} Lần</span>
               </li>
             ))}
           </ol>
         )}
       </div>
 
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-slate-700">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Nguyên liệu dùng nhiều trong tháng</h3>
+      <div className="bg-background rounded-xl p-6 shadow-sm border border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Nguyên liệu dùng nhiều trong tháng</h3>
         {topIngredients.length === 0 ? (
-          <div className="text-sm text-gray-500 dark:text-gray-400">Chưa có dữ liệu.</div>
+          <div className="text-sm text-muted-foreground">Chưa có dữ liệu.</div>
         ) : (
           <ol className="space-y-2">
             {topIngredients.map((d, i) => (
-              <li key={i} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2">
+              <li key={i} className="flex items-center justify-between bg-muted border border-border rounded-lg px-3 py-2">
                 <div className="flex items-center space-x-2">
                   <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${i === 0 ? 'bg-emerald-400 text-emerald-900' : i === 1 ? 'bg-emerald-200 text-emerald-900' : i === 2 ? 'bg-teal-400 text-teal-900' : 'bg-green-100 text-green-700'}`}>{i + 1}</span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100">{d.name}</span>
+                  <span className="text-sm text-foreground">{d.name}</span>
                 </div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{d.count} Lần</span>
+                <span className="text-sm font-medium text-foreground">{d.count} Lần</span>
               </li>
             ))}
           </ol>

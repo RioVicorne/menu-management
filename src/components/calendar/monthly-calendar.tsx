@@ -105,26 +105,26 @@ export function MonthlyCalendar({
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
+    <div className="bg-background rounded-xl shadow-lg border border-border p-3 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4">
         <div className="flex items-center justify-between sm:justify-start sm:space-x-4">
           <button
             onClick={() => navigateMonth("prev")}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <ChevronLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <ChevronLeft className="h-5 w-5 text-muted-foreground" />
           </button>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
             {monthNames[month]} {year}
           </h2>
 
           <button
             onClick={() => navigateMonth("next")}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <ChevronRight className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -144,7 +144,7 @@ export function MonthlyCalendar({
         {dayNames.map((day) => (
           <div
             key={day}
-            className="p-1 sm:p-3 text-center text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400"
+            className="p-1 sm:p-3 text-center text-xs sm:text-sm font-medium text-muted-foreground"
           >
             {day}
           </div>
@@ -169,7 +169,7 @@ export function MonthlyCalendar({
                     ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
                     : hasMenu
                       ? "border-green-200 bg-green-50 dark:bg-green-900/20 hover:border-green-300"
-                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      : "border-border"
                 }
               `}
             >
@@ -177,7 +177,7 @@ export function MonthlyCalendar({
                 <span
                   className={`
                   text-xs sm:text-sm font-medium mb-1
-                  ${isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-white"}
+                  ${isToday ? "text-blue-600 dark:text-blue-400" : "text-foreground"}
                 `}
                 >
                   {day}
@@ -192,7 +192,7 @@ export function MonthlyCalendar({
                         {menuData.dishCount === 1 ? "dish" : "dishes"}
                       </span>
                     </div>
-                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                       {menuData.totalCalories} cal
                     </div>
                   </div>
@@ -200,7 +200,7 @@ export function MonthlyCalendar({
 
                 {!hasMenu && (
                   <div className="flex-1 flex items-center justify-center">
-                    <div className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400">
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">
                       No menu
                     </div>
                   </div>
@@ -215,17 +215,17 @@ export function MonthlyCalendar({
       <div className="mt-6 flex items-center justify-center space-x-6 text-sm">
         <div className="flex items-center space-x-2">
           <div className="w-4 h-4 rounded border-2 border-green-200 bg-green-50 dark:bg-green-900/20"></div>
-          <span className="text-gray-600 dark:text-gray-400">
+          <span className="text-muted-foreground">
             1-2 món
           </span>
         </div>
         <div className="flex items-center space-x-2">
           <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20"></div>
-          <span className="text-gray-600 dark:text-gray-400">Today</span>
+          <span className="text-muted-foreground">Today</span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 rounded border-2 border-gray-200 dark:border-gray-700"></div>
-          <span className="text-gray-600 dark:text-gray-400">No menu</span>
+          <div className="w-4 h-4 rounded border-2 border-border"></div>
+          <span className="text-muted-foreground">No menu</span>
         </div>
       </div>
     </div>
