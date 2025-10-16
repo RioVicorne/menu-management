@@ -32,7 +32,6 @@ export default function RecipesPage() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [hoverMenuId, setHoverMenuId] = useState<string | null>(null);
   const [dishImages, setDishImages] = useState<Record<string, string>>({});
   const [dishTags, setDishTags] = useState<Record<string, string[]>>({});
   const [imageModalDishId, setImageModalDishId] = useState<string | null>(null);
@@ -327,18 +326,27 @@ export default function RecipesPage() {
               const isFavorite = favorites.has(dish.id);
 
               return (
-                <Card key={dish.id} className="group relative overflow-hidden recipe-card-glass border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl">
+                <Card
+                  key={dish.id}
+                  className="group relative overflow-hidden recipe-card-glass border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl"
+                  onMouseLeave={() => setOpenMenuId((prev) => (prev === dish.id ? null : prev))}
+                >
                   {/* Recipe Image Placeholder */}
                   <div className="relative h-48 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:recipe-image-dark overflow-hidden recipe-image">
                     {/* Real image if available */}
-                    {dishImages[dish.id] && (
-                      <img src={dishImages[dish.id]} alt={dish.ten_mon_an} className="absolute inset-0 w-full h-full object-cover" />
+                    {dishImages[dish.id] ? (
+                      <>
+                        <img src={dishImages[dish.id]} alt={dish.ten_mon_an} className="absolute inset-0 w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/20 dark:bg-black/30"></div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 dark:from-transparent dark:via-transparent dark:to-transparent"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <ChefHat className="h-16 w-16 text-white/60 dark:text-white/40" />
+                        </div>
+                      </>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/20 to-pink-500/20 dark:from-transparent dark:via-transparent dark:to-transparent"></div>
-                    <div className="hidden dark:block absolute inset-0 bg-black/30"></div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <ChefHat className="h-16 w-16 text-white/60 dark:text-white/40" />
-                    </div>
                     
                     {/* Favorite Button */}
                     <button
@@ -350,11 +358,7 @@ export default function RecipesPage() {
 
                     {/* Quick Actions */}
                     <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <div
-                        className="relative md:pb-24 md:w-52"
-                        onMouseEnter={() => setHoverMenuId(dish.id)}
-                        onMouseLeave={() => setHoverMenuId((prev) => (prev === dish.id ? null : prev))}
-                      >
+                      <div className="relative">
                         <button
                           onClick={() => setOpenMenuId(openMenuId === dish.id ? null : dish.id)}
                           className="z-10 p-2 rounded-full bg-white/80 action-button-dark backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 transition-all duration-200 text-gray-600 dark:text-gray-300"
@@ -362,9 +366,7 @@ export default function RecipesPage() {
                           <MoreVertical className="h-4 w-4" />
                         </button>
                         <div
-                          className={`absolute mt-2 left-0 z-20 w-48 rounded-xl border border-sage-200/60 bg-white dark:bg-slate-900/90 dark:border-gray-700 shadow-lg backdrop-blur-md transition-all duration-150
-                            ${openMenuId === dish.id ? 'block' : 'hidden'}
-                            md:${hoverMenuId === dish.id ? 'block' : 'hidden'} md:opacity-100 md:translate-y-0`}
+                          className={`absolute mt-2 left-0 z-20 w-48 rounded-xl border border-sage-200/60 bg-white dark:bg-slate-900/90 dark:border-gray-700 shadow-lg backdrop-blur-md transition-all duration-150 ${openMenuId === dish.id ? 'block pointer-events-auto' : 'hidden pointer-events-none'}`}
                         >
                           <button
                             className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-t-xl"
