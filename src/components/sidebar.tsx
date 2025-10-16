@@ -100,7 +100,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   ];
 
   return (
-    <div className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
+    <div className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
       <div className="glass-card w-full h-full flex flex-col border-r border-sage-200/30 dark:border-sage-700/30">
         {/* Logo Section */}
         <div className="p-4 border-b border-sage-200/30 dark:border-sage-700/30">
@@ -134,10 +134,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             const isActive = activeTab === item.id;
 
             const buttonClasses = isCollapsed
-              ? `w-full flex items-center justify-center px-2 py-3 rounded-xl font-medium transition-all duration-300 hover-lift group ${
+              ? `w-full flex items-center justify-center px-2 py-3 rounded-xl font-medium transition-all duration-300 group ${
                   isActive 
-                    ? "gradient-primary text-white shadow-soft" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-sage-100/50 dark:hover:bg-sage-800/50"
+                    ? "text-foreground" 
+                    : "text-muted-foreground hover:text-foreground"
                 }`
               : `w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift group ${
                   isActive 
@@ -146,11 +146,11 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                 }`;
 
             const iconWrapperClasses = isCollapsed
-              ? `${isActive ? "bg-white/20" : item.bgColor} w-10 aspect-square rounded-xl flex items-center justify-center shrink-0 transition-all duration-300`
+              ? `${isActive ? "bg-sage-300/80 dark:bg-sage-700" : "hover:bg-sage-100/60 dark:hover:bg-sage-800/60"} w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300`
               : `p-2 rounded-xl transition-all duration-300 ${isActive ? "bg-white/20" : item.bgColor}`;
 
             const iconClasses = isCollapsed
-              ? `w-5 h-5 transition-colors duration-300 ${isActive ? "text-white" : item.color}`
+              ? `w-5 h-5 transition-colors duration-300 ${isActive ? "text-white" : "text-muted-foreground"}`
               : `h-4 w-4 transition-colors duration-300 ${isActive ? "text-white" : item.color}`;
 
             return (

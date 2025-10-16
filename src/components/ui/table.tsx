@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    <div className="relative w-full overflow-auto rounded-2xl border border-[color:var(--glass-border)] glass-card">
       <table
         ref={ref}
         className={cn("w-full caption-bottom text-sm", className)}

@@ -589,6 +589,8 @@ input[type="number"] {
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* Liquid glass utilities removed to restore original glassmorphism */
+
 /* Modern culinary gradient backgrounds */
 .gradient-primary {
   background: linear-gradient(135deg, var(--sage-600) 0%, var(--wood-600) 100%);

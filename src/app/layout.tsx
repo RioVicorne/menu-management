@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className={`${inter.variable} scroll-smooth`}>
+    <html lang="vi" className={`${inter.variable} scroll-smooth`} suppressHydrationWarning>
       <body className="min-h-dvh bg-gradient-to-br from-cream-50 via-background to-sage-50 dark:from-sage-950 dark:via-background dark:to-wood-950 text-foreground antialiased font-sans">
         {/* Pre-hydration theme script to avoid FOUC and honor system/manual preference */}
         <script
@@ -67,6 +67,17 @@ export default function RootLayout({
             <div className="absolute inset-0" style={{
               backgroundImage: `radial-gradient(circle at 25px 25px, var(--sage-600) 2px, transparent 0)`,
               backgroundSize: '50px 50px'
+            }} />
+          </div>
+          {/* Soft gradient blobs for depth */}
+          <div className="pointer-events-none fixed inset-0 -z-10">
+            <div className="absolute -top-24 -left-16 h-72 w-72 rounded-full blur-3xl opacity-30 dark:opacity-20" style={{
+              background:
+                'radial-gradient(closest-side, var(--mint-400), transparent)'
+            }} />
+            <div className="absolute -bottom-24 -right-16 h-80 w-80 rounded-full blur-3xl opacity-30 dark:opacity-20" style={{
+              background:
+                'radial-gradient(closest-side, var(--wood-400), transparent)'
             }} />
           </div>
           

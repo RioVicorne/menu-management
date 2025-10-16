@@ -99,6 +99,27 @@ export async function getDishes(): Promise<Dish[]> {
   return data || [];
 }
 
+// Get single dish by id
+export async function getDishById(id: string): Promise<Dish | null> {
+  if (!supabase) {
+    const all = await getDishes();
+    return all.find((d) => d.id === id) || null;
+  }
+
+  const { data, error } = await supabase
+    .from("mon_an")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    logger.error("Error fetching dish by id:", error);
+    return null;
+  }
+
+  return (data || null) as Dish | null;
+}
+
 // Get all ingredients (for pickers)
 export async function getAllIngredients(): Promise<Ingredient[]> {
   if (!supabase) {
@@ -473,6 +494,47 @@ export async function createDish(ten_mon_an: string, cong_thuc?: Array<Record<st
 
   if (error) {
     logger.error("Error creating dish:", error);
+    const message = (error as Error)?.message || (typeof error === 'string' ? error : 'Unknown database error');
+    throw new Error(message);
+  }
+
+  return data as Dish;
+}
+
+// Update an existing dish
+export async function updateDish(
+  id: string,
+  updates: Partial<{ ten_mon_an: string; cong_thuc_nau: Array<Record<string, unknown>> | null }>,
+): Promise<Dish> {
+  if (!id) throw new Error("Thiếu id món ăn");
+
+  if (!supabase) {
+    // Mock: merge with an existing or return a fabricated record
+    const existing = await getDishById(id);
+    return {
+      id,
+      ten_mon_an: updates.ten_mon_an ?? existing?.ten_mon_an ?? "Unnamed",
+      created_at: existing?.created_at ?? new Date().toISOString(),
+    } as Dish;
+  }
+
+  const payload: Record<string, unknown> = {};
+  if (typeof updates.ten_mon_an === "string") payload.ten_mon_an = updates.ten_mon_an;
+  if (updates.cong_thuc_nau !== undefined) {
+    payload.cong_thuc_nau = Array.isArray(updates.cong_thuc_nau)
+      ? JSON.stringify(updates.cong_thuc_nau)
+      : null;
+  }
+
+  const { data, error } = await supabase
+    .from("mon_an")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    logger.error("Error updating dish:", error);
     const message = (error as Error)?.message || (typeof error === 'string' ? error : 'Unknown database error');
     throw new Error(message);
   }
