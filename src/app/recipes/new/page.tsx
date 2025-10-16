@@ -1,6 +1,6 @@
 "use client";
 
-import RecipeForm from "@/components/recipe-form";
+import { RecipeForm } from "@/components/features";
 import { useRouter } from "next/navigation";
 
 export default function NewRecipePage() {

@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react";
 import { ChefHat, Plus, Search, Trash2, Loader2, Eye, Pencil, Calendar, Sparkles } from "lucide-react";
 import { getDishes, type Dish, deleteDish } from "@/lib/api";
-import AddDishModal from "@/components/add-dish-modal";
-import DishRecipeModal from "@/components/dish-recipe-modal";
-import Modal from "@/components/ui/modal";
-import EditDishIngredientsModal from "@/components/edit-dish-ingredients-modal";
+import { AddDishModal, DishRecipeModal, EditDishIngredientsModal } from "@/components";
+import { Modal } from "@/components/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

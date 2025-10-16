@@ -16,10 +16,9 @@ import {
   BarChart3,
   Clock
 } from "lucide-react";
-import { MonthlyCalendar } from "@/components/calendar/monthly-calendar";
+import { MonthlyCalendar } from "@/components/features";
 import { getCalendarData } from "@/lib/api";
-import { HydrationBoundary } from "@/components/hydration-boundary";
-import StatsTab from "@/components/daily-menu/stats-tab";
+import { HydrationBoundary, StatsTab } from "@/components/features";
 import { getDishes, getRecipeForDish } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -371,7 +370,7 @@ export default function MenuPage() {
                     totalCalories: (event.count || 0) * 300, // Mock calories
                     totalServings: (event.count || 0) * 2, // Mock servings
                   }))}
-                  onDateClick={(date) => {
+                  onDateClick={(date: string) => {
                     const d = new Date(date);
                     const y = d.getFullYear();
                     const m = String(d.getMonth() + 1).padStart(2, "0");

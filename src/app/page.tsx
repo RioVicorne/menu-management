@@ -18,7 +18,7 @@ import {
   Star,
   Sparkles
 } from "lucide-react";
-import TodayMenu from "@/components/today-menu";
+import { TodayMenu } from "@/components";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import { getMenuItems, getCalendarData, getRecipeForDish } from "@/lib/api";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
-import Modal from "./ui/modal";
+import Modal from "../ui/modal";
 import { logger } from "@/lib/logger";
 
 interface AddIngredientModalProps {

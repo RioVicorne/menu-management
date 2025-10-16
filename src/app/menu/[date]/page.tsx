@@ -1,8 +1,8 @@
 "use client";
 
 import { use } from "react";
-import { DailyMenuManager } from "@/components/daily-menu/daily-menu-manager";
-import { HydrationBoundary } from "@/components/hydration-boundary";
+import { DailyMenuManager } from "@/components/features/daily-menu/daily-menu-manager";
+import { HydrationBoundary } from "@/components/features/common/hydration-boundary";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 

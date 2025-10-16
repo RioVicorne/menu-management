@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
 import { logger } from "@/lib/logger";
-import EditDishModal from "@/components/edit-dish-modal";
+import { EditDishModal } from "@/components";
 import Modal from "@/components/ui/modal";
 
 interface TodaysMenuTabProps {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Modal from "./ui/modal";
+import { Modal } from "@/components/ui";
 import { Loader2, Plus, Search, Check } from "lucide-react";
 import { createDish, getAllIngredients } from "@/lib/api";
 
