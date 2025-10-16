@@ -9,6 +9,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Dark mode specific semantic colors
+        'primary-dark': '#9FE870',
+        'link-dark': '#60A5FA',
+        'warning-dark': '#F6B26B',
+        'error-dark': '#F87171',
+        'success-dark': '#4ADE80',
         // Modern culinary theme colors
         background: 'var(--background)',
         foreground: 'var(--foreground)',

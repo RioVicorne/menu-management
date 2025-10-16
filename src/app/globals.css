@@ -80,155 +80,173 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Modern culinary theme - Dark mode */
-    --background: #171c17;
-    --foreground: #f6f7f6;
-    --muted: #2d352d;
-    --muted-foreground: #a3b4a3;
-    --border: #343f34;
-    --input: #2d352d;
-    --primary: #a3b4a3;
-    --primary-foreground: #171c17;
-    --secondary: #343f34;
-    --secondary-foreground: #f6f7f6;
-    --accent: #3e4d3e;
-    --accent-foreground: #e3e7e3;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --ring: #a3b4a3;
+    /* Dark mode per spec */
+    --background: #121212; /* main background */
+    --foreground: #ededed; /* primary text */
+    --muted: #1e1e1e; /* subdued surfaces */
+    --muted-foreground: #a1a1a1; /* secondary text */
+    --border: #2a2a2a; /* subtle borders */
+    --input: #1e1e1e;
+    --primary: #9fe870; /* accent green */
+    --primary-foreground: #121212;
+    --secondary: #1e1e1e; /* card surface */
+    --secondary-foreground: #ededed;
+    --accent: #1e1e1e;
+    --accent-foreground: #ededed;
+    --destructive: #f87171;
+    --destructive-foreground: #121212;
+    --ring: #9fe870;
 
-    /* Modern culinary dark colors */
-    --sage-50: #171c17;
-    --sage-100: #2d352d;
-    --sage-200: #343f34;
-    --sage-300: #3e4d3e;
-    --sage-400: #4c5f4c;
-    --sage-500: #617861;
-    --sage-600: #7d947d;
-    --sage-700: #a3b4a3;
-    --sage-800: #c7d2c7;
-    --sage-900: #e3e7e3;
+    /* Support palette references used across components */
+    --sage-50: #1e1e1e;
+    --sage-100: #232323;
+    --sage-200: #2a2a2a;
+    --sage-300: #333333;
+    --sage-400: #3d3d3d;
+    --sage-500: #4a4a4a;
+    --sage-600: #9fe870; /* use accent green for gradients */
+    --sage-700: #a1a1a1;
+    --sage-800: #d1d1d1;
+    --sage-900: #ededed;
 
-    --cream-50: #171c17;
-    --cream-100: #2d352d;
-    --cream-200: #343f34;
-    --cream-300: #3e4d3e;
-    --cream-400: #4c5f4c;
-    --cream-500: #617861;
+    --cream-50: #121212;
+    --cream-100: #1a1a1a;
+    --cream-200: #1e1e1e;
+    --cream-300: #232323;
+    --cream-400: #2a2a2a;
+    --cream-500: #333333;
 
-    --wood-50: #171c17;
-    --wood-100: #2d352d;
-    --wood-200: #343f34;
-    --wood-300: #3e4d3e;
-    --wood-400: #4c5f4c;
-    --wood-500: #617861;
-    --wood-600: #7d947d;
+    --wood-50: #141414;
+    --wood-100: #191919;
+    --wood-200: #1e1e1e;
+    --wood-300: #262626;
+    --wood-400: #2f2f2f;
+    --wood-500: #3a3a3a;
+    --wood-600: #474747;
 
+    /* keep mint series aligned with success */
     --mint-50: #052e16;
     --mint-100: #14532d;
     --mint-200: #166534;
     --mint-300: #15803d;
-    --mint-400: #16a34a;
+    --mint-400: #4ade80;
     --mint-500: #22c55e;
 
     /* Legacy food colors for compatibility */
-    --food-orange: #96745c;
-    --food-orange-light: #7e614e;
-    --food-orange-dark: #695043;
-    --food-green: #22c55e;
-    --food-green-light: #15803d;
-    --food-green-dark: #16a34a;
-    --food-red: #ef4444;
-    --food-red-light: #991b1b;
+    --food-orange: #f6b26b;
+    --food-orange-light: #f6b26b;
+    --food-orange-dark: #c98843;
+    --food-green: #9fe870;
+    --food-green-light: #b6f19a;
+    --food-green-dark: #74d54d;
+    --food-red: #f87171;
+    --food-red-light: #fca5a5;
     --food-red-dark: #dc2626;
-    --food-blue: #3b82f6;
-    --food-blue-light: #1e40af;
-    --food-blue-dark: #2563eb;
+    --food-blue: #60a5fa;
+    --food-blue-light: #93c5fd;
+    --food-blue-dark: #3b82f6;
     --food-purple: #8b5cf6;
-    --food-purple-light: #7c3aed;
-    --food-purple-dark: #6d28d9;
+    --food-purple-light: #c4b5fd;
+    --food-purple-dark: #7c3aed;
 
     /* Glass morphism dark */
-    --glass-bg: rgba(23, 28, 23, 0.85);
-    --glass-border: rgba(52, 63, 52, 0.3);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --glass-bg: rgba(30, 30, 30, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.05);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
   }
 }
 
 /* Also support class-based dark mode via next-themes (html.dark) */
 .dark {
-  /* Modern culinary theme - Dark mode */
-  --background: #171c17;
-  --foreground: #f6f7f6;
-  --muted: #2d352d;
-  --muted-foreground: #a3b4a3;
-  --border: #343f34;
-  --input: #2d352d;
-  --primary: #a3b4a3;
-  --primary-foreground: #171c17;
-  --secondary: #343f34;
-  --secondary-foreground: #f6f7f6;
-  --accent: #3e4d3e;
-  --accent-foreground: #e3e7e3;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --ring: #a3b4a3;
+  /* Class-driven dark mode */
+  --background: #121212;
+  --foreground: #ededed;
+  --muted: #1e1e1e;
+  --muted-foreground: #a1a1a1;
+  --border: #2a2a2a;
+  --input: #1e1e1e;
+  --primary: #9fe870;
+  --primary-foreground: #121212;
+  --secondary: #1e1e1e;
+  --secondary-foreground: #ededed;
+  --accent: #1e1e1e;
+  --accent-foreground: #ededed;
+  --destructive: #f87171;
+  --destructive-foreground: #121212;
+  --ring: #9fe870;
 
-  /* Modern culinary dark colors */
-  --sage-50: #171c17;
-  --sage-100: #2d352d;
-  --sage-200: #343f34;
-  --sage-300: #3e4d3e;
-  --sage-400: #4c5f4c;
-  --sage-500: #617861;
-  --sage-600: #7d947d;
-  --sage-700: #a3b4a3;
-  --sage-800: #c7d2c7;
-  --sage-900: #e3e7e3;
+  --sage-50: #1e1e1e;
+  --sage-100: #232323;
+  --sage-200: #2a2a2a;
+  --sage-300: #333333;
+  --sage-400: #3d3d3d;
+  --sage-500: #4a4a4a;
+  --sage-600: #9fe870;
+  --sage-700: #a1a1a1;
+  --sage-800: #d1d1d1;
+  --sage-900: #ededed;
 
-  --cream-50: #171c17;
-  --cream-100: #2d352d;
-  --cream-200: #343f34;
-  --cream-300: #3e4d3e;
-  --cream-400: #4c5f4c;
-  --cream-500: #617861;
+  --cream-50: #121212;
+  --cream-100: #1a1a1a;
+  --cream-200: #1e1e1e;
+  --cream-300: #232323;
+  --cream-400: #2a2a2a;
+  --cream-500: #333333;
 
-  --wood-50: #171c17;
-  --wood-100: #2d352d;
-  --wood-200: #343f34;
-  --wood-300: #3e4d3e;
-  --wood-400: #4c5f4c;
-  --wood-500: #617861;
-  --wood-600: #7d947d;
+  --wood-50: #141414;
+  --wood-100: #191919;
+  --wood-200: #1e1e1e;
+  --wood-300: #262626;
+  --wood-400: #2f2f2f;
+  --wood-500: #3a3a3a;
+  --wood-600: #474747;
 
   --mint-50: #052e16;
   --mint-100: #14532d;
   --mint-200: #166534;
   --mint-300: #15803d;
-  --mint-400: #16a34a;
+  --mint-400: #4ade80;
   --mint-500: #22c55e;
 
-  /* Legacy food colors for compatibility */
-  --food-orange: #96745c;
-  --food-orange-light: #7e614e;
-  --food-orange-dark: #695043;
-  --food-green: #22c55e;
-  --food-green-light: #15803d;
-  --food-green-dark: #16a34a;
-  --food-red: #ef4444;
-  --food-red-light: #991b1b;
+  --food-orange: #f6b26b;
+  --food-orange-light: #f6b26b;
+  --food-orange-dark: #c98843;
+  --food-green: #9fe870;
+  --food-green-light: #b6f19a;
+  --food-green-dark: #74d54d;
+  --food-red: #f87171;
+  --food-red-light: #fca5a5;
   --food-red-dark: #dc2626;
-  --food-blue: #3b82f6;
-  --food-blue-light: #1e40af;
-  --food-blue-dark: #2563eb;
+  --food-blue: #60a5fa;
+  --food-blue-light: #93c5fd;
+  --food-blue-dark: #3b82f6;
   --food-purple: #8b5cf6;
-  --food-purple-light: #7c3aed;
-  --food-purple-dark: #6d28d9;
+  --food-purple-light: #c4b5fd;
+  --food-purple-dark: #7c3aed;
 
-  /* Glass morphism dark */
-  --glass-bg: rgba(23, 28, 23, 0.85);
-  --glass-border: rgba(52, 63, 52, 0.3);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-bg: rgba(30, 30, 30, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* Dark glass utility as requested */
+.glass-dark {
+  background: rgba(30, 30, 30, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+}
+
+/* Primary button for dark mode */
+.btn-primary-dark {
+  @apply rounded-xl font-semibold transition-all duration-300 shadow-soft;
+  background-color: #9fe870;
+  color: #121212;
+}
+
+.btn-primary-dark:hover {
+  filter: brightness(1.1);
 }
 
 * {

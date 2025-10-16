@@ -24,6 +24,43 @@ export default function RootLayout({
   return (
     <html lang="vi" className={`${inter.variable} scroll-smooth`}>
       <body className="min-h-dvh bg-gradient-to-br from-cream-50 via-background to-sage-50 dark:from-sage-950 dark:via-background dark:to-wood-950 text-foreground antialiased font-sans">
+        {/* Pre-hydration theme script to avoid FOUC and honor system/manual preference */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+  (function() {
+    try {
+      var stored = localStorage.getItem('theme');
+      var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var shouldDark = stored === 'dark' || (stored !== 'light' && systemPrefersDark);
+      if (shouldDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      // Keep in sync when system preference changes and user hasn't forced a choice
+      if (stored !== 'light' && stored !== 'dark') {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+          if (e.matches) document.documentElement.classList.add('dark');
+          else document.documentElement.classList.remove('dark');
+        });
+      }
+      // Expose a small API for toggles
+      window.__setTheme = function(mode) {
+        if (mode === 'system') {
+          localStorage.removeItem('theme');
+          var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', sys);
+          return;
+        }
+        localStorage.setItem('theme', mode);
+        document.documentElement.classList.toggle('dark', mode === 'dark');
+      };
+    } catch (_) {}
+  })();
+            `,
+          }}
+        />
         <div className="min-h-dvh relative">
           {/* Background pattern */}
           <div className="fixed inset-0 opacity-[0.02] dark:opacity-[0.05] pointer-events-none">
