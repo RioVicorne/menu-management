@@ -9,9 +9,11 @@ import {
   Search,
   X,
   Check,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useMenu } from "@/contexts/menu-context";
-import { getDishes, Dish, consumeIngredientsForDish, addMenuItemsBatch, getRecipeForDish } from "@/lib/api";
+import { getDishes, Dish, consumeIngredientsForDish, consumeIngredientsForDishesBatch, addMenuItemsBatch, getRecipeForDish } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import Modal from "@/components/ui/modal";
 
@@ -37,14 +39,18 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [dishCalories, setDishCalories] = useState<Record<string, number>>({});
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
+  const [isDishListExpanded, setIsDishListExpanded] = useState(false);
 
-  // Load available dishes from database
+  // Load available dishes from database with caching
   useEffect(() => {
     const loadDishes = async () => {
       try {
         setLoading(true);
-        const dishes = await getDishes();
-        setAvailableDishes(dishes);
+        // Check if dishes are already cached in context or component
+        if (availableDishes.length === 0) {
+          const dishes = await getDishes();
+          setAvailableDishes(dishes);
+        }
       } catch (error) {
         logger.error("Error loading dishes:", error);
       } finally {
@@ -70,6 +76,8 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         notes: "" // Default empty notes
       };
       setSelectedDishes(prev => [...prev, newDishItem]);
+      // Auto-collapse when adding new dishes
+      setIsDishListExpanded(false);
     }
   };
 
@@ -105,6 +113,9 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
 
     setIsAdding(true);
 
+    // Keep the popup open and selection visible until API completes
+    const dishesToAdd = [...selectedDishes];
+
     try {
       // Process all selected dishes with a single refresh at the end
       const results: Array<{ dish: Dish; result: { action: 'added' | 'updated'; servings: number; originalServings?: number } }> = [];
@@ -115,7 +126,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         // First handle updates for dishes already in menu to avoid insert conflicts
         const toInsert: Array<{ dishId: string; servings: number; notes?: string }> = [];
 
-        for (const item of selectedDishes) {
+        for (const item of dishesToAdd) {
           const existingMenuItem = currentMenuDishes.find(m => m.ma_mon_an === item.dish.id);
           if (existingMenuItem) {
             const newServings = existingMenuItem.boi_so + item.servings;
@@ -133,7 +144,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         if (toInsert.length > 0) {
           // Use context's selectedDate-aware batch add to avoid wrong date
           await addDishesBatch(toInsert);
-          for (const item of selectedDishes) {
+          for (const item of dishesToAdd) {
             const exists = currentMenuDishes.find(m => m.ma_mon_an === item.dish.id);
             if (!exists) {
               results.push({ dish: item.dish, result: { action: 'added', servings: item.servings } });
@@ -142,8 +153,9 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
           }
         }
 
-        // Deduct inventory for all just-added servings
-        await Promise.all(selectedDishes.map(it => consumeIngredientsForDish(it.dish.id, it.servings)));
+        // Deduct inventory for all just-added servings (run in background using batch)
+        consumeIngredientsForDishesBatch(dishesToAdd.map(it => ({ dishId: it.dish.id, servings: it.servings })))
+          .catch(err => logger.error("Error deducting inventory:", err));
       });
 
       
@@ -160,21 +172,35 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
         successMsg += `${updatedDishes.length} món đã được cập nhật: ${updateMsg}`;
       }
       
+      // Clear selection immediately but keep loading state
+      setSelectedDishes([]);
+      
+      // Show success message
       setSuccessMessage(successMsg);
       setShowSuccess(true);
       
-      // Hide success message after 5 seconds
+      // Notify parent component to switch tab first
+      onDishAdded?.();
+      
+      // Close popup only after tab switch is complete
+      setTimeout(() => {
+        setIsOverviewOpen(false);
+        setIsDishListExpanded(false);
+      }, 100); // Very short delay just for tab switch animation
+      
+      // Hide success message after 3 seconds
       setTimeout(() => {
         setShowSuccess(false);
-      }, 5000);
-
-      // Clear selection and notify parent component
-      setSelectedDishes([]);
-      onDishAdded?.();
+      }, 3000);
     } catch (error) {
       logger.error("Error adding dishes to menu:", error);
+      // Keep selection and popup open on error so user can retry
+      // setSelectedDishes(dishesToAdd); // Don't restore, keep current state
     } finally {
-      setIsAdding(false);
+      // Only stop loading after the popup is closed
+      setTimeout(() => {
+        setIsAdding(false);
+      }, 200); // Just enough time for popup to close after tab switch
     }
   };
 
@@ -354,34 +380,60 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
       >
         {selectedDishes.length > 0 ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <p className="text-sm text-muted-foreground">Số món đã chọn</p>
-                <p className="text-2xl font-semibold text-foreground">{selectedDishes.length}</p>
+            {/* Compact summary cards on mobile to leave more room for dish list */}
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4">
+              <div className="bg-muted rounded-lg p-3 sm:rounded-xl sm:p-4 border border-border">
+                <p className="text-[12px] sm:text-sm text-muted-foreground">Số món</p>
+                <p className="text-xl sm:text-2xl font-semibold text-foreground">{selectedDishes.length}</p>
               </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <p className="text-sm text-muted-foreground">Tổng khẩu phần</p>
-                <p className="text-2xl font-semibold text-foreground">{selectedDishes.reduce((total, item) => total + item.servings, 0)}</p>
+              <div className="bg-muted rounded-lg p-3 sm:rounded-xl sm:p-4 border border-border">
+                <p className="text-[12px] sm:text-sm text-muted-foreground">Khẩu phần</p>
+                <p className="text-xl sm:text-2xl font-semibold text-foreground">{selectedDishes.reduce((total, item) => total + item.servings, 0)}</p>
               </div>
-              <div className="bg-muted rounded-xl p-4 border border-border">
-                <p className="text-sm text-muted-foreground">Tổng calories</p>
+              <div className="bg-muted rounded-lg p-3 sm:rounded-xl sm:p-4 border border-border">
+                <p className="text-[12px] sm:text-sm text-muted-foreground">Calories</p>
                 {hasAnyCalories ? (
-                  <p className="text-2xl font-semibold text-orange-600 dark:text-orange-400">{totalCalories.toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-orange-600 dark:text-orange-400">{totalCalories.toLocaleString()}</p>
                 ) : (
-                  <p className="text-2xl font-semibold text-muted-foreground">—</p>
+                  <p className="text-xl sm:text-2xl font-semibold text-muted-foreground">—</p>
                 )}
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium mb-2">Danh sách món</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium">Danh sách món</h4>
+                {selectedDishes.length > 3 && (
+                  <button
+                    onClick={() => setIsDishListExpanded(!isDishListExpanded)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <span>{isDishListExpanded ? 'Thu gọn' : `Xem tất cả (${selectedDishes.length})`}</span>
+                    {isDishListExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
+                )}
+              </div>
               <div className="space-y-2 max-h-72 overflow-y-auto">
-                {selectedDishes.map((item, index) => (
+                {(isDishListExpanded ? selectedDishes : selectedDishes.slice(0, 3)).map((item, index) => (
                   <div key={`${item.dish.id}-${index}`} className="flex justify-between text-sm bg-background/50 border border-border rounded-lg p-2">
                     <span className="text-foreground">{item.dish.ten_mon_an}</span>
                     <span className="text-muted-foreground">x{item.servings}</span>
                   </div>
                 ))}
+                {!isDishListExpanded && selectedDishes.length > 3 && (
+                  <div className="py-2">
+                    <button
+                      onClick={() => setIsDishListExpanded(true)}
+                      className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                    >
+                      +{selectedDishes.length - 3} món khác
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -394,7 +446,7 @@ export default function AddDishTab({ onDishAdded }: AddDishTabProps) {
                 {isAdding ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    <span>Đang thêm {selectedDishes.length} món...</span>
+                    <span>Đang thêm món...</span>
                   </>
                 ) : (
                   <>

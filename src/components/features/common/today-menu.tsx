@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, ChefHat, Users, Plus } from "lucide-react";
+import { Calendar, ChefHat, Users, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +46,7 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
   const [error, setError] = useState<string | null>(null);
   const [shopping, setShopping] = useState<ShoppingItem[]>([]);
   const [shoppingLoading, setShoppingLoading] = useState(false);
+  const [isDishListExpanded, setIsDishListExpanded] = useState(false);
   const formatNumber = (value: number) => {
     const rounded = Math.round(Number(value || 0) * 100) / 100;
     if (Number.isNaN(rounded)) return "0";
@@ -432,11 +433,26 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
 
       {/* Dishes List */}
       <div className="p-6 pb-8">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Danh sách món ăn
-        </h3>
-          <div className="space-y-4">
-          {menuData.dishes.map((dish, index) => (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Danh sách món ăn
+          </h3>
+          {menuData.dishes.length > 3 && (
+            <button
+              onClick={() => setIsDishListExpanded(!isDishListExpanded)}
+              className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <span>{isDishListExpanded ? 'Thu gọn' : `Xem tất cả (${menuData.dishes.length})`}</span>
+              {isDishListExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          )}
+        </div>
+        <div className="space-y-4">
+          {(isDishListExpanded ? menuData.dishes : menuData.dishes.slice(0, 3)).map((dish, index) => (
             <div
               key={dish.id}
               className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -460,6 +476,16 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
               {/* Right-side metrics removed per request */}
             </div>
           ))}
+          {!isDishListExpanded && menuData.dishes.length > 3 && (
+            <div className="py-4">
+              <button
+                onClick={() => setIsDishListExpanded(true)}
+                className="text-sm text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer"
+              >
+                +{menuData.dishes.length - 3} món khác
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -276,6 +276,63 @@ export async function consumeIngredientsForDish(
   );
 }
 
+// Batch consume ingredients for multiple dishes - more efficient
+export async function consumeIngredientsForDishesBatch(
+  dishes: Array<{ dishId: string; servings: number }>
+): Promise<void> {
+  if (dishes.length === 0) return;
+
+  // Collect all ingredient changes first
+  const ingredientChanges = new Map<string, { weight: number; quantity: number }>();
+
+  for (const { dishId, servings } of dishes) {
+    const recipe = await getRecipeForDish(dishId);
+    if (!recipe || recipe.length === 0) continue;
+
+    for (const item of recipe) {
+      const ingredientId = item.ma_nguyen_lieu;
+      const current = ingredientChanges.get(ingredientId) || { weight: 0, quantity: 0 };
+
+      if (item.khoi_luong_nguyen_lieu && item.khoi_luong_nguyen_lieu > 0) {
+        current.weight += item.khoi_luong_nguyen_lieu * servings;
+      } else if (item.so_luong_nguyen_lieu && item.so_luong_nguyen_lieu > 0) {
+        current.quantity += item.so_luong_nguyen_lieu * servings;
+      }
+
+      ingredientChanges.set(ingredientId, current);
+    }
+  }
+
+  // Apply all changes in parallel
+  await Promise.all(
+    Array.from(ingredientChanges.entries()).map(async ([ingredientId, changes]) => {
+      const promises = [];
+      
+      if (changes.weight > 0) {
+        promises.push(
+          fetch(`/api/ingredients/${ingredientId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ op: "decrease", mode: "weight", amount: changes.weight }),
+          })
+        );
+      }
+      
+      if (changes.quantity > 0) {
+        promises.push(
+          fetch(`/api/ingredients/${ingredientId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ op: "decrease", mode: "quantity", amount: changes.quantity }),
+          })
+        );
+      }
+
+      await Promise.all(promises);
+    })
+  );
+}
+
 // Get menu items for a specific date
 export async function getMenuItems(date: string): Promise<MenuItem[]> {
   if (!supabase) {
