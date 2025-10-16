@@ -138,14 +138,17 @@ export default function Header({ className = "" }: HeaderProps) {
           <div className="p-4 border-b border-gray-200/20 dark:border-gray-700/20">
             <div className="flex items-center justify-between">
               {!isCollapsed && (
-                <div className="flex items-center space-x-3">
+                <button 
+                  onClick={() => router.push("/")}
+                  className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+                >
                   <div className="p-2 gradient-primary rounded-xl shadow-lg">
                     <ChefHat className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-lg font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">
                     Menu Manager
                   </span>
-                </div>
+                </button>
               )}
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
@@ -230,14 +233,20 @@ export default function Header({ className = "" }: HeaderProps) {
         <div className="flex flex-col h-full">
           {/* Mobile Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200/20 dark:border-gray-700/20">
-            <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => {
+                router.push("/");
+                setIsSidebarOpen(false);
+              }}
+              className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <div className="p-2 gradient-primary rounded-xl shadow-lg">
                 <ChefHat className="h-6 w-6 text-white" />
               </div>
               <span className="text-lg font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">
                 Menu Manager
               </span>
-            </div>
+            </button>
             <button
               onClick={() => setIsSidebarOpen(false)}
               className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-white/10 transition-colors"
