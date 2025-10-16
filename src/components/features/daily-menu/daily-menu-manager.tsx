@@ -23,7 +23,10 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab && ["menu", "add-dish"].includes(tab)) {
-      setActiveTab(tab as TabType);
+      setActiveTab(
+        tab as TabType
+      
+      );
     }
   }, [searchParams]);
 
@@ -37,7 +40,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
 
   const tabs = [
     { id: "menu" as TabType, label: "Thực đơn hôm nay", icon: Utensils },
-    { id: "add-dish" as TabType, label: "Thêm món", icon: Plus },
+    { id: "add-dish" as TabType, label: "Thêm", icon: Plus },
   ];
 
   return (

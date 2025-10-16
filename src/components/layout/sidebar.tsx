@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, User, Menu, Settings } from "lucide-react";
+import { Home, Package, ChefHat, Calendar, ShoppingCart, User, Menu, Settings, CalendarCheck, BookOpen } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
@@ -23,6 +23,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       setActiveTab("ingredients");
     } else if (pathname.startsWith("/menu")) {
       setActiveTab("menu");
+    } else if (pathname.startsWith("/planner")) {
+      setActiveTab("planner");
+    } else if (pathname.startsWith("/recipes")) {
+      setActiveTab("recipes");
     } else if (pathname.startsWith("/shopping")) {
       setActiveTab("shopping");
     } else {
@@ -71,6 +75,24 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       activeColor: "text-white"
     },
     { 
+      id: "planner", 
+      label: "Lập kế hoạch", 
+      icon: CalendarCheck, 
+      path: "/planner", 
+      color: "text-emerald-600", 
+      bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+      activeColor: "text-white"
+    },
+    { 
+      id: "recipes", 
+      label: "Công thức", 
+      icon: BookOpen, 
+      path: "/recipes", 
+      color: "text-amber-600", 
+      bgColor: "bg-amber-100 dark:bg-amber-900/30",
+      activeColor: "text-white"
+    },
+    { 
       id: "ingredients", 
       label: "Món ăn", 
       icon: ChefHat, 
@@ -101,7 +123,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
   return (
     <div className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
-      <div className="glass-card w-full h-full flex flex-col border-r border-sage-200/30 dark:border-sage-700/30">
+      <div className="glass-card w-full h-full flex flex-col border-r border-sage-200/30 dark:border-sage-700/30 min-h-0">
         {/* Logo Section */}
         <div className="p-4 border-b border-sage-200/30 dark:border-sage-700/30">
           <div className="flex items-center justify-between">
@@ -128,7 +150,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 pr-3 space-y-1 overflow-y-auto min-h-0">
           {navigationItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
