@@ -4,22 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { 
   ChefHat, 
   Clock, 
-  Filter, 
   Heart, 
   MoreVertical, 
   Plus, 
   Search, 
-  Star, 
   Users,
   Zap,
   BookOpen,
   Sparkles
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Modal from "@/components/ui/modal";
-import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import Link from "next/link";
 import { Dish, getDishes } from "@/lib/api";

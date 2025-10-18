@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, ChefHat, Users, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
-import { vi } from "date-fns/locale";
 import { supabase } from "@/lib/supabase";
 import { getCalendarData, getMenuItems, getAllIngredients, getRecipeForDish, type DishRecipeItem } from "@/lib/api";
 import { logger } from "@/lib/logger";

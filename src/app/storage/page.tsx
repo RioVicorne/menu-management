@@ -177,7 +177,7 @@ export default function StoragePage() {
       map.set(key, entry);
     });
     return map;
-  }, [ingredients]);
+  }, [ingredients, normalizeSourceName]);
 
   // Group ingredients needing restock by normalized source key
   const getRestockBySource = () => {

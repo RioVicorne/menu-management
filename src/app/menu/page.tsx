@@ -9,7 +9,6 @@ import { logger } from "@/lib/logger";
 import {
   Calendar as CalendarIcon,
   ChefHat,
-  Users,
   Loader2,
   TrendingUp,
   Sparkles,
@@ -370,13 +369,6 @@ export default function MenuPage() {
                     totalCalories: (event.count || 0) * 300, // Mock calories
                     totalServings: (event.count || 0) * 2, // Mock servings
                   }))}
-                  onDateClick={(date: string) => {
-                    const d = new Date(date);
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, "0");
-                    const day = String(d.getDate()).padStart(2, "0");
-                    router.push(`/menu/${y}-${m}-${day}`);
-                  }}
                   onMonthChange={handleMonthChange}
                 />
               </HydrationBoundary>

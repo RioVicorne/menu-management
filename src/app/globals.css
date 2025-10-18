@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import AI Chat Styles */
+@import "../styles/ai-chat.css";
+
 :root {
   /* Modern culinary theme - Light mode */
   --background: #fefdfb;

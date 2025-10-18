@@ -21,7 +21,7 @@ import {
 import { TodayMenu } from "@/components";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
-import { getMenuItems, getCalendarData, getRecipeForDish } from "@/lib/api";
+import { getMenuItems, getCalendarData, getRecipeForDish, type DishRecipeItem } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
@@ -59,7 +59,7 @@ export default function HomePage() {
         const todayString = new Date().toISOString().split("T")[0];
         if (!supabase) {
           const cal = await getCalendarData(todayString, todayString);
-          const count = cal && cal.length > 0 ? Number((cal[0] as any)?.dishCount || 0) : 0;
+          const count = cal && cal.length > 0 ? Number((cal[0] as { dishCount?: number })?.dishCount || 0) : 0;
           setTodayDishCount(count);
           setTodayServingCount(count * 2);
           return;
@@ -91,7 +91,7 @@ export default function HomePage() {
 
         if (!supabase) {
           const cal = await getCalendarData(startDate, endDate);
-          const dishCount = Array.isArray(cal) ? cal.reduce((sum, item: any) => sum + Number(item?.dishCount || 0), 0) : 0;
+          const dishCount = Array.isArray(cal) ? cal.reduce((sum, item: { dishCount?: number }) => sum + Number(item?.dishCount || 0), 0) : 0;
           setWeeklyDishCount(dishCount);
           setWeeklyIngredientUsed(dishCount * 5); // simple heuristic in mock mode
           setWeeklyEstimatedCost(dishCount * 75000); // mock cost
@@ -108,9 +108,9 @@ export default function HomePage() {
         setWeeklyDishCount(items.length);
 
         // Aggregate ingredient usage by recipe lines * servings
-        const recipeCache = new Map<string, any[]>();
+        const recipeCache = new Map<string, DishRecipeItem[]>();
         let used = 0;
-        const promises = items.map(async (it: any) => {
+        const promises = items.map(async (it: { ma_mon_an: string; boi_so?: number }) => {
           const dishId = String(it.ma_mon_an);
           let recipe = recipeCache.get(dishId);
           if (!recipe) {

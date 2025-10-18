@@ -13,13 +13,11 @@ interface MenuData {
 
 interface MonthlyCalendarProps {
   menuData?: MenuData[];
-  onDateClick?: (date: string) => void;
   onMonthChange?: (year: number, month: number) => void;
 }
 
 export function MonthlyCalendar({
   menuData = [],
-  onDateClick,
   onMonthChange,
 }: MonthlyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());

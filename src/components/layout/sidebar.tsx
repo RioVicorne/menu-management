@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, User, Menu, Settings, CalendarCheck, BookOpen } from "lucide-react";
+import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
@@ -195,25 +195,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             );
           })}
         </nav>
-
-        {/* User Section */}
-        {!isCollapsed && (
-          <div className="p-4 border-t border-sage-200/30 dark:border-sage-700/30">
-            <div className="flex items-center space-x-3 p-3 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-all duration-300 hover-lift cursor-pointer group">
-              <div className="w-8 h-8 gradient-secondary rounded-full flex items-center justify-center shadow-soft">
-                <User className="h-4 w-4 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">Admin User</p>
-                <p className="text-xs text-muted-foreground">admin@example.com</p>
-              </div>
-              <Settings className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors duration-300" />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
-

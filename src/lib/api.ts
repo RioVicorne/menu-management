@@ -168,7 +168,7 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
       if (Array.isArray(parsed) && parsed.length > 0) {
         // Collect ingredient ids to resolve names
         const ids = parsed
-          .map((it) => (it as any)?.ma_nguyen_lieu)
+          .map((it) => (it as { ma_nguyen_lieu?: string })?.ma_nguyen_lieu)
           .filter((v) => typeof v === "string" && v.length > 0);
 
         const idToName: Record<string, string> = {};
@@ -183,7 +183,12 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
         }
 
         const items: DishRecipeItem[] = parsed.map((it, idx) => {
-          const item = it as any;
+          const item = it as { 
+            ma_nguyen_lieu?: string; 
+            so_nguoi_an?: number; 
+            khoi_luong_nguyen_lieu?: number; 
+            so_luong_nguyen_lieu?: number; 
+          };
           return {
             id: String(idx + 1),
             ma_mon_an: dishId,
