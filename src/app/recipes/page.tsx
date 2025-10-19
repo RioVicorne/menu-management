@@ -11,7 +11,8 @@ import {
   Users,
   Zap,
   BookOpen,
-  Sparkles
+  Sparkles,
+  BarChart3
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,8 @@ import { Input } from "@/components/ui/input";
 import Modal from "@/components/ui/modal";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import Link from "next/link";
-import { Dish, getDishes } from "@/lib/api";
+import { Dish, getDishes, getRecipeForDish } from "@/lib/api";
+import NutritionAnalysis from "@/components/features/ai/nutrition-analysis";
 
 type FilterType = "all" | "favorites" | "quick" | "vegetarian";
 
@@ -33,6 +35,7 @@ export default function RecipesPage() {
   const [dishTags, setDishTags] = useState<Record<string, string[]>>({});
   const [imageModalDishId, setImageModalDishId] = useState<string | null>(null);
   const [tagsModalDishId, setTagsModalDishId] = useState<string | null>(null);
+  const [nutritionModalDishId, setNutritionModalDishId] = useState<string | null>(null);
   const [tempImageUrl, setTempImageUrl] = useState("");
   const [tempTags, setTempTags] = useState("");
 
@@ -372,10 +375,17 @@ export default function RecipesPage() {
                             Thêm/Sửa ảnh...
                           </button>
                           <button
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-b-xl"
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
                             onClick={() => openTagsEditor(dish.id)}
                           >
                             Sửa tags...
+                          </button>
+                          <button
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-b-xl"
+                            onClick={() => setNutritionModalDishId(dish.id)}
+                          >
+                            <BarChart3 className="w-4 h-4 inline mr-2" />
+                            Phân tích dinh dưỡng
                           </button>
                         </div>
                       </div>
@@ -435,6 +445,26 @@ export default function RecipesPage() {
           </div>
         )}
       </div>
+
+      {/* Nutrition Analysis Modal */}
+      {nutritionModalDishId && (
+        <Modal
+          isOpen={true}
+          onClose={() => setNutritionModalDishId(null)}
+          title="Phân tích dinh dưỡng"
+          size="xl"
+        >
+          <NutritionAnalysis
+            dishId={nutritionModalDishId}
+            dishName={dishes?.find(d => d.id === nutritionModalDishId)?.ten_mon_an}
+            recipe={dishes?.find(d => d.id === nutritionModalDishId)?.ingredients?.map(ingredient => ({
+              ingredientName: ingredient,
+              quantity: 1,
+              unit: 'cái'
+            }))}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

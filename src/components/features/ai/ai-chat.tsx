@@ -248,6 +248,14 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         return 'Gợi ý món ăn';
       case 'weekly-plan':
         return 'Lập kế hoạch tuần';
+      case 'advanced-meal-plan':
+        return 'Kế hoạch bữa ăn nâng cao';
+      case 'seasonal-recommendations':
+        return 'Gợi ý món ăn theo mùa';
+      case 'special-occasions':
+        return 'Menu dịp đặc biệt';
+      case 'personalized-learning':
+        return 'Học từ sở thích cá nhân';
       case 'shopping-list':
         return 'Danh sách mua sắm';
       case 'generate-recipe':

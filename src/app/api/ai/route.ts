@@ -18,6 +18,18 @@ export async function POST(request: NextRequest) {
         response = await aiService.createWeeklyMealPlan(data.preferences || {});
         break;
       
+      case 'advanced-meal-plan':
+        response = await aiService.createAdvancedMealPlan(data.preferences || {});
+        break;
+      
+      case 'seasonal-recommendations':
+        response = await aiService.suggestSeasonalDishes(data.preferences || {});
+        break;
+      
+      case 'special-occasions':
+        response = await aiService.createSpecialOccasionMenu(data.preferences || {});
+        break;
+      
       case 'shopping-list':
         response = await aiService.createSmartShoppingList(
           data.menuItems || [],

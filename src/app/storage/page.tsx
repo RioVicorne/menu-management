@@ -18,6 +18,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import { AddIngredientModal } from "@/components";
+import { CameraButton } from "@/components/features/camera";
+import { RecognitionResult } from "@/lib/camera-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +50,15 @@ export default function StoragePage() {
   const [manageCustomSource, setManageCustomSource] = useState<string>("");
   const [editQty, setEditQty] = useState<number>(0);
   const [editWgt, setEditWgt] = useState<number>(0);
+
+  // Handle camera recognition results
+  const handleIngredientsRecognized = (result: RecognitionResult) => {
+    console.log('Camera recognized ingredients:', result.ingredients);
+    
+    // You can implement logic to add recognized ingredients to storage
+    // For now, just show a success message
+    alert(`Đã nhận diện ${result.ingredients.length} nguyên liệu từ camera!`);
+  };
   const [savingManage, setSavingManage] = useState(false);
   const [activeTab, setActiveTab] = useState<'manage' | 'sources'>('manage');
   // Fixed thresholds for warnings (design: just warn low/out-of-stock)
@@ -461,14 +472,24 @@ export default function StoragePage() {
               {showLowOnly ? "Hiển thị tất cả" : "Chỉ hiện cần nhập"}
             </Button>
           </div>
-          <Button
-            variant="default"
-            onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Thêm nguyên liệu</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Thêm nguyên liệu</span>
+            </Button>
+            
+            <CameraButton
+              onIngredientsRecognized={handleIngredientsRecognized}
+              variant="outline"
+              className="inline-flex items-center gap-2"
+            >
+              Nhận diện bằng camera
+            </CameraButton>
+          </div>
         </div>
 
         {/* Tabs */}

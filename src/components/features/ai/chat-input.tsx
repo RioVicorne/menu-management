@@ -79,43 +79,13 @@ export default function ChatInput({
   const suggestions = [
     'Gợi ý món ăn từ nguyên liệu có sẵn',
     'Lập kế hoạch bữa ăn tuần này',
+    'Tạo kế hoạch bữa ăn nâng cao',
+    'Gợi ý món ăn theo mùa và thời tiết',
+    'Tạo menu cho dịp đặc biệt',
     'Tạo danh sách mua sắm',
     'Tạo công thức nấu ăn',
     'Kiểm tra tồn kho nguyên liệu',
     'Tư vấn dinh dưỡng'
-  ];
-
-  const quickFeatures = [
-    {
-      id: 'suggest-dishes',
-      title: 'Gợi ý món ăn',
-      icon: <ChefHat className="w-4 h-4" />,
-      description: 'Từ nguyên liệu có sẵn'
-    },
-    {
-      id: 'weekly-plan',
-      title: 'Kế hoạch tuần',
-      icon: <Calendar className="w-4 h-4" />,
-      description: 'Lập menu 7 ngày'
-    },
-    {
-      id: 'shopping-list',
-      title: 'Mua sắm',
-      icon: <ShoppingCart className="w-4 h-4" />,
-      description: 'Danh sách thông minh'
-    },
-    {
-      id: 'generate-recipe',
-      title: 'Công thức',
-      icon: <BookOpen className="w-4 h-4" />,
-      description: 'Hướng dẫn nấu ăn'
-    },
-    {
-      id: 'open-shopping',
-      title: 'Mở Shopping',
-      icon: <ShoppingCart className="w-4 h-4" />,
-      description: 'Xem trang mua sắm'
-    }
   ];
 
   return (
@@ -123,19 +93,7 @@ export default function ChatInput({
       {/* Quick Features */}
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex space-x-2 overflow-x-auto">
-          {quickFeatures.map((feature) => (
-            <Button
-              key={feature.id}
-              variant="outline"
-              size="sm"
-              onClick={() => handleFeatureClick(feature.id)}
-              disabled={loading || disabled}
-              className="flex-shrink-0 h-8 px-3 text-xs bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              {feature.icon}
-              <span className="ml-1">{feature.title}</span>
-            </Button>
-          ))}
+          
         </div>
       </div>
 

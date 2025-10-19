@@ -16,7 +16,11 @@ import {
   ChefHat,
   Calendar,
   ShoppingCart,
-  BookOpen
+  BookOpen,
+  Target,
+  TrendingUp,
+  Sparkles,
+  Brain
 } from 'lucide-react';
 
 interface AIResultProps {
@@ -47,6 +51,14 @@ export default function AIResult({
         return <ChefHat className="w-6 h-6" />;
       case 'weekly-plan':
         return <Calendar className="w-6 h-6" />;
+      case 'advanced-meal-plan':
+        return <Target className="w-6 h-6" />;
+      case 'seasonal-recommendations':
+        return <Sparkles className="w-6 h-6" />;
+      case 'special-occasions':
+        return <Calendar className="w-6 h-6" />;
+      case 'personalized-learning':
+        return <Brain className="w-6 h-6" />;
       case 'shopping-list':
         return <ShoppingCart className="w-6 h-6" />;
       case 'generate-recipe':
@@ -62,6 +74,14 @@ export default function AIResult({
         return 'Gợi ý món ăn từ AI';
       case 'weekly-plan':
         return 'Kế hoạch bữa ăn tuần';
+      case 'advanced-meal-plan':
+        return 'Kế hoạch bữa ăn nâng cao';
+      case 'seasonal-recommendations':
+        return 'Gợi ý món ăn theo mùa';
+      case 'special-occasions':
+        return 'Menu dịp đặc biệt';
+      case 'personalized-learning':
+        return 'Học từ sở thích cá nhân';
       case 'shopping-list':
         return 'Danh sách mua sắm thông minh';
       case 'generate-recipe':

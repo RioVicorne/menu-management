@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen } from "lucide-react";
+import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen, Sparkles } from "lucide-react";
 
 interface SidebarProps {
   className?: string;
@@ -76,7 +76,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
     },
     { 
       id: "planner", 
-      label: "Lập kế hoạch", 
+      label: "AI Planner", 
       icon: CalendarCheck, 
       path: "/planner", 
       color: "text-emerald-600", 

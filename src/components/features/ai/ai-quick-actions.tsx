@@ -8,10 +8,12 @@ import {
   Calendar, 
   ShoppingCart, 
   BookOpen, 
+  Target,
   Sparkles,
   Loader2,
   Lightbulb,
-  CheckCircle
+  CheckCircle,
+  Brain
 } from 'lucide-react';
 import { getAllIngredients, getMenuItems } from '@/lib/api';
 import { logger } from "@/lib/logger";
@@ -136,6 +138,36 @@ export default function AIQuickActions({
       })
     },
     {
+      id: 'advanced-meal-plan',
+      title: 'Kế hoạch nâng cao',
+      description: 'Tối ưu hóa dinh dưỡng và ngân sách',
+      icon: <Target className="w-5 h-5" />,
+      action: () => callAI('advanced-meal-plan', { 
+        preferences: { 
+          familySize: 4,
+          budget: 500000,
+          dietaryRestrictions: [],
+          favoriteCuisines: ['ẩm thực Việt Nam'],
+          healthGoals: ['maintenance'],
+          mealFrequency: 3,
+          cookingTime: 'moderate',
+          duration: 7
+        }
+      })
+    },
+    {
+      id: 'seasonal-recommendations',
+      title: 'Gợi ý theo mùa',
+      description: 'Món ăn phù hợp với thời tiết hiện tại',
+      icon: <Sparkles className="w-5 h-5" />,
+      action: () => callAI('seasonal-recommendations', { 
+        preferences: { 
+          healthCondition: undefined,
+          category: undefined
+        }
+      })
+    },
+    {
       id: 'generate-recipe',
       title: 'Tạo công thức',
       description: 'Tạo công thức cho món ăn mới',
@@ -143,6 +175,21 @@ export default function AIQuickActions({
       action: () => callAI('generate-recipe', { 
         dishName: 'Món ăn mới',
         ingredients: availableIngredients.slice(0, 5)
+      })
+    },
+    {
+      id: 'personalized-learning',
+      title: 'Học từ sở thích',
+      description: 'Cá nhân hóa theo lịch sử ăn uống',
+      icon: <Brain className="w-5 h-5" />,
+      action: () => callAI('personalized-learning', { 
+        preferences: { 
+          userId: 'current-user',
+          preferences: ['Vietnamese', 'healthy'],
+          dietaryRestrictions: [],
+          healthGoals: ['balanced'],
+          learningMode: 'adaptive'
+        }
       })
     }
   ];
@@ -268,6 +315,14 @@ function getResultTitle(type: string): string {
       return 'Danh sách mua sắm thông minh';
     case 'weekly-plan':
       return 'Kế hoạch bữa ăn tuần';
+    case 'advanced-meal-plan':
+      return 'Kế hoạch bữa ăn nâng cao';
+    case 'seasonal-recommendations':
+      return 'Gợi ý món ăn theo mùa';
+    case 'special-occasions':
+      return 'Menu dịp đặc biệt';
+    case 'personalized-learning':
+      return 'Học từ sở thích cá nhân';
     case 'generate-recipe':
       return 'Công thức nấu ăn mới';
     default:

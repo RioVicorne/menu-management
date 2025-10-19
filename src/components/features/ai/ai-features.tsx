@@ -8,9 +8,11 @@ import {
   Calendar, 
   ShoppingCart, 
   BookOpen, 
+  Target,
   Sparkles, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Brain
 } from 'lucide-react';
 
 interface AISuggestionCardProps {
@@ -90,6 +92,27 @@ export default function AIFeatures({ onFeatureSelect, loading }: AIFeaturesProps
       action: () => handleFeatureClick('weekly-plan')
     },
     {
+      id: 'advanced-meal-plan',
+      title: 'Kế hoạch nâng cao',
+      description: 'Tối ưu hóa dinh dưỡng và ngân sách với AI thông minh',
+      icon: <Target className="w-6 h-6" />,
+      action: () => handleFeatureClick('advanced-meal-plan')
+    },
+    {
+      id: 'seasonal-recommendations',
+      title: 'Gợi ý theo mùa',
+      description: 'Món ăn phù hợp với thời tiết và mùa hiện tại',
+      icon: <Sparkles className="w-6 h-6" />,
+      action: () => handleFeatureClick('seasonal-recommendations')
+    },
+    {
+      id: 'special-occasions',
+      title: 'Menu dịp đặc biệt',
+      description: 'Menu hoàn chỉnh cho sinh nhật, lễ tết, tiệc tùng',
+      icon: <Calendar className="w-6 h-6" />,
+      action: () => handleFeatureClick('special-occasions')
+    },
+    {
       id: 'shopping-list',
       title: 'Danh sách mua sắm',
       description: 'Tự động tạo danh sách mua sắm thông minh dựa trên thực đơn',
@@ -102,6 +125,13 @@ export default function AIFeatures({ onFeatureSelect, loading }: AIFeaturesProps
       description: 'AI sẽ tạo công thức nấu ăn chi tiết cho món bạn muốn',
       icon: <BookOpen className="w-6 h-6" />,
       action: () => handleFeatureClick('generate-recipe')
+    },
+    {
+      id: 'personalized-learning',
+      title: 'Học từ sở thích',
+      description: 'AI học từ lịch sử ăn uống và sở thích cá nhân của bạn',
+      icon: <Brain className="w-6 h-6" />,
+      action: () => handleFeatureClick('personalized-learning')
     }
   ];
 

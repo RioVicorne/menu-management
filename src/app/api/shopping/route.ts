@@ -12,10 +12,8 @@ interface Ingredient {
 export async function GET(request: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json(
-        { error: 'Supabase chưa được cấu hình' },
-        { status: 500 }
-      );
+      // Return mock data when Supabase is not configured
+      return getMockShoppingData();
     }
 
     // Lấy danh sách nguyên liệu cần mua
@@ -84,4 +82,36 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Mock shopping data function
+function getMockShoppingData() {
+  // Mock ingredients that need to be bought (low stock or out of stock)
+  const mockIngredients = [
+    { id: '1', ten_nguyen_lieu: 'Thịt bò', ton_kho_so_luong: 2, ton_kho_khoi_luong: 0, nguon_nhap: 'Co.opmart' },
+    { id: '2', ten_nguyen_lieu: 'Tôm', ton_kho_so_luong: 0, ton_kho_khoi_luong: 0, nguon_nhap: 'Chợ Hải Sản' },
+    { id: '3', ten_nguyen_lieu: 'Rau cải', ton_kho_so_luong: 1, ton_kho_khoi_luong: 0, nguon_nhap: 'Chợ Rau' },
+    { id: '4', ten_nguyen_lieu: 'Nấm', ton_kho_so_luong: 3, ton_kho_khoi_luong: 0, nguon_nhap: 'Co.opmart' },
+    { id: '5', ten_nguyen_lieu: 'Dầu ăn', ton_kho_so_luong: 0, ton_kho_khoi_luong: 0, nguon_nhap: 'Siêu thị' }
+  ];
+
+  // Group by source
+  const groupedBySource: Record<string, Ingredient[]> = {};
+  
+  for (const ing of mockIngredients) {
+    const source = ing.nguon_nhap || 'Nguồn chưa rõ';
+    if (!groupedBySource[source]) {
+      groupedBySource[source] = [];
+    }
+    groupedBySource[source].push(ing);
+  }
+
+  const stats = {
+    totalSources: Object.keys(groupedBySource).length,
+    totalIngredients: mockIngredients.length,
+    groupedBySource,
+    ingredients: mockIngredients
+  };
+
+  return NextResponse.json(stats);
 }

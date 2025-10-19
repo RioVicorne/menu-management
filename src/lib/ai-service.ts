@@ -8,10 +8,30 @@ export interface AIMessage {
   content: string;
 }
 
+export type AIData =
+  | {
+      type: 'advanced-meal-plan';
+      mealPlan: unknown;
+      analysis: unknown;
+      shoppingList: unknown;
+    }
+  | {
+      type: 'seasonal-recommendations';
+      weatherInfo: unknown;
+      recommendations: unknown;
+      suggestions: unknown;
+    }
+  | {
+      type: 'special-occasions';
+      occasions: unknown;
+      preferences: unknown;
+    };
+
 export interface AIResponse {
   content: string;
   suggestions?: string[];
   error?: string;
+  aiData?: AIData;
 }
 
 interface Dish {
@@ -86,7 +106,8 @@ export class AIService {
   async suggestDishesFromIngredients(availableIngredients: string[]): Promise<AIResponse> {
     try {
       // Lấy dữ liệu từ database
-      const response = await fetch('/api/ai-data?type=ingredients');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/ai-data?type=ingredients`);
       const data = await response.json();
       
       if (data.error) {
@@ -165,7 +186,7 @@ export class AIService {
     }
   }
 
-  // Lập kế hoạch bữa ăn theo tuần
+  // Lập kế hoạch bữa ăn theo tuần (cơ bản)
   async createWeeklyMealPlan(preferences: {
     dietaryRestrictions?: string[];
     favoriteCuisines?: string[];
@@ -254,11 +275,347 @@ export class AIService {
     }
   }
 
+  // Lập kế hoạch bữa ăn nâng cao với tối ưu hóa dinh dưỡng và ngân sách
+  async createAdvancedMealPlan(preferences: {
+    familySize: number;
+    budget: number; // VND per week
+    dietaryRestrictions: string[];
+    favoriteCuisines: string[];
+    healthGoals: string[];
+    mealFrequency: number;
+    cookingTime: 'quick' | 'moderate' | 'extensive';
+    duration: number; // days
+  }): Promise<AIResponse> {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/advanced-meal-plan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences,
+          duration: preferences.duration
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.message || 'Không thể tạo kế hoạch bữa ăn nâng cao');
+      }
+
+      // Format response for AI display
+      let content = `🎯 **Kế hoạch bữa ăn nâng cao**\n\n`;
+      content += `**Thông tin:**\n`;
+      content += `• Số người: ${preferences.familySize}\n`;
+      content += `• Ngân sách: ${preferences.budget.toLocaleString()}VND/tuần\n`;
+      content += `• Thời gian: ${preferences.duration} ngày\n`;
+      content += `• Mục tiêu sức khỏe: ${preferences.healthGoals.join(', ')}\n`;
+      content += `• Thời gian nấu: ${preferences.cookingTime}\n\n`;
+
+      content += `**Phân tích dinh dưỡng:**\n`;
+      content += `• Tổng chi phí: ${data.analysis.totalCost.toLocaleString()}VND\n`;
+      content += `• Chi phí trung bình/ngày: ${data.analysis.avgDailyCost.toLocaleString()}VND\n`;
+      content += `• Điểm sức khỏe: ${data.analysis.healthScore}/100\n\n`;
+
+      content += `**Dinh dưỡng trung bình/ngày:**\n`;
+      content += `• Calo: ${Math.round(data.analysis.totalNutrition.calories / preferences.duration)}\n`;
+      content += `• Protein: ${Math.round(data.analysis.totalNutrition.protein / preferences.duration * 10) / 10}g\n`;
+      content += `• Carb: ${Math.round(data.analysis.totalNutrition.carbs / preferences.duration * 10) / 10}g\n`;
+      content += `• Chất béo: ${Math.round(data.analysis.totalNutrition.fat / preferences.duration * 10) / 10}g\n\n`;
+
+      content += `**Kế hoạch chi tiết:**\n\n`;
+      
+      data.mealPlan.forEach((day: any, index: number) => {
+        content += `**${day.day} (${day.date}):**\n`;
+        day.meals.forEach((meal: any) => {
+          content += `• ${meal.mealType}: ${meal.dish.dishName}\n`;
+          content += `  - Calo: ${meal.nutrition.calories}, Protein: ${meal.nutrition.protein}g\n`;
+          content += `  - Chi phí: ${meal.dish.estimatedCost.toLocaleString()}VND\n`;
+        });
+        content += `• Tổng ngày: ${day.dailyNutrition.calories} calo, ${day.dailyNutrition.cost.toLocaleString()}VND\n\n`;
+      });
+
+      content += `**Khuyến nghị:**\n`;
+      data.analysis.recommendations.forEach((rec: string) => {
+        content += `${rec}\n`;
+      });
+
+      content += `\n**Danh sách mua sắm:**\n`;
+      data.shoppingList.slice(0, 10).forEach((item: any) => {
+        content += `• ${item.ingredient}: ${item.totalQuantity} ${item.unit} (${item.estimatedCost.toLocaleString()}VND)\n`;
+      });
+
+      const suggestions = data.mealPlan.slice(0, 3).map((day: any) => 
+        `${day.day}: ${day.meals.map((m: any) => m.dish.dishName).join(', ')}`
+      );
+
+      return {
+        content,
+        suggestions,
+        aiData: {
+          type: 'advanced-meal-plan',
+          mealPlan: data.mealPlan,
+          analysis: data.analysis,
+          shoppingList: data.shoppingList
+        }
+      };
+    } catch (error) {
+      logger.error('Error creating advanced meal plan:', error);
+      
+      return {
+        content: `❌ **Lỗi tạo kế hoạch bữa ăn nâng cao**\n\nCó lỗi xảy ra khi tạo kế hoạch bữa ăn nâng cao.\n\n**Nguyên nhân có thể:**\n• Không có món ăn trong hệ thống\n• Dữ liệu dinh dưỡng chưa đầy đủ\n• Lỗi kết nối cơ sở dữ liệu\n\n**Gợi ý:**\n• Thêm món ăn và công thức\n• Kiểm tra kết nối database\n• Thử lại sau vài phút`,
+        suggestions: [
+          'Thêm món ăn mới',
+          'Kiểm tra công thức',
+          'Thử lại sau',
+          'Liên hệ hỗ trợ'
+        ],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Gợi ý món ăn theo mùa và thời tiết
+  async suggestSeasonalDishes(preferences?: {
+    healthCondition?: string;
+    category?: string;
+    customWeather?: {
+      temperature: number;
+      condition: string;
+      season: string;
+    };
+  }): Promise<AIResponse> {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/seasonal-recommendations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          weather: preferences?.customWeather,
+          healthCondition: preferences?.healthCondition,
+          preferences: {
+            category: preferences?.category
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.message || 'Không thể tạo gợi ý theo mùa');
+      }
+
+      // Format response for AI display
+      let content = `🌤️ **Gợi ý món ăn theo mùa và thời tiết**\n\n`;
+      
+      content += `**Thông tin thời tiết:**\n`;
+      content += `• Mùa: ${this.getSeasonName(data.analysis.season)}\n`;
+      content += `• Nhiệt độ: ${data.analysis.temperature}°C\n`;
+      content += `• Thời tiết: ${this.getWeatherName(data.analysis.condition)}\n`;
+      content += `• Độ ẩm: ${data.analysis.humidity}%\n\n`;
+
+      content += `**Món ăn phù hợp:**\n\n`;
+      
+      data.recommendations.forEach((dish: any, index: number) => {
+        content += `**${index + 1}. ${dish.dishName}**\n`;
+        content += `• Danh mục: ${dish.category}\n`;
+        content += `• Mô tả: ${dish.description}\n`;
+        content += `• Lợi ích: ${dish.benefits.join(', ')}\n`;
+        content += `• Nguyên liệu: ${dish.ingredients.slice(0, 3).join(', ')}${dish.ingredients.length > 3 ? '...' : ''}\n\n`;
+      });
+
+      content += `**💡 Gợi ý:**\n`;
+      data.suggestions.forEach((suggestion: string) => {
+        content += `${suggestion}\n`;
+      });
+
+      const suggestions = data.recommendations.map((dish: any) => dish.dishName).slice(0, 5);
+
+      return {
+        content,
+        suggestions,
+        aiData: {
+          type: 'seasonal-recommendations',
+          weatherInfo: data.weatherInfo,
+          recommendations: data.recommendations,
+          suggestions: data.suggestions
+        }
+      };
+    } catch (error) {
+      logger.error('Error creating seasonal recommendations:', error);
+      
+      return {
+        content: `❌ **Lỗi tạo gợi ý theo mùa**\n\nCó lỗi xảy ra khi tạo gợi ý món ăn theo mùa và thời tiết.\n\n**Nguyên nhân có thể:**\n• Lỗi kết nối API\n• Dữ liệu thời tiết không khả dụng\n• Lỗi xử lý dữ liệu\n\n**Gợi ý:**\n• Thử lại sau vài phút\n• Kiểm tra kết nối internet\n• Liên hệ hỗ trợ nếu vấn đề tiếp tục`,
+        suggestions: [
+          'Thử lại sau',
+          'Kiểm tra kết nối',
+          'Liên hệ hỗ trợ',
+          'Sử dụng tính năng khác'
+        ],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Helper methods để convert tên mùa và thời tiết
+  private getSeasonName(season: string): string {
+    const seasonNames: Record<string, string> = {
+      'spring': 'Xuân',
+      'summer': 'Hè',
+      'autumn': 'Thu',
+      'winter': 'Đông'
+    };
+    return seasonNames[season] || season;
+  }
+
+  private getWeatherName(condition: string): string {
+    const weatherNames: Record<string, string> = {
+      'sunny': 'Nắng',
+      'cloudy': 'Nhiều mây',
+      'rainy': 'Mưa',
+      'stormy': 'Bão',
+      'foggy': 'Sương mù',
+      'snowy': 'Tuyết'
+    };
+    return weatherNames[condition] || condition;
+  }
+
+  // Tạo menu cho dịp đặc biệt
+  async createSpecialOccasionMenu(preferences: {
+    occasionType: string;
+    guestCount?: number;
+    budget?: number;
+    dietaryRestrictions?: string[];
+    favoriteDishes?: string[];
+  }): Promise<AIResponse> {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/special-occasions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          occasionType: preferences.occasionType,
+          preferences: {
+            guestCount: preferences.guestCount,
+            budget: preferences.budget,
+            dietaryRestrictions: preferences.dietaryRestrictions,
+            favoriteDishes: preferences.favoriteDishes
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.message || 'Không thể tạo menu dịp đặc biệt');
+      }
+
+      const occasions = data.data.occasions;
+      if (!occasions || occasions.length === 0) {
+        return {
+          content: `❌ **Không tìm thấy dịp đặc biệt**\n\nKhông tìm thấy dịp đặc biệt phù hợp với yêu cầu của bạn.\n\n**Gợi ý:**\n• Kiểm tra lại loại dịp\n• Thử các dịp khác\n• Liên hệ hỗ trợ`,
+          suggestions: [
+            'Kiểm tra lại loại dịp',
+            'Thử dịp khác',
+            'Liên hệ hỗ trợ'
+          ]
+        };
+      }
+
+      // Format response for AI display
+      let content = `🎉 **Menu cho dịp đặc biệt**\n\n`;
+      
+      content += `**Các dịp phù hợp:**\n\n`;
+      
+      occasions.slice(0, 5).forEach((occasion: any, index: number) => {
+        content += `**${index + 1}. ${occasion.name}**\n`;
+        content += `• Mô tả: ${occasion.description}\n`;
+        content += `• Ngân sách: ${this.getBudgetName(occasion.budget)}\n`;
+        content += `• Số khách: ${occasion.guestCount.min}-${occasion.guestCount.max} người\n`;
+        content += `• Thời gian chuẩn bị: ${this.getDurationName(occasion.duration)}\n`;
+        content += `• Mức độ trang trọng: ${this.getFormalityName(occasion.formality)}\n\n`;
+      });
+
+      content += `**💡 Gợi ý:**\n`;
+      content += `• Chọn dịp phù hợp với ngân sách và số lượng khách\n`;
+      content += `• Chuẩn bị trước các món có thể làm sẵn\n`;
+      content += `• Sắp xếp bàn ghế và trang trí phù hợp\n`;
+      content += `• Có kế hoạch dự phòng cho các món ăn\n\n`;
+      
+      content += `**📋 Các bước tiếp theo:**\n`;
+      content += `• Chọn dịp cụ thể để xem menu chi tiết\n`;
+      content += `• Điều chỉnh menu theo sở thích\n`;
+      content += `• Lập danh sách mua sắm\n`;
+      content += `• Chuẩn bị dụng cụ và nguyên liệu`;
+
+      const suggestions = occasions.slice(0, 5).map((occasion: any) => occasion.name);
+
+      return {
+        content,
+        suggestions,
+        aiData: {
+          type: 'special-occasions',
+          occasions: occasions,
+          preferences: preferences
+        }
+      };
+    } catch (error) {
+      logger.error('Error creating special occasion menu:', error);
+      
+      return {
+        content: `❌ **Lỗi tạo menu dịp đặc biệt**\n\nCó lỗi xảy ra khi tạo menu cho dịp đặc biệt.\n\n**Nguyên nhân có thể:**\n• Lỗi kết nối API\n• Dữ liệu dịp đặc biệt không khả dụng\n• Lỗi xử lý dữ liệu\n\n**Gợi ý:**\n• Thử lại sau vài phút\n• Kiểm tra kết nối internet\n• Liên hệ hỗ trợ nếu vấn đề tiếp tục`,
+        suggestions: [
+          'Thử lại sau',
+          'Kiểm tra kết nối',
+          'Liên hệ hỗ trợ',
+          'Sử dụng tính năng khác'
+        ],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // Helper methods để convert tên ngân sách, thời gian, mức độ trang trọng
+  private getBudgetName(budget: string): string {
+    const budgetNames: Record<string, string> = {
+      'low': 'Thấp',
+      'medium': 'Trung bình',
+      'high': 'Cao',
+      'luxury': 'Cao cấp'
+    };
+    return budgetNames[budget] || budget;
+  }
+
+  private getDurationName(duration: string): string {
+    const durationNames: Record<string, string> = {
+      'short': 'Ngắn (≤2 giờ)',
+      'medium': 'Trung bình (2-4 giờ)',
+      'long': 'Dài (>4 giờ)'
+    };
+    return durationNames[duration] || duration;
+  }
+
+  private getFormalityName(formality: string): string {
+    const formalityNames: Record<string, string> = {
+      'casual': 'Thân mật',
+      'semi-formal': 'Bán trang trọng',
+      'formal': 'Trang trọng'
+    };
+    return formalityNames[formality] || formality;
+  }
+
   // Tạo danh sách mua sắm thông minh
   async createSmartShoppingList(menuItems: string[], currentInventory: string[]): Promise<AIResponse> {
     try {
       // Lấy dữ liệu shopping từ API
-      const response = await fetch('/api/shopping');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/shopping`);
       const shoppingData = await response.json();
       
       if (shoppingData.error) {
@@ -341,7 +698,8 @@ export class AIService {
   async generateRecipe(dishName: string, ingredients: string[]): Promise<AIResponse> {
     try {
       // Lấy dữ liệu công thức từ database
-      const response = await fetch('/api/ai-data?type=recipes');
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/ai-data?type=recipes`);
       const data = await response.json();
       
       if (data.error) {
@@ -437,9 +795,10 @@ export class AIService {
   }): Promise<AIResponse> {
     try {
       // Lấy dữ liệu từ database để trả lời
-      const ingredientsData = await fetch('/api/ai-data?type=ingredients').then(res => res.json());
-      const dishesData = await fetch('/api/ai-data?type=dishes').then(res => res.json());
-      const menuData = await fetch('/api/ai-data?type=menu').then(res => res.json());
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const ingredientsData = await fetch(`${baseUrl}/api/ai-data?type=ingredients`).then(res => res.json());
+      const dishesData = await fetch(`${baseUrl}/api/ai-data?type=dishes`).then(res => res.json());
+      const menuData = await fetch(`${baseUrl}/api/ai-data?type=menu`).then(res => res.json());
 
       const lowerMessage = message.toLowerCase();
       
@@ -557,7 +916,8 @@ export class AIService {
 
   // Helper methods để làm việc với database
   private async getDishesData() {
-    const response = await fetch('/api/ai-data?type=dishes');
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/ai-data?type=dishes`);
     const data = await response.json();
     
     if (data.error) {
@@ -568,7 +928,8 @@ export class AIService {
   }
 
   private async getMenuData() {
-    const response = await fetch('/api/ai-data?type=menu');
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/ai-data?type=menu`);
     const data = await response.json();
     
     if (data.error) {
@@ -591,7 +952,8 @@ export class AIService {
 
   private async findSuitableDishes(ingredients: string[], dishesByCategory: Record<string, Dish[]>) {
     // Lấy dữ liệu công thức để tìm món phù hợp
-    const response = await fetch('/api/ai-data?type=recipes');
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/ai-data?type=recipes`);
     const data = await response.json();
     
     if (data.error) {

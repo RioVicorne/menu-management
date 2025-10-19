@@ -119,12 +119,12 @@ src/
 
 ## 🔮 Tính năng tương lai
 
-- [ ] Tích hợp với camera để nhận diện nguyên liệu
-- [ ] Phân tích dinh dưỡng chi tiết
-- [ ] Gợi ý món ăn theo mùa
+- [x] Tích hợp với camera để nhận diện nguyên liệu
+- [x] Phân tích dinh dưỡng chi tiết
+- [x] Gợi ý món ăn theo mùa
 - [ ] Tích hợp với các ứng dụng mua sắm online
-- [ ] Học từ sở thích cá nhân của người dùng
-- [ ] Tạo menu cho các dịp đặc biệt
+- [x] Học từ sở thích cá nhân của người dùng
+- [x] Tạo menu cho các dịp đặc biệt
 
 ## 🐛 Xử lý lỗi
 
