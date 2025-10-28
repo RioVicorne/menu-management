@@ -8,6 +8,8 @@ export interface Dish {
   created_at: string;
   ingredients?: string[];
   calories?: number;
+  image_url?: string;
+  tags?: string[];
 }
 
 export interface MenuItem {
@@ -96,7 +98,13 @@ export async function getDishes(): Promise<Dish[]> {
     throw error;
   }
 
-  return data || [];
+  // Parse tags from JSON string if they exist
+  const dishes = (data || []).map((dish: any) => ({
+    ...dish,
+    tags: dish.tags ? (typeof dish.tags === 'string' ? JSON.parse(dish.tags) : dish.tags) : undefined,
+  }));
+
+  return dishes;
 }
 
 // Get single dish by id
@@ -117,7 +125,15 @@ export async function getDishById(id: string): Promise<Dish | null> {
     return null;
   }
 
-  return (data || null) as Dish | null;
+  if (!data) return null;
+
+  // Parse tags from JSON string if they exist
+  const dish = {
+    ...data,
+    tags: data.tags ? (typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags) : undefined,
+  };
+
+  return dish as Dish;
 }
 
 // Get all ingredients (for pickers)
@@ -529,7 +545,12 @@ export async function deleteDish(id: string): Promise<void> {
 }
 
 // Create a new dish
-export async function createDish(ten_mon_an: string, cong_thuc?: Array<Record<string, unknown>>): Promise<Dish> {
+export async function createDish(
+  ten_mon_an: string, 
+  cong_thuc?: Array<Record<string, unknown>>,
+  image_url?: string,
+  tags?: string[]
+): Promise<Dish> {
   if (!ten_mon_an || !ten_mon_an.trim()) {
     throw new Error("Tên món ăn không được để trống");
   }
@@ -540,12 +561,16 @@ export async function createDish(ten_mon_an: string, cong_thuc?: Array<Record<st
       id: Date.now().toString(),
       ten_mon_an,
       created_at: new Date().toISOString(),
+      image_url,
+      tags,
     };
   }
 
   const payload: Record<string, unknown> = {
     ten_mon_an,
     cong_thuc_nau: cong_thuc && cong_thuc.length > 0 ? JSON.stringify(cong_thuc) : null,
+    image_url: image_url || null,
+    tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
   };
 
   const { data, error } = await supabase
@@ -566,7 +591,12 @@ export async function createDish(ten_mon_an: string, cong_thuc?: Array<Record<st
 // Update an existing dish
 export async function updateDish(
   id: string,
-  updates: Partial<{ ten_mon_an: string; cong_thuc_nau: Array<Record<string, unknown>> | null }>,
+  updates: Partial<{ 
+    ten_mon_an: string; 
+    cong_thuc_nau: Array<Record<string, unknown>> | null;
+    image_url: string | null;
+    tags: string[] | null;
+  }>,
 ): Promise<Dish> {
   if (!id) throw new Error("Thiếu id món ăn");
 
@@ -577,6 +607,8 @@ export async function updateDish(
       id,
       ten_mon_an: updates.ten_mon_an ?? existing?.ten_mon_an ?? "Unnamed",
       created_at: existing?.created_at ?? new Date().toISOString(),
+      image_url: updates.image_url ?? existing?.image_url,
+      tags: updates.tags ?? existing?.tags,
     } as Dish;
   }
 
@@ -585,6 +617,14 @@ export async function updateDish(
   if (updates.cong_thuc_nau !== undefined) {
     payload.cong_thuc_nau = Array.isArray(updates.cong_thuc_nau)
       ? JSON.stringify(updates.cong_thuc_nau)
+      : null;
+  }
+  if (updates.image_url !== undefined) {
+    payload.image_url = updates.image_url;
+  }
+  if (updates.tags !== undefined) {
+    payload.tags = Array.isArray(updates.tags) && updates.tags.length > 0
+      ? JSON.stringify(updates.tags)
       : null;
   }
 
@@ -602,6 +642,15 @@ export async function updateDish(
   }
 
   return data as Dish;
+}
+
+// Update dish image and tags
+export async function updateDishImageAndTags(
+  dishId: string,
+  image_url: string | null,
+  tags: string[] | null,
+): Promise<Dish> {
+  return updateDish(dishId, { image_url, tags });
 }
 
 // Update dish ingredients (store in cong_thuc_nau as JSON of { ma_nguyen_lieu })

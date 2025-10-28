@@ -194,3 +194,8 @@ function generateNutritionRecommendations(nutrition: any): string[] {
 }
 
 
+
+
+
+
+

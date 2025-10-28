@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { getAllIngredients, getDishById, updateDish, createDish, Dish } from "@/lib/api";
+import { uploadDishImage } from "@/lib/storage";
 
 interface RecipeFormProps {
   dishId?: string;
@@ -15,6 +16,9 @@ interface RecipeFormProps {
 export default function RecipeForm({ dishId, onSaved }: RecipeFormProps) {
   const [name, setName] = useState("");
   const [ingredientIds, setIngredientIds] = useState<string[]>([]);
+  const [imageUrl, setImageUrl] = useState("");
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [tags, setTags] = useState("");
   const [loading, setLoading] = useState<boolean>(!!dishId);
   const [saving, setSaving] = useState<boolean>(false);
   const [ingredients, setIngredients] = useState<{ id: string; ten_nguyen_lieu: string }[]>([]);
@@ -37,6 +41,8 @@ export default function RecipeForm({ dishId, onSaved }: RecipeFormProps) {
         const dish = await getDishById(dishId);
         if (!cancelled && dish) {
           setName(dish.ten_mon_an || "");
+          setImageUrl(dish.image_url || "");
+          setTags((dish.tags || []).join(", "));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -54,10 +60,26 @@ export default function RecipeForm({ dishId, onSaved }: RecipeFormProps) {
     if (!name.trim()) return;
     try {
       setSaving(true);
+      let finalImageUrl: string | undefined | null = imageUrl.trim() || undefined;
+      if (selectedImageFile) {
+        // Upload image to storage first
+        const publicUrl = await uploadDishImage(selectedImageFile, { dishId });
+        finalImageUrl = publicUrl;
+      }
       const recipe = ingredientIds.map((id) => ({ ma_nguyen_lieu: id }));
+      const parsedTags = tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+      
       const saved = dishId
-        ? await updateDish(dishId, { ten_mon_an: name.trim(), cong_thuc_nau: recipe })
-        : await createDish(name.trim(), recipe);
+        ? await updateDish(dishId, { 
+            ten_mon_an: name.trim(), 
+            cong_thuc_nau: recipe,
+            image_url: finalImageUrl ?? null,
+            tags: parsedTags.length > 0 ? parsedTags : null
+          })
+        : await createDish(name.trim(), recipe, finalImageUrl || undefined, parsedTags.length > 0 ? parsedTags : undefined);
       onSaved?.(saved);
     } finally {
       setSaving(false);
@@ -74,6 +96,54 @@ export default function RecipeForm({ dishId, onSaved }: RecipeFormProps) {
             <div className="space-y-1">
               <label className="text-sm font-medium">Tên món</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="VD: Phở bò" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Tải ảnh (tùy chọn)</label>
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setSelectedImageFile(file);
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => setImageUrl(String(reader.result || ""));
+                      reader.readAsDataURL(file);
+                    } else {
+                      setImageUrl("");
+                    }
+                  }}
+                  className="flex-1"
+                />
+                {imageUrl && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => {
+                      setImageUrl("");
+                      setSelectedImageFile(null);
+                    }}
+                  >
+                    Xóa
+                  </Button>
+                )}
+              </div>
+              {imageUrl && (
+                <div className="mt-2 rounded-lg overflow-hidden border">
+                  <img src={imageUrl} alt="Xem trước" className="w-full h-32 object-cover" />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Tags (tùy chọn, phân cách bởi dấu phẩy)</label>
+              <Input 
+                value={tags} 
+                onChange={(e) => setTags(e.target.value)} 
+                placeholder="nhanh, chay, cay" 
+              />
             </div>
 
             <div className="space-y-2">
@@ -104,8 +174,16 @@ export default function RecipeForm({ dishId, onSaved }: RecipeFormProps) {
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" type="button" onClick={() => { setName(""); setIngredientIds([]); }}>Làm mới</Button>
-              <Button onClick={handleSave} disabled={saving || !name.trim()}>{saving ? "Đang lưu..." : "Lưu"}</Button>
+              <Button variant="outline" type="button" onClick={() => { 
+                setName(""); 
+                setIngredientIds([]); 
+                setImageUrl(""); 
+                setSelectedImageFile(null);
+                setTags(""); 
+              }}>Làm mới</Button>
+              <Button onClick={handleSave} disabled={saving || !name.trim()}>
+                {saving ? "Đang lưu..." : "Lưu"}
+              </Button>
             </div>
           </>
         )}

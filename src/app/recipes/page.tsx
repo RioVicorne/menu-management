@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { 
   ChefHat, 
   Clock, 
@@ -12,7 +12,10 @@ import {
   Zap,
   BookOpen,
   Sparkles,
-  BarChart3
+  BarChart3,
+  Upload,
+  X,
+  Image as ImageIcon
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +23,8 @@ import { Input } from "@/components/ui/input";
 import Modal from "@/components/ui/modal";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import Link from "next/link";
-import { Dish, getDishes, getRecipeForDish } from "@/lib/api";
+import { Dish, getDishes, getRecipeForDish, updateDishImageAndTags } from "@/lib/api";
+import { uploadDishImage } from "@/lib/storage";
 import NutritionAnalysis from "@/components/features/ai/nutrition-analysis";
 
 type FilterType = "all" | "favorites" | "quick" | "vegetarian";
@@ -31,13 +35,16 @@ export default function RecipesPage() {
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [dishImages, setDishImages] = useState<Record<string, string>>({});
-  const [dishTags, setDishTags] = useState<Record<string, string[]>>({});
+  const [saving, setSaving] = useState(false);
   const [imageModalDishId, setImageModalDishId] = useState<string | null>(null);
   const [tagsModalDishId, setTagsModalDishId] = useState<string | null>(null);
   const [nutritionModalDishId, setNutritionModalDishId] = useState<string | null>(null);
   const [tempImageUrl, setTempImageUrl] = useState("");
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [tempTags, setTempTags] = useState("");
+  const [deletingImage, setDeletingImage] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,13 +56,6 @@ export default function RecipesPage() {
         if (!cancelled) setDishes([]);
       }
     })();
-    // Load stored images and tags
-    try {
-      const storedImages = localStorage.getItem("recipeImages");
-      const storedTags = localStorage.getItem("recipeTags");
-      if (storedImages) setDishImages(JSON.parse(storedImages));
-      if (storedTags) setDishTags(JSON.parse(storedTags));
-    } catch {}
     return () => {
       cancelled = true;
     };
@@ -121,35 +121,124 @@ export default function RecipesPage() {
   };
 
   const openImageEditor = (dishId: string) => {
-    setTempImageUrl(dishImages[dishId] || "");
+    const dish = dishes?.find(d => d.id === dishId);
+    setTempImageUrl(dish?.image_url || "");
+    setSelectedImageFile(null);
     setImageModalDishId(dishId);
     setOpenMenuId(null);
   };
 
+  const handleFileSelect = (file: File) => {
+    setSelectedImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setTempImageUrl(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        handleFileSelect(file);
+      }
+    }
+  };
+
+  const deleteImage = async () => {
+    if (!imageModalDishId) return;
+    try {
+      setDeletingImage(true);
+      const updatedDish = await updateDishImageAndTags(imageModalDishId, null, null);
+      
+      // Update the dishes state
+      setDishes(prev => prev ? prev.map(d => d.id === imageModalDishId ? updatedDish : d) : null);
+      setTempImageUrl("");
+      setSelectedImageFile(null);
+      setImageModalDishId(null);
+    } catch (error) {
+      console.error("Error deleting image:", error);
+    } finally {
+      setDeletingImage(false);
+    }
+  };
+
   const openTagsEditor = (dishId: string) => {
-    setTempTags((dishTags[dishId] || []).join(", "));
+    const dish = dishes?.find(d => d.id === dishId);
+    setTempTags((dish?.tags || []).join(", "));
     setTagsModalDishId(dishId);
     setOpenMenuId(null);
   };
 
-  const saveImage = () => {
+  const saveImage = async () => {
     if (!imageModalDishId) return;
-    const next = { ...dishImages, [imageModalDishId]: tempImageUrl.trim() };
-    setDishImages(next);
-    try { localStorage.setItem("recipeImages", JSON.stringify(next)); } catch {}
-    setImageModalDishId(null);
+    try {
+      setSaving(true);
+      let finalUrl = tempImageUrl.trim() || null;
+      if (selectedImageFile) {
+        // Upload to storage and get public URL
+        const publicUrl = await uploadDishImage(selectedImageFile, { dishId: imageModalDishId });
+        finalUrl = publicUrl;
+      }
+
+      if (finalUrl === null) {
+        // If nothing to save (no upload and no existing), just close
+        setImageModalDishId(null);
+        return;
+      }
+
+      const updatedDish = await updateDishImageAndTags(imageModalDishId, finalUrl, null);
+      
+      // Update the dishes state with the new image
+      setDishes(prev => prev ? prev.map(d => d.id === imageModalDishId ? updatedDish : d) : null);
+      setImageModalDishId(null);
+    } catch (error) {
+      console.error("Error saving image:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const saveTags = () => {
+  const saveTags = async () => {
     if (!tagsModalDishId) return;
-    const parsed = tempTags
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
-    const next = { ...dishTags, [tagsModalDishId]: parsed };
-    setDishTags(next);
-    try { localStorage.setItem("recipeTags", JSON.stringify(next)); } catch {}
-    setTagsModalDishId(null);
+    try {
+      setSaving(true);
+      const parsed = tempTags
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+      
+      const updatedDish = await updateDishImageAndTags(
+        tagsModalDishId,
+        null, // Don't update image
+        parsed.length > 0 ? parsed : null
+      );
+      
+      // Update the dishes state with the new tags
+      setDishes(prev => prev ? prev.map(d => d.id === tagsModalDishId ? updatedDish : d) : null);
+      setTagsModalDishId(null);
+    } catch (error) {
+      console.error("Error saving tags:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -197,26 +286,149 @@ export default function RecipesPage() {
         isOpen={!!imageModalDishId}
         onClose={() => setImageModalDishId(null)}
         title="Thêm/Sửa ảnh món ăn"
-        size="md"
+        size="lg"
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2 text-foreground">URL ảnh</label>
-            <Input
-              placeholder="https://..."
-              value={tempImageUrl}
-              onChange={(e) => setTempImageUrl(e.target.value)}
-              className="w-full"
-            />
-          </div>
-          {tempImageUrl && (
-            <div className="rounded-xl overflow-hidden border border-sage-200 dark:border-gray-700">
-              <img src={tempImageUrl} alt="Xem trước" className="w-full h-48 object-cover" />
+        <div className="space-y-6">
+          {/* Header với icon */}
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
+              <ImageIcon className="h-5 w-5 text-white" />
             </div>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setImageModalDishId(null)} size="sm">Hủy</Button>
-            <Button onClick={saveImage} size="sm">Lưu</Button>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Thêm/Sửa ảnh món ăn
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Upload ảnh đẹp cho món ăn của bạn
+              </p>
+            </div>
+          </div>
+
+          {/* Upload Area */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Tải ảnh món ăn
+            </label>
+            
+            {/* Drag & Drop Area */}
+            <div
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+                dragActive
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                  : "border-gray-300 dark:border-gray-600 hover:border-indigo-400 dark:hover:border-indigo-500"
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  if (file) handleFileSelect(file);
+                }}
+                className="hidden"
+              />
+              
+              <div className="flex flex-col items-center space-y-4">
+                <div className={`p-4 rounded-full transition-colors ${
+                  dragActive 
+                    ? "bg-indigo-100 dark:bg-indigo-800" 
+                    : "bg-gray-100 dark:bg-gray-800"
+                }`}>
+                  <Upload className={`h-8 w-8 ${
+                    dragActive 
+                      ? "text-indigo-600 dark:text-indigo-400" 
+                      : "text-gray-400 dark:text-gray-500"
+                  }`} />
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-lg font-medium text-gray-900 dark:text-white">
+                    {dragActive ? "Thả ảnh vào đây" : "Kéo thả ảnh vào đây"}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    hoặc
+                  </p>
+                </div>
+                
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={triggerFileInput}
+                  className="bg-white dark:bg-gray-800 border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Chọn ảnh từ máy tính
+                </Button>
+                
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  Hỗ trợ: JPEG, PNG, WebP, GIF (tối đa 10MB)
+                </p>
+              </div>
+            </div>
+          </div>
+
+
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div>
+              {(tempImageUrl || selectedImageFile) && (
+                <Button 
+                  variant="destructive" 
+                  onClick={deleteImage} 
+                  size="sm" 
+                  disabled={saving || deletingImage}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                >
+                  {deletingImage ? (
+                    <>
+                      <LoadingSpinner className="h-4 w-4 mr-2" />
+                      Đang xóa...
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      Xóa ảnh
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setImageModalDishId(null)} 
+                size="sm" 
+                disabled={saving || deletingImage}
+                className="border-gray-300 dark:border-gray-600"
+              >
+                Hủy
+              </Button>
+              <Button 
+                onClick={saveImage} 
+                size="sm" 
+                disabled={saving || deletingImage}
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+              >
+                {saving ? (
+                  <>
+                    <LoadingSpinner className="h-4 w-4 mr-2" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Lưu ảnh
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -239,8 +451,10 @@ export default function RecipesPage() {
             />
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setTagsModalDishId(null)} size="sm">Hủy</Button>
-            <Button onClick={saveTags} size="sm">Lưu</Button>
+            <Button variant="secondary" onClick={() => setTagsModalDishId(null)} size="sm" disabled={saving}>Hủy</Button>
+            <Button onClick={saveTags} size="sm" disabled={saving}>
+              {saving ? "Đang lưu..." : "Lưu"}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -334,9 +548,9 @@ export default function RecipesPage() {
                   {/* Recipe Image Placeholder */}
                   <div className="relative h-48 bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 dark:recipe-image-dark overflow-hidden recipe-image">
                     {/* Real image if available */}
-                    {dishImages[dish.id] ? (
+                    {dish.image_url ? (
                       <>
-                        <img src={dishImages[dish.id]} alt={dish.ten_mon_an} className="absolute inset-0 w-full h-full object-cover" />
+                        <img src={dish.image_url} alt={dish.ten_mon_an} className="absolute inset-0 w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/20 dark:bg-black/30"></div>
                       </>
                     ) : (
@@ -409,9 +623,9 @@ export default function RecipesPage() {
                         {dish.ingredients?.join(", ") || "Chưa có thông tin nguyên liệu"}
                       </p>
                       {/* Tags */}
-                      {dishTags[dish.id] && dishTags[dish.id].length > 0 && (
+                      {dish.tags && dish.tags.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {dishTags[dish.id].map((tag) => (
+                          {dish.tags.map((tag) => (
                             <span key={tag} className="px-2.5 py-1 rounded-full text-xs font-medium bg-sage-100 text-sage-700 dark:bg-gray-800 dark:text-gray-200 border border-sage-200 dark:border-gray-700">
                               {tag}
                             </span>

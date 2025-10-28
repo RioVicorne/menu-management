@@ -46,7 +46,15 @@ export default function HomePage() {
         if (error) throw error;
         setInventoryCount(Number(count || 0));
       } catch (err) {
-        logger.error("Failed to fetch inventory count", err);
+        // Only log if it's not a network/unreachable error
+        const isNetworkError = err instanceof Error && (
+          err.message.includes("Failed to fetch") ||
+          err.message.includes("NetworkError") ||
+          err.message.includes("fetch")
+        );
+        if (!isNetworkError) {
+          logger.error("Failed to fetch inventory count", err);
+        }
         setInventoryCount(0);
       }
     };

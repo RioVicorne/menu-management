@@ -51,6 +51,13 @@ export async function POST(request: NextRequest) {
         );
         break;
       
+      case 'personalized-learning':
+        response = await aiService.chatAboutMenuManagement(
+          'Học từ sở thích và lịch sử ăn uống của tôi',
+          data.context || {}
+        );
+        break;
+      
       default:
         return NextResponse.json(
           { error: 'Invalid request type' },

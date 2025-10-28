@@ -41,6 +41,7 @@ interface Dish {
   ten_mon_an: string;
   loai_mon_an?: string;
   mo_ta?: string;
+  cong_thuc_nau?: string;
 }
 
 // API để lấy dữ liệu cho AI suggestions
@@ -136,18 +137,41 @@ async function getDishesData() {
   
   const { data: dishes, error } = await supabase
     .from("mon_an")
-    .select("id, ten_mon_an, mo_ta, loai_mon_an")
+    .select("id, ten_mon_an, cong_thuc_nau")
     .order("ten_mon_an", { ascending: true });
 
   if (error) throw error;
 
-  // Phân loại món ăn
+  // Phân loại món ăn (sử dụng tên món để phân loại)
   const categories = (dishes || []).reduce((acc: Record<string, Dish[]>, dish: Dish) => {
-    const category = dish.loai_mon_an || 'Khác';
+    // Tạo category dựa trên tên món
+    let category = 'Khác';
+    const dishName = dish.ten_mon_an?.toLowerCase() || '';
+    
+    if (dishName.includes('phở') || dishName.includes('bún') || dishName.includes('mì')) {
+      category = 'Món nước';
+    } else if (dishName.includes('cơm') || dishName.includes('xôi')) {
+      category = 'Cơm';
+    } else if (dishName.includes('canh') || dishName.includes('súp')) {
+      category = 'Canh';
+    } else if (dishName.includes('xào') || dishName.includes('chiên')) {
+      category = 'Món xào';
+    } else if (dishName.includes('kho') || dishName.includes('nướng')) {
+      category = 'Món chính';
+    } else if (dishName.includes('rau') || dishName.includes('cải')) {
+      category = 'Rau';
+    } else {
+      category = 'Món chính';
+    }
+    
     if (!acc[category]) {
       acc[category] = [];
     }
-    acc[category].push(dish);
+    acc[category].push({
+      ...dish,
+      loai_mon_an: category,
+      mo_ta: dish.cong_thuc_nau || 'Món ăn ngon'
+    });
     return acc;
   }, {});
 
@@ -155,7 +179,11 @@ async function getDishesData() {
     total: dishes?.length || 0,
     categories: Object.keys(categories),
     dishesByCategory: categories,
-    allDishes: dishes || []
+    allDishes: (dishes || []).map(dish => ({
+      ...dish,
+      loai_mon_an: 'Món chính',
+      mo_ta: dish.cong_thuc_nau || 'Món ăn ngon'
+    }))
   });
 }
 
@@ -165,26 +193,59 @@ async function getMenuData() {
     throw new Error('Supabase client not initialized');
   }
   
-  const { data: menuItems, error } = await supabase
+  // Lấy menu items
+  const { data: menuItems, error: menuError } = await supabase
     .from("thuc_don")
-    .select(`
-      id,
-      ngay,
-      boi_so,
-      ghi_chu,
-      mon_an:ma_mon_an (
-        id,
-        ten_mon_an,
-        loai_mon_an
-      )
-    `)
+    .select("id, ngay, boi_so, ghi_chu, ma_mon_an")
     .order("ngay", { ascending: false })
-    .limit(30); // Lấy 30 ngày gần nhất
+    .limit(30);
 
-  if (error) throw error;
+  if (menuError) throw menuError;
+
+  // Lấy danh sách món ăn để join
+  const { data: dishes, error: dishesError } = await supabase
+    .from("mon_an")
+    .select("id, ten_mon_an, cong_thuc_nau");
+
+  if (dishesError) throw dishesError;
+
+  // Tạo map để join dữ liệu
+  const dishMap = new Map((dishes || []).map(dish => [dish.id, dish]));
+
+  // Join dữ liệu và nhóm theo ngày
+  const enrichedMenuItems = (menuItems || []).map(item => {
+    const dish = dishMap.get(item.ma_mon_an);
+    const dishName = dish?.ten_mon_an?.toLowerCase() || '';
+    
+    // Tạo category dựa trên tên món
+    let category = 'Món chính';
+    if (dishName.includes('phở') || dishName.includes('bún') || dishName.includes('mì')) {
+      category = 'Món nước';
+    } else if (dishName.includes('cơm') || dishName.includes('xôi')) {
+      category = 'Cơm';
+    } else if (dishName.includes('canh') || dishName.includes('súp')) {
+      category = 'Canh';
+    } else if (dishName.includes('xào') || dishName.includes('chiên')) {
+      category = 'Món xào';
+    } else if (dishName.includes('kho') || dishName.includes('nướng')) {
+      category = 'Món chính';
+    } else if (dishName.includes('rau') || dishName.includes('cải')) {
+      category = 'Rau';
+    }
+
+    return {
+      ...item,
+      mon_an: dish ? [{
+        id: dish.id,
+        ten_mon_an: dish.ten_mon_an,
+        loai_mon_an: category,
+        cong_thuc_nau: dish.cong_thuc_nau
+      }] : []
+    };
+  });
 
   // Nhóm theo ngày
-  const menuByDate = (menuItems || []).reduce((acc: Record<string, MenuItem[]>, item: MenuItem) => {
+  const menuByDate = enrichedMenuItems.reduce((acc: Record<string, MenuItem[]>, item: MenuItem) => {
     const date = item.ngay;
     if (!acc[date]) {
       acc[date] = [];
@@ -194,10 +255,10 @@ async function getMenuData() {
   }, {});
 
   return NextResponse.json({
-    total: menuItems?.length || 0,
+    total: enrichedMenuItems.length,
     days: Object.keys(menuByDate).length,
     menuByDate,
-    recentMenu: menuItems?.slice(0, 10) || []
+    recentMenu: enrichedMenuItems.slice(0, 10)
   });
 }
 
@@ -277,11 +338,11 @@ async function getMockData(request: NextRequest) {
 
   // Mock dishes data
   const mockDishes = [
-    { id: '1', ten_mon_an: 'Thịt kho tàu', mo_ta: 'Món thịt kho đậm đà', loai_mon_an: 'Món chính' },
-    { id: '2', ten_mon_an: 'Canh chua cá', mo_ta: 'Canh chua cá ngon', loai_mon_an: 'Canh' },
-    { id: '3', ten_mon_an: 'Rau muống xào tỏi', mo_ta: 'Rau xào giòn', loai_mon_an: 'Rau xào' },
-    { id: '4', ten_mon_an: 'Cơm tấm', mo_ta: 'Cơm tấm truyền thống', loai_mon_an: 'Cơm' },
-    { id: '5', ten_mon_an: 'Phở bò', mo_ta: 'Phở bò thơm ngon', loai_mon_an: 'Phở' }
+    { id: '1', ten_mon_an: 'Thịt kho tàu', cong_thuc_nau: 'Món thịt kho đậm đà' },
+    { id: '2', ten_mon_an: 'Canh chua cá', cong_thuc_nau: 'Canh chua cá ngon' },
+    { id: '3', ten_mon_an: 'Rau muống xào tỏi', cong_thuc_nau: 'Rau xào giòn' },
+    { id: '4', ten_mon_an: 'Cơm tấm', cong_thuc_nau: 'Cơm tấm truyền thống' },
+    { id: '5', ten_mon_an: 'Phở bò', cong_thuc_nau: 'Phở bò thơm ngon' }
   ];
 
   // Mock recipes data
@@ -320,11 +381,34 @@ async function getMockData(request: NextRequest) {
 
     case 'dishes':
       const categories = mockDishes.reduce((acc: Record<string, any[]>, dish: any) => {
-        const category = dish.loai_mon_an || 'Khác';
+        // Tạo category dựa trên tên món
+        let category = 'Khác';
+        const dishName = dish.ten_mon_an?.toLowerCase() || '';
+        
+        if (dishName.includes('phở') || dishName.includes('bún') || dishName.includes('mì')) {
+          category = 'Món nước';
+        } else if (dishName.includes('cơm') || dishName.includes('xôi')) {
+          category = 'Cơm';
+        } else if (dishName.includes('canh') || dishName.includes('súp')) {
+          category = 'Canh';
+        } else if (dishName.includes('xào') || dishName.includes('chiên')) {
+          category = 'Món xào';
+        } else if (dishName.includes('kho') || dishName.includes('nướng')) {
+          category = 'Món chính';
+        } else if (dishName.includes('rau') || dishName.includes('cải')) {
+          category = 'Rau';
+        } else {
+          category = 'Món chính';
+        }
+        
         if (!acc[category]) {
           acc[category] = [];
         }
-        acc[category].push(dish);
+        acc[category].push({
+          ...dish,
+          loai_mon_an: category,
+          mo_ta: dish.cong_thuc_nau || 'Món ăn ngon'
+        });
         return acc;
       }, {});
 
@@ -332,7 +416,11 @@ async function getMockData(request: NextRequest) {
         total: mockDishes.length,
         categories: Object.keys(categories),
         dishesByCategory: categories,
-        allDishes: mockDishes
+        allDishes: mockDishes.map(dish => ({
+          ...dish,
+          loai_mon_an: 'Món chính',
+          mo_ta: dish.cong_thuc_nau || 'Món ăn ngon'
+        }))
       });
 
     case 'menu':

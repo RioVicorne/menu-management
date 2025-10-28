@@ -42,3 +42,7 @@ next-env.d.ts
 
 # cursor ide
 .cursor/
+
+# database scripts and configs
+*.sql
+scripts/export-supabase-sql.sh

@@ -117,9 +117,9 @@ export class AIService {
       const { availableIngredients: dbIngredients, dishesByCategory } = await this.getDishesData();
       
       // Sử dụng nguyên liệu từ database nếu không có input
-      const ingredients = availableIngredients.length > 0 ? availableIngredients : dbIngredients;
+      const ingredients = (availableIngredients && availableIngredients.length > 0) ? availableIngredients : (dbIngredients || []);
       
-      if (ingredients.length === 0) {
+      if (!ingredients || ingredients.length === 0) {
         return {
           content: `❌ **Không có nguyên liệu**\n\nHiện tại kho không có nguyên liệu nào đủ dùng để nấu ăn.\n\n**Gợi ý:**\n• Kiểm tra tồn kho tại trang Storage\n• Mua sắm nguyên liệu cần thiết\n• Cập nhật số lượng nguyên liệu`,
           suggestions: [
@@ -133,7 +133,7 @@ export class AIService {
       // Tìm món ăn phù hợp từ database
       const suitableDishes = await this.findSuitableDishes(ingredients, dishesByCategory);
       
-      if (suitableDishes.length === 0) {
+      if (!suitableDishes || suitableDishes.length === 0) {
         return {
           content: `🤔 **Không tìm thấy món phù hợp**\n\nVới nguyên liệu hiện có: ${ingredients.join(', ')}\n\n**Gợi ý:**\n• Thêm nguyên liệu mới vào kho\n• Kiểm tra các món ăn khác\n• Tạo công thức mới`,
           suggestions: [
@@ -171,7 +171,7 @@ export class AIService {
       logger.error('Error creating dish suggestions:', error);
       
       // Fallback response
-      const ingredients = availableIngredients.length > 0 ? availableIngredients.join(', ') : 'chưa có thông tin';
+      const ingredients = (availableIngredients && availableIngredients.length > 0) ? availableIngredients.join(', ') : 'chưa có thông tin';
       
       return {
         content: `Dựa trên nguyên liệu có sẵn: ${ingredients}\n\nTôi gợi ý bạn có thể nấu các món sau:\n\n**1. Cơm tấm với thịt nướng**\n- Mô tả: Món ăn truyền thống miền Nam\n- Cách chế biến: Ướp thịt với gia vị, nướng vàng\n- Thời gian: 30 phút\n\n**2. Canh chua cá**\n- Mô tả: Món canh chua đậm đà\n- Cách chế biến: Nấu cá với cà chua, dứa\n- Thời gian: 20 phút\n\n**3. Rau muống xào tỏi**\n- Mô tả: Món rau xanh giòn\n- Cách chế biến: Xào nhanh với tỏi\n- Thời gian: 5 phút\n\n**4. Thịt kho tàu**\n- Mô tả: Thịt kho đậm đà\n- Cách chế biến: Kho với nước dừa\n- Thời gian: 45 phút`,
@@ -963,12 +963,12 @@ export class AIService {
     const suitableDishes = [];
     
     // Tìm món ăn có nguyên liệu phù hợp
-    for (const [dishId, recipe] of Object.entries(data.recipesByDish)) {
+    for (const [dishId, recipe] of Object.entries(data.recipesByDish || {})) {
       const dish = recipe as RecipeData;
       const requiredIngredients = dish.ingredients?.map((ing: { name: string }) => ing.name.toLowerCase()) || [];
       
       // Kiểm tra xem có đủ nguyên liệu không
-      const availableIngredientsLower = ingredients.map(ing => ing.toLowerCase());
+      const availableIngredientsLower = (ingredients || []).map(ing => ing.toLowerCase());
       const hasEnoughIngredients = requiredIngredients.every((reqIng: string) => 
         availableIngredientsLower.some(availIng => 
           availIng.includes(reqIng) || reqIng.includes(availIng)
