@@ -21,7 +21,7 @@ function DailyMenuContent({ selectedDate }: DailyMenuManagerProps) {
 
   // Check for tab parameter in URL
   useEffect(() => {
-    const tab = searchParams.get("tab");
+    const tab = searchParams?.get("tab");
     if (tab && ["menu", "add-dish"].includes(tab)) {
       setActiveTab(
         tab as TabType

@@ -15,6 +15,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
+    if (!pathname) {
+      setActiveTab("home");
+      return;
+    }
     if (pathname === "/") {
       setActiveTab("home");
     } else if (pathname.startsWith("/storage")) {

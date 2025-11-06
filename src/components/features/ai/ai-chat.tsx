@@ -39,6 +39,44 @@ interface AIChatProps {
   };
 }
 
+const SESSIONS_KEY = "planner.sessions";
+const MESSAGES_KEY_PREFIX = "planner.messages.";
+
+function serializeSession(session: ChatSession) {
+  return {
+    ...session,
+    timestamp: session.timestamp.toISOString(),
+  };
+}
+
+function deserializeSession(raw: any): ChatSession {
+  return {
+    id: String(raw.id),
+    title: String(raw.title || "Cuộc trò chuyện mới"),
+    timestamp: new Date(raw.timestamp || Date.now()),
+    messageCount: Number(raw.messageCount || 0),
+    lastMessage: String(raw.lastMessage || ""),
+  };
+}
+
+function serializeMessage(message: Message) {
+  return {
+    ...message,
+    timestamp: message.timestamp.toISOString(),
+  };
+}
+
+function deserializeMessage(raw: any): Message {
+  return {
+    id: String(raw.id),
+    text: String(raw.text || ""),
+    sender: raw.sender === "user" ? "user" : "bot",
+    timestamp: new Date(raw.timestamp || Date.now()),
+    type: raw.type === "ai-result" ? "ai-result" : "text",
+    aiData: raw.aiData,
+  };
+}
+
 export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -55,7 +93,76 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize with welcome message
+  // Load sessions from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(SESSIONS_KEY) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const loaded = Array.isArray(parsed) ? parsed.map(deserializeSession) : [];
+        setSessions(loaded);
+        if (loaded.length > 0) {
+          setCurrentSessionId(loaded[0].id);
+        }
+      }
+    } catch (e) {
+      logger.warn("Failed to load planner sessions from localStorage", e);
+    }
+  }, []);
+
+  // Persist sessions to localStorage when they change
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const data = JSON.stringify(sessions.map(serializeSession));
+      window.localStorage.setItem(SESSIONS_KEY, data);
+    } catch (e) {
+      logger.warn("Failed to save planner sessions to localStorage", e);
+    }
+  }, [sessions]);
+
+  // Load messages when current session changes
+  useEffect(() => {
+    if (!currentSessionId) return;
+    try {
+      if (typeof window === "undefined") return;
+      const key = MESSAGES_KEY_PREFIX + currentSessionId;
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const loaded = Array.isArray(parsed) ? parsed.map(deserializeMessage) : [];
+        setMessages(loaded);
+      } else {
+        // If no stored messages, initialize with welcome message
+        const welcomeMessage: Message = {
+          id: "1",
+          text:
+            "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
+          sender: "bot",
+          timestamp: new Date(),
+          type: "text",
+        };
+        setMessages([welcomeMessage]);
+      }
+    } catch (e) {
+      logger.warn("Failed to load planner messages from localStorage", e);
+    }
+  }, [currentSessionId]);
+
+  // Persist messages of current session
+  useEffect(() => {
+    if (!currentSessionId) return;
+    try {
+      if (typeof window === "undefined") return;
+      const key = MESSAGES_KEY_PREFIX + currentSessionId;
+      const data = JSON.stringify(messages.map(serializeMessage));
+      window.localStorage.setItem(key, data);
+    } catch (e) {
+      logger.warn("Failed to save planner messages to localStorage", e);
+    }
+  }, [messages, currentSessionId]);
+
+  // Initialize with welcome message (only if not already set by storage load)
   useEffect(() => {
     if (messages.length === 0) {
       const welcomeMessage: Message = {
@@ -99,6 +206,14 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   const deleteSession = (sessionId: string) => {
     setSessions(prev => prev.filter(s => s.id !== sessionId));
+    // Remove messages from storage
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(MESSAGES_KEY_PREFIX + sessionId);
+      }
+    } catch (e) {
+      logger.warn("Failed to remove session messages from localStorage", e);
+    }
     if (currentSessionId === sessionId) {
       if (sessions.length > 1) {
         const remainingSessions = sessions.filter(s => s.id !== sessionId);
@@ -117,6 +232,10 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim()) return;
+    if (!currentSessionId) {
+      // Ensure a session exists
+      createNewSession();
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),

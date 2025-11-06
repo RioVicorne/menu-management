@@ -15,6 +15,10 @@ export default function Header({ className = "" }: HeaderProps) {
 
   // Determine active tab based on current path
   useEffect(() => {
+    if (!pathname) {
+      setActiveTab("home");
+      return;
+    }
     if (pathname === "/") {
       setActiveTab("home");
     } else if (pathname.startsWith("/storage")) {
