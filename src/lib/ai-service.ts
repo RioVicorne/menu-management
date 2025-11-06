@@ -1,12 +1,29 @@
 import { logger } from './logger';
+import { Perplexity } from '@perplexity-ai/perplexity_ai';
 
 // Support multiple env var names to avoid misconfig in different runtimes (Node/Bun)
 const PERPLEXITY_API_KEY =
   process.env.PERPLEXITY_API_KEY ||
   process.env.PPLX_API_KEY ||
   process.env.PPLX_KEY;
-const PERPLEXITY_MODEL = process.env.PPLX_MODEL; // optional override
-const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
+const PERPLEXITY_MODEL = process.env.PPLX_MODEL || 'sonar'; // optional override
+
+// Initialize Perplexity client
+let perplexityClient: Perplexity | null = null;
+
+function getPerplexityClient(): Perplexity {
+  if (!PERPLEXITY_API_KEY) {
+    throw new Error('Missing Perplexity API key. Set PERPLEXITY_API_KEY in .env.local');
+  }
+  
+  if (!perplexityClient) {
+    perplexityClient = new Perplexity({
+      apiKey: PERPLEXITY_API_KEY,
+    });
+  }
+  
+  return perplexityClient;
+}
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
@@ -71,6 +88,39 @@ export class AIService {
   
   private constructor() {}
   
+  // Normalize Perplexity message content into a plain string
+  private normalizeMessageContent(content: unknown): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+    if (Array.isArray(content)) {
+      try {
+        const parts = content.map((chunk: unknown) => {
+          if (typeof chunk === 'string') return chunk;
+          if (chunk && typeof chunk === 'object') {
+            const anyChunk = chunk as Record<string, unknown>;
+            // Common shape: { type: 'text', text: '...' }
+            if (anyChunk.type === 'text' && typeof anyChunk.text === 'string') {
+              return String(anyChunk.text);
+            }
+            // Fallback: stringify non-text chunks minimally
+            return '';
+          }
+          return '';
+        }).filter(Boolean);
+        return parts.join('\n').trim() || 'Không thể tạo phản hồi từ AI.';
+      } catch {
+        return 'Không thể tạo phản hồi từ AI.';
+      }
+    }
+    // Last resort
+    try {
+      return JSON.stringify(content);
+    } catch {
+      return 'Không thể tạo phản hồi từ AI.';
+    }
+  }
+
   public static getInstance(): AIService {
     if (!AIService.instance) {
       AIService.instance = new AIService();
@@ -78,13 +128,38 @@ export class AIService {
     return AIService.instance;
   }
 
+  // Gọi Perplexity API (đơn giản, không dùng tools)
   private async callPerplexityAPI(messages: AIMessage[]): Promise<string> {
     try {
-      if (!PERPLEXITY_API_KEY) {
-        throw new Error('Missing Perplexity API key. Set PERPLEXITY_API_KEY in .env.local');
-      }
-      const model = PERPLEXITY_MODEL || 'sonar';
-      const response = await fetch(PERPLEXITY_API_URL, {
+      const client = getPerplexityClient();
+      const model = PERPLEXITY_MODEL;
+
+      const response = await client.chat.completions.create({
+        model,
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+      });
+
+      const content = response.choices?.[0]?.message?.content as unknown;
+      const text = this.normalizeMessageContent(content);
+      if (!text) throw new Error('No response from Perplexity API');
+      return text;
+    } catch (error) {
+      logger.error('Error calling Perplexity API (SDK):', error);
+      // Fallback to fetch API
+      return this.callPerplexityAPIFallback(messages);
+    }
+  }
+
+  // (Đã bỏ tool-calling fallback: không cần pre-fetch đặc biệt ở đây)
+
+
+  /**
+   * Fallback method using fetch API (for compatibility)
+   */
+  private async callPerplexityAPIFallback(messages: AIMessage[]): Promise<string> {
+    try {
+      const model = PERPLEXITY_MODEL;
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
@@ -113,9 +188,10 @@ export class AIService {
       }
 
       const data = await response.json();
-      return data.choices?.[0]?.message?.content || 'Không thể tạo phản hồi từ AI.';
+      const content = (data?.choices?.[0]?.message?.content) as unknown;
+      return this.normalizeMessageContent(content);
     } catch (error) {
-      logger.error('Error calling Perplexity API:', error);
+      logger.error('Error in fallback API call:', error);
       throw error;
     }
   }
@@ -806,6 +882,7 @@ export class AIService {
   }
 
   // Chat tổng quát dùng Perplexity để hội thoại tự nhiên
+  // Sử dụng function calling để lấy data từ Supabase khi cần
   async chatAboutMenuManagement(message: string, context?: {
     currentMenu?: string[];
     availableIngredients?: string[];
@@ -815,7 +892,7 @@ export class AIService {
       const systemPrompt = [
         'Bạn là trợ lý nấu ăn thân thiện, giúp quản lý thực đơn, kế hoạch bữa ăn và mua sắm.',
         'Trả lời ngắn gọn, rõ ràng, có cấu trúc, bằng tiếng Việt tự nhiên.',
-        'Nếu người dùng hỏi về gợi ý món ăn, kế hoạch, mua sắm hay công thức, hãy trả lời trực tiếp.',
+        'Nếu câu hỏi cần dữ liệu thực, hãy yêu cầu tôi cung cấp ngày hoặc chi tiết cần thiết.',
         'Ngữ cảnh hiện có (nếu có):',
         `- Nguyên liệu còn: ${(context?.availableIngredients || []).join(', ') || 'không rõ'}`,
         `- Thực đơn hiện tại: ${(context?.currentMenu || []).join(', ') || 'không rõ'}`,
