@@ -13,6 +13,7 @@
     "test:db": "tsx scripts/test-db-connection.ts"
   },
   "dependencies": {
+    "@perplexity-ai/perplexity_ai": "^0.16.0",
     "@supabase/supabase-js": "^2.57.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

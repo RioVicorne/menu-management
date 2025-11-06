@@ -164,10 +164,10 @@ export function MonthlyCalendar({
                 relative p-1 sm:p-3 min-h-[60px] sm:min-h-[80px] rounded-lg border-2 transition-all duration-200 hover:shadow-md group
                 ${
                   isToday
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/40"
                     : hasMenu
-                      ? "border-green-200 bg-green-50 dark:bg-green-900/20 hover:border-green-300"
-                      : "border-border"
+                      ? "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30 hover:border-green-300"
+                      : "border-border bg-background"
                 }
               `}
             >
@@ -212,13 +212,13 @@ export function MonthlyCalendar({
       {/* Legend */}
       <div className="mt-6 flex items-center justify-center space-x-6 text-sm">
         <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 rounded border-2 border-green-200 bg-green-50 dark:bg-green-900/20"></div>
+          <div className="w-4 h-4 rounded border-2 border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30"></div>
           <span className="text-muted-foreground">
             1-2 món
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20"></div>
+          <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/40"></div>
           <span className="text-muted-foreground">Today</span>
         </div>
         <div className="flex items-center space-x-2">

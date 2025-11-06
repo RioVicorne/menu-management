@@ -1,6 +1,11 @@
 import { logger } from './logger';
 
-const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+// Support multiple env var names to avoid misconfig in different runtimes (Node/Bun)
+const PERPLEXITY_API_KEY =
+  process.env.PERPLEXITY_API_KEY ||
+  process.env.PPLX_API_KEY ||
+  process.env.PPLX_KEY;
+const PERPLEXITY_MODEL = process.env.PPLX_MODEL; // optional override
 const PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions';
 
 export interface AIMessage {
@@ -75,27 +80,40 @@ export class AIService {
 
   private async callPerplexityAPI(messages: AIMessage[]): Promise<string> {
     try {
+      if (!PERPLEXITY_API_KEY) {
+        throw new Error('Missing Perplexity API key. Set PERPLEXITY_API_KEY in .env.local');
+      }
+      const model = PERPLEXITY_MODEL || 'sonar';
       const response = await fetch(PERPLEXITY_API_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-small-128k-online',
-          messages: messages,
-          max_tokens: 1000,
-          temperature: 0.7,
-          top_p: 0.9,
+          model,
+          messages,
         }),
       });
 
       if (!response.ok) {
+        let errBody: unknown;
+        try {
+          errBody = await response.json();
+        } catch {
+          try {
+            errBody = await response.text();
+          } catch {
+            errBody = undefined;
+          }
+        }
+        logger.error(`Perplexity API error (model=${model}): ${response.status} ${response.statusText}`, errBody);
         throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || 'Không thể tạo phản hồi từ AI.';
+      return data.choices?.[0]?.message?.content || 'Không thể tạo phản hồi từ AI.';
     } catch (error) {
       logger.error('Error calling Perplexity API:', error);
       throw error;
@@ -787,128 +805,36 @@ export class AIService {
     }
   }
 
-  // Chat tổng quát về quản lý menu
+  // Chat tổng quát dùng Perplexity để hội thoại tự nhiên
   async chatAboutMenuManagement(message: string, context?: {
     currentMenu?: string[];
     availableIngredients?: string[];
     dietaryPreferences?: string[];
   }): Promise<AIResponse> {
     try {
-      // Lấy dữ liệu từ database để trả lời
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const ingredientsData = await fetch(`${baseUrl}/api/ai-data?type=ingredients`).then(res => res.json());
-      const dishesData = await fetch(`${baseUrl}/api/ai-data?type=dishes`).then(res => res.json());
-      const menuData = await fetch(`${baseUrl}/api/ai-data?type=menu`).then(res => res.json());
+      const systemPrompt = [
+        'Bạn là trợ lý nấu ăn thân thiện, giúp quản lý thực đơn, kế hoạch bữa ăn và mua sắm.',
+        'Trả lời ngắn gọn, rõ ràng, có cấu trúc, bằng tiếng Việt tự nhiên.',
+        'Nếu người dùng hỏi về gợi ý món ăn, kế hoạch, mua sắm hay công thức, hãy trả lời trực tiếp.',
+        'Ngữ cảnh hiện có (nếu có):',
+        `- Nguyên liệu còn: ${(context?.availableIngredients || []).join(', ') || 'không rõ'}`,
+        `- Thực đơn hiện tại: ${(context?.currentMenu || []).join(', ') || 'không rõ'}`,
+        `- Sở thích dinh dưỡng: ${(context?.dietaryPreferences || []).join(', ') || 'không rõ'}`,
+      ].join('\n');
 
-      const lowerMessage = message.toLowerCase();
-      
-      if (lowerMessage.includes('gợi ý') || lowerMessage.includes('món ăn')) {
-        const availableIngredients = context?.availableIngredients || ingredientsData.availableIngredients || [];
-        const suitableDishes = await this.findSuitableDishes(availableIngredients, dishesData.dishesByCategory);
-        
-        if (suitableDishes.length > 0) {
-          return {
-            content: `Dựa trên nguyên liệu có sẵn: ${availableIngredients.join(', ')}, tôi gợi ý bạn có thể nấu:\n\n${suitableDishes.map((dish, index) => `${index + 1}. ${dish.name} (${dish.category})`).join('\n')}\n\nBạn có muốn tôi tạo công thức chi tiết cho món nào không?`,
-            suggestions: suitableDishes.map(dish => dish.name).slice(0, 4)
-          };
-        } else {
-          return {
-            content: `Dựa trên nguyên liệu có sẵn: ${availableIngredients.join(', ')}, tôi gợi ý bạn có thể nấu:\n\n• Cơm tấm với thịt nướng\n• Canh chua cá\n• Rau muống xào tỏi\n• Thịt kho tàu\n\nBạn có muốn tôi tạo công thức chi tiết cho món nào không?`,
-            suggestions: ['Cơm tấm với thịt nướng', 'Canh chua cá', 'Rau muống xào tỏi', 'Thịt kho tàu']
-          };
-        }
-      }
-      
-      if (lowerMessage.includes('kế hoạch') || lowerMessage.includes('tuần')) {
-        const availableDishes = dishesData.allDishes || [];
-        const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-        const mealsPerDay = ['Sáng', 'Trưa', 'Tối'];
-        
-        let content = `Tôi sẽ giúp bạn lập kế hoạch bữa ăn cho tuần này:\n\n`;
-        
-        days.forEach((day, dayIndex) => {
-          content += `**${day}:**\n`;
-          mealsPerDay.forEach((meal, mealIndex) => {
-            const dishIndex = (dayIndex * 3 + mealIndex) % availableDishes.length;
-            const dish = availableDishes[dishIndex];
-            content += `- ${meal}: ${dish.ten_mon_an} (${dish.loai_mon_an || 'Món chính'})\n`;
-          });
-          content += `\n`;
-        });
-        
-        content += `Bạn có muốn tôi điều chỉnh kế hoạch này không?`;
-        
-        return {
-          content,
-          suggestions: ['Điều chỉnh kế hoạch', 'Thêm món mới', 'Xem công thức', 'Lưu kế hoạch']
-        };
-      }
-      
-      if (lowerMessage.includes('mua sắm') || lowerMessage.includes('shopping')) {
-        const lowStockIngredients = ingredientsData.lowStockIngredients || [];
-        const outOfStockIngredients = ingredientsData.outOfStockIngredients || [];
-        
-        let content = `Dựa trên tình trạng kho hiện tại, bạn cần mua:\n\n`;
-        
-        if (outOfStockIngredients.length > 0) {
-          content += `**Cần mua ngay (hết hàng):**\n`;
-          outOfStockIngredients.forEach((ingredient: string) => {
-            content += `• ${ingredient}\n`;
-          });
-          content += `\n`;
-        }
-        
-        if (lowStockIngredients.length > 0) {
-          content += `**Sắp hết (cần bổ sung):**\n`;
-          lowStockIngredients.forEach((ingredient: string) => {
-            content += `• ${ingredient}\n`;
-          });
-          content += `\n`;
-        }
-        
-        content += `Bạn có muốn tôi tạo danh sách chi tiết hơn không?`;
-        
-        return {
-          content,
-          suggestions: ['Tạo danh sách chi tiết', 'Kiểm tra tồn kho', 'Mua sắm online', 'Lưu danh sách']
-        };
-      }
-      
-      if (lowerMessage.includes('công thức') || lowerMessage.includes('nấu')) {
-        const availableDishes = dishesData.allDishes || [];
-        const dishSuggestions = availableDishes.slice(0, 4).map((dish: Dish) => dish.ten_mon_an);
-        
-        return {
-          content: `Tôi có thể giúp bạn tạo công thức nấu ăn chi tiết. Bạn muốn nấu món gì?\n\nMột số gợi ý từ hệ thống:\n${dishSuggestions.map((dishName: string, index: number) => `${index + 1}. ${dishName}`).join('\n')}\n\nHãy cho tôi biết món bạn muốn nấu, tôi sẽ tạo công thức từng bước cho bạn!`,
-          suggestions: dishSuggestions
-        };
-      }
-      
-      // Default response với thông tin từ database
-      const availableCount = ingredientsData.available || 0;
-      const totalDishes = dishesData.total || 0;
-      const totalMenuItems = menuData.total || 0;
-      
+      const content = await this.callPerplexityAPI([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ]);
+
       return {
-        content: `Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn.\n\n**Tình trạng hiện tại:**\n• Nguyên liệu có sẵn: ${availableCount} loại\n• Món ăn trong hệ thống: ${totalDishes} món\n• Món trong menu: ${totalMenuItems} món\n\n**Tôi có thể giúp bạn:**\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?`,
-        suggestions: ['Gợi ý món ăn', 'Lập kế hoạch tuần', 'Tạo danh sách mua sắm', 'Tạo công thức']
+        content,
+        // Giữ suggestions trống để phản hồi thuần hội thoại giống ChatGPT
       };
     } catch (error) {
-      logger.error('Error in chat:', error);
-      
-      // Fallback response
-      const lowerMessage = message.toLowerCase();
-      
-      if (lowerMessage.includes('gợi ý') || lowerMessage.includes('món ăn')) {
-        return {
-          content: `Dựa trên nguyên liệu có sẵn: ${context?.availableIngredients?.join(', ') || 'chưa có thông tin'}, tôi gợi ý bạn có thể nấu:\n\n• Cơm tấm với thịt nướng\n• Canh chua cá\n• Rau muống xào tỏi\n• Thịt kho tàu\n\nBạn có muốn tôi tạo công thức chi tiết cho món nào không?`,
-          suggestions: ['Cơm tấm với thịt nướng', 'Canh chua cá', 'Rau muống xào tỏi', 'Thịt kho tàu']
-        };
-      }
-      
+      logger.error('Error in chat (LLM):', error);
       return {
-        content: `Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?`,
-        suggestions: ['Gợi ý món ăn', 'Lập kế hoạch tuần', 'Tạo danh sách mua sắm', 'Tạo công thức'],
+        content: 'Xin lỗi, tôi đang gặp sự cố khi trả lời. Vui lòng thử lại sau.',
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
