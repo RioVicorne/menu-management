@@ -4,3 +4,5 @@ export { default as ErrorDisplay } from "./error-display";
 export { default as TodayMenu } from "./today-menu";
 export { default as RecipeForm } from "./recipe-form";
 
+export { default as LoginForm } from "./login-form";
+

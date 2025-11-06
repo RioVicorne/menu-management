@@ -85,7 +85,7 @@ export default function RootLayout({
           
           {/* Main content area with proper spacing for sidebar */}
           <main className="sidebar-container min-h-screen transition-all duration-300 pt-0 lg:pt-4 mobile-bottom-spacing relative z-10">
-            <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 py-6">
+            <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 py-4 lg:py-6 h-full">
               {children}
             </div>
           </main>

@@ -335,16 +335,6 @@ export default function Header({ className = "" }: HeaderProps) {
               <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
 
-            {/* User Profile */}
-            <button className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-2 rounded-lg hover:bg-white/10 transition-colors">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
-              </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">Admin User</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">admin@example.com</p>
-              </div>
-            </button>
           </div>
         </div>
       </header>

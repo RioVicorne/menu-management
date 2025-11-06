@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen, Sparkles } from "lucide-react";
+import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen, Sparkles, User, LogOut } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface SidebarProps {
   className?: string;
@@ -13,6 +14,9 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<string>("home");
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isAuthed, setIsAuthed] = useState<boolean>(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
     if (!pathname) {
@@ -53,6 +57,40 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       root.classList.remove("sidebar-collapsed");
     };
   }, [isCollapsed]);
+
+  // Auth: check current session and listen for changes
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    const init = async () => {
+      if (!supabase) return;
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      setIsAuthed(!!session);
+      const email = session?.user?.email || "";
+      setUserEmail(email);
+      // Extract username from email (remove @users.test or @users.local)
+      const user = email.replace(/@users\.(test|local)$/, "");
+      setUsername(user || "User");
+
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        setIsAuthed(!!newSession);
+        const newEmail = newSession?.user?.email || "";
+        setUserEmail(newEmail);
+        const newUser = newEmail.replace(/@users\.(test|local)$/, "");
+        setUsername(newUser || "User");
+      });
+
+      cleanup = () => {
+        sub.subscription.unsubscribe();
+      };
+    };
+
+    init();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
 
   const handleTabClick = (tab: string, path: string) => {
     setActiveTab(tab);
@@ -126,27 +164,27 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   ];
 
   return (
-    <div className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
-      <div className="glass-card w-full h-full flex flex-col border-r border-sage-200/30 dark:border-sage-700/30 min-h-0">
+    <div className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ease-in-out ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
+      <div className="glass-card w-full h-full flex flex-col border-r border-sage-200/30 dark:border-sage-700/30 overflow-hidden">
         {/* Logo Section */}
-        <div className="p-4 border-b border-sage-200/30 dark:border-sage-700/30">
+        <div className="flex-shrink-0 p-3 lg:p-4 border-b border-sage-200/30 dark:border-sage-700/30">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
-              <div className="flex items-center space-x-3 animate-slide-up">
-                <div className="p-2.5 gradient-primary rounded-2xl shadow-soft hover-lift">
-                  <ChefHat className="h-6 w-6 text-white" />
+              <div className="flex items-center space-x-2 lg:space-x-3 animate-slide-up min-w-0">
+                <div className="p-2 lg:p-2.5 gradient-primary rounded-xl lg:rounded-2xl shadow-soft hover-lift shrink-0">
+                  <ChefHat className="h-5 w-5 lg:h-6 lg:w-6 text-white" />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-lg font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-base lg:text-lg font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent truncate">
                     Menu Manager
                   </span>
-                  <span className="text-xs text-muted-foreground">Quản lý thực đơn</span>
+                  <span className="text-xs text-muted-foreground truncate">Quản lý thực đơn</span>
                 </div>
               </div>
             )}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-all duration-300 hover-lift"
+              className="p-2 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-all duration-300 hover-lift shrink-0"
             >
               <Menu className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -154,29 +192,29 @@ export default function Sidebar({ className = "" }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 pr-3 space-y-1 overflow-y-auto min-h-0">
+        <nav className="flex-1 p-3 lg:p-4 pr-2 lg:pr-3 space-y-1 overflow-y-auto min-h-0">
           {navigationItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
 
             const buttonClasses = isCollapsed
-              ? `w-full flex items-center justify-center px-2 py-3 rounded-xl font-medium transition-all duration-300 group ${
+              ? `w-full flex items-center justify-center px-2 py-2.5 lg:py-3 rounded-xl font-medium transition-all duration-300 group ${
                   isActive 
                     ? "text-foreground" 
                     : "text-muted-foreground hover:text-foreground"
                 }`
-              : `w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift group ${
+              : `w-full flex items-center space-x-2 lg:space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift group ${
                   isActive 
                     ? "gradient-primary text-white shadow-soft" 
                     : "text-muted-foreground hover:text-foreground hover:bg-sage-100/50 dark:hover:bg-sage-800/50"
                 }`;
 
             const iconWrapperClasses = isCollapsed
-              ? `${isActive ? "bg-sage-300/80 dark:bg-sage-700" : "hover:bg-sage-100/60 dark:hover:bg-sage-800/60"} w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300`
-              : `p-2 rounded-xl transition-all duration-300 ${isActive ? "bg-white/20" : item.bgColor}`;
+              ? `${isActive ? "bg-sage-300/80 dark:bg-sage-700" : "hover:bg-sage-100/60 dark:hover:bg-sage-800/60"} w-9 h-9 lg:w-10 lg:h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-300`
+              : `p-1.5 lg:p-2 rounded-xl transition-all duration-300 shrink-0 ${isActive ? "bg-white/20" : item.bgColor}`;
 
             const iconClasses = isCollapsed
-              ? `w-5 h-5 transition-colors duration-300 ${isActive ? "text-white" : "text-muted-foreground"}`
+              ? `w-4 h-4 lg:w-5 lg:h-5 transition-colors duration-300 ${isActive ? "text-white" : "text-muted-foreground"}`
               : `h-4 w-4 transition-colors duration-300 ${isActive ? "text-white" : item.color}`;
 
             return (
@@ -191,7 +229,7 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                   <Icon className={iconClasses} />
                 </div>
                 {!isCollapsed && (
-                  <span className="text-sm transition-colors duration-300 animate-slide-up">
+                  <span className="text-xs lg:text-sm transition-colors duration-300 animate-slide-up truncate">
                     {item.label}
                   </span>
                 )}
@@ -199,6 +237,53 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             );
           })}
         </nav>
+
+        {/* Profile Section - Bottom Left */}
+        {isAuthed && (
+          <div className="flex-shrink-0 p-3 lg:p-4 border-t border-sage-200/30 dark:border-sage-700/30">
+            {!isCollapsed ? (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 lg:space-x-3 p-2.5 lg:p-3 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-colors">
+                  <div className="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shrink-0">
+                    <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs lg:text-sm font-medium text-foreground truncate">{username}</p>
+                    <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{userEmail}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!supabase) return;
+                    await supabase.auth.signOut();
+                  }}
+                  className="w-full flex items-center space-x-2 lg:space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift text-muted-foreground hover:text-foreground hover:bg-sage-100/50 dark:hover:bg-sage-800/50"
+                >
+                  <div className="p-1.5 lg:p-2 rounded-xl bg-red-100 dark:bg-red-900/30 shrink-0">
+                    <LogOut className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-red-600 dark:text-red-400" />
+                  </div>
+                  <span className="text-xs lg:text-sm">Đăng xuất</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shrink-0">
+                  <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!supabase) return;
+                    await supabase.auth.signOut();
+                  }}
+                  className="p-2 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-colors"
+                  title="Đăng xuất"
+                >
+                  <LogOut className="h-4 w-4 lg:h-5 lg:w-5 text-red-600 dark:text-red-400" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

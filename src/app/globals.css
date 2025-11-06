@@ -755,6 +755,43 @@ input[type="number"] {
   }
 }
 
+/* Custom scrollbar for sidebar navigation */
+nav.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+nav.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+nav.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 3px;
+}
+
+nav.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.dark nav.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.dark nav.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+/* Full screen layout for planner page */
+@media (min-width: 1024px) {
+  .sidebar-expanded [data-page="planner"] {
+    left: 16rem;
+  }
+
+  .sidebar-collapsed [data-page="planner"] {
+    left: 4rem;
+  }
+}
+
 /* Loading animations */
 @keyframes shimmer {
   0% {

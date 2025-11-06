@@ -400,7 +400,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
+    <div className="flex h-full w-full bg-white dark:bg-gray-900 overflow-hidden">
       {/* Sidebar */}
       {sidebarOpen && (
         <ChatSidebar
@@ -414,7 +414,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       )}
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
           <div className="flex items-center space-x-3">

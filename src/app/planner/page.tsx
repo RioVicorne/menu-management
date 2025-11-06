@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { AIChat } from "@/components/features/ai";
+import { LoginForm } from "@/components/features/common";
+import { supabase } from "@/lib/supabase";
 import { getAllIngredients } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 export default function PlannerPage() {
   const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
+  const [isAuthed, setIsAuthed] = useState<boolean>(false);
 
   useEffect(() => {
     const loadIngredients = async () => {
@@ -25,6 +28,31 @@ export default function PlannerPage() {
     loadIngredients();
   }, []);
 
+  // Auth: check current session and listen for changes
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    const init = async () => {
+      if (!supabase) return; // If not configured, skip auth gating
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      setIsAuthed(!!session);
+
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        setIsAuthed(!!newSession);
+      });
+
+      cleanup = () => {
+        sub.subscription.unsubscribe();
+      };
+    };
+
+    init();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
   const aiContext = {
     availableIngredients,
     currentMenu: [],
@@ -32,11 +60,19 @@ export default function PlannerPage() {
   };
 
   return (
-    <div className="animate-fade-in">
-      <AIChat
-        onFeatureSelect={async () => { /* no-op in chatbot-only view */ }}
-        context={aiContext}
-      />
+    <div className="animate-fade-in h-screen w-full fixed inset-0 lg:fixed lg:left-64 lg:right-0 lg:top-0 lg:bottom-0" data-page="planner">
+      {supabase && !isAuthed ? (
+        <div className="h-full flex items-center justify-center p-4 bg-white dark:bg-gray-900">
+          <LoginForm onAuthenticated={() => setIsAuthed(true)} />
+        </div>
+      ) : (
+        <div className="h-full w-full">
+          <AIChat
+            onFeatureSelect={async () => { /* no-op in chatbot-only view */ }}
+            context={aiContext}
+          />
+        </div>
+      )}
     </div>
   );
 }
