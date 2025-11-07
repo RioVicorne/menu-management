@@ -141,15 +141,20 @@ export async function getAllIngredients(): Promise<Ingredient[]> {
   if (!supabase) {
     return [];
   }
-  const { data, error } = await supabase
-    .from("nguyen_lieu")
-    .select("id, ten_nguyen_lieu, ton_kho_khoi_luong, ton_kho_so_luong, nguon_nhap, created_at")
-    .order("ten_nguyen_lieu");
-  if (error) {
-    logger.error("Error fetching ingredients:", error);
-    throw error;
+  try {
+    const { data, error } = await supabase
+      .from("nguyen_lieu")
+      .select("id, ten_nguyen_lieu, ton_kho_khoi_luong, ton_kho_so_luong, nguon_nhap, created_at")
+      .order("ten_nguyen_lieu");
+    if (error) {
+      logger.error("Error fetching ingredients:", error);
+      return [];
+    }
+    return (data || []) as Ingredient[];
+  } catch (error) {
+    logger.error("Error fetching ingredients (network error):", error);
+    return [];
   }
-  return (data || []) as Ingredient[];
 }
 
 // Get recipe components for a dish, joined with ingredient names
@@ -157,12 +162,177 @@ export interface DishRecipeItem extends RecipeComponent {
   ten_nguyen_lieu?: string;
 }
 
+// Simple in-memory cache for recipes to avoid duplicate queries
+const recipeCache = new Map<string, { data: DishRecipeItem[]; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Clear cache entry if expired
+function getCachedRecipe(dishId: string): DishRecipeItem[] | null {
+  const cached = recipeCache.get(dishId);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedRecipe(dishId: string, data: DishRecipeItem[]) {
+  recipeCache.set(dishId, { data, timestamp: Date.now() });
+}
+
+// Batch get recipes for multiple dishes - optimized version
+export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<string, DishRecipeItem[]>> {
+  if (!supabase || dishIds.length === 0) {
+    return new Map();
+  }
+
+  const result = new Map<string, DishRecipeItem[]>();
+  const uncachedIds: string[] = [];
+
+  // Check cache first
+  for (const dishId of dishIds) {
+    const cached = getCachedRecipe(dishId);
+    if (cached) {
+      result.set(dishId, cached);
+    } else {
+      uncachedIds.push(dishId);
+    }
+  }
+
+  if (uncachedIds.length === 0) {
+    return result;
+  }
+
+  // Batch fetch dishes with cong_thuc_nau
+  const { data: monAnRows } = await supabase
+    .from("mon_an")
+    .select("id, cong_thuc_nau")
+    .in("id", uncachedIds);
+
+  // Batch fetch thanh_phan for dishes without cong_thuc_nau
+  const { data: thanhPhanRows } = await supabase
+    .from("thanh_phan")
+    .select("id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, luong_calo, created_at")
+    .in("ma_mon_an", uncachedIds);
+
+  // Collect all ingredient IDs needed
+  const ingredientIds = new Set<string>();
+  
+  // From cong_thuc_nau
+  (monAnRows || []).forEach((row) => {
+    if (row.cong_thuc_nau) {
+      try {
+        const parsed = typeof row.cong_thuc_nau === "string" 
+          ? JSON.parse(row.cong_thuc_nau) 
+          : row.cong_thuc_nau;
+        if (Array.isArray(parsed)) {
+          parsed.forEach((it: { ma_nguyen_lieu?: string }) => {
+            if (it.ma_nguyen_lieu) ingredientIds.add(String(it.ma_nguyen_lieu));
+          });
+        }
+      } catch {}
+    }
+  });
+
+  // From thanh_phan
+  (thanhPhanRows || []).forEach((row: Record<string, unknown>) => {
+    if (row.ma_nguyen_lieu) {
+      ingredientIds.add(String(row.ma_nguyen_lieu));
+    }
+  });
+
+  // Batch fetch all ingredient names
+  const idToName: Record<string, string> = {};
+  if (ingredientIds.size > 0) {
+    const { data: ingRows } = await supabase
+      .from("nguyen_lieu")
+      .select("id, ten_nguyen_lieu")
+      .in("id", Array.from(ingredientIds));
+    
+    (ingRows || []).forEach((r: Record<string, unknown>) => {
+      idToName[String(r.id)] = String(r.ten_nguyen_lieu);
+    });
+  }
+
+  // Process each dish
+  const monAnMap = new Map((monAnRows || []).map(r => [String(r.id), r]));
+  const thanhPhanByDish = new Map<string, typeof thanhPhanRows>();
+  (thanhPhanRows || []).forEach((row: Record<string, unknown>) => {
+    const dishId = String(row.ma_mon_an);
+    if (!thanhPhanByDish.has(dishId)) {
+      thanhPhanByDish.set(dishId, []);
+    }
+    thanhPhanByDish.get(dishId)!.push(row);
+  });
+
+  for (const dishId of uncachedIds) {
+    let items: DishRecipeItem[] = [];
+    const monAnRow = monAnMap.get(dishId);
+
+    // Try cong_thuc_nau first
+    if (monAnRow?.cong_thuc_nau) {
+      try {
+        const parsed = typeof monAnRow.cong_thuc_nau === "string"
+          ? JSON.parse(monAnRow.cong_thuc_nau)
+          : monAnRow.cong_thuc_nau;
+        
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          items = parsed.map((it: any, idx: number) => ({
+            id: String(idx + 1),
+            ma_mon_an: dishId,
+            ma_nguyen_lieu: String(it.ma_nguyen_lieu || ""),
+            so_nguoi_an: Number(it.so_nguoi_an || 1),
+            khoi_luong_nguyen_lieu: it.khoi_luong_nguyen_lieu != null ? Number(it.khoi_luong_nguyen_lieu) : undefined,
+            so_luong_nguyen_lieu: it.so_luong_nguyen_lieu != null ? Number(it.so_luong_nguyen_lieu) : undefined,
+            created_at: new Date().toISOString(),
+            luong_calo: 0,
+            ten_nguyen_lieu: idToName[String(it.ma_nguyen_lieu || "")],
+          }));
+        }
+      } catch {}
+    }
+
+    // Fallback to thanh_phan
+    if (items.length === 0) {
+      const comps = thanhPhanByDish.get(dishId) || [];
+      items = comps.map((row: Record<string, unknown>) => ({
+        id: String(row.id),
+        ma_mon_an: String(row.ma_mon_an),
+        ma_nguyen_lieu: String(row.ma_nguyen_lieu),
+        so_nguoi_an: Number(row.so_nguoi_an),
+        khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu != null ? Number(row.khoi_luong_nguyen_lieu) : undefined,
+        so_luong_nguyen_lieu: row.so_luong_nguyen_lieu != null ? Number(row.so_luong_nguyen_lieu) : undefined,
+        created_at: String(row.created_at),
+        luong_calo: row.luong_calo != null ? Number(row.luong_calo) : 0,
+        ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
+      }));
+    }
+
+    setCachedRecipe(dishId, items);
+    result.set(dishId, items);
+  }
+
+  return result;
+}
+
 export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]> {
   if (!supabase) {
     return [];
   }
 
-  // First, try reading recipe from mon_an.cong_thuc_nau (text/JSON)
+  // Check cache first
+  const cached = getCachedRecipe(dishId);
+  if (cached) {
+    return cached;
+  }
+
+  // Use batch function for single dish (more efficient)
+  const batchResult = await getRecipesForDishesBatch([dishId]);
+  const result = batchResult.get(dishId);
+  if (result) {
+    return result;
+  }
+
+  // Fallback to original implementation if batch fails
   try {
     const { data: monAnRow, error: monAnErr } = await supabase
       .from("mon_an")
@@ -263,6 +433,8 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
     ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
   }));
 
+  // Cache the result
+  setCachedRecipe(dishId, items);
   return items;
 }
 

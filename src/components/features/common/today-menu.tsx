@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Calendar, ChefHat, Users, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/lib/supabase";
-import { getCalendarData, getMenuItems, getAllIngredients, getRecipeForDish, type DishRecipeItem } from "@/lib/api";
+import { getCalendarData, getMenuItems, getAllIngredients, getRecipesForDishesBatch, type DishRecipeItem } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 interface TodayMenuDish {
@@ -181,9 +181,6 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
           return;
         }
 
-        // Simple cache to avoid duplicate API calls for same dish
-        const recipeCache = new Map<string, DishRecipeItem[]>();
-
         // Fetch all stock once
         const stockList = await getAllIngredients();
         const stockById = new Map<string, { q: number; w: number; name: string }>();
@@ -198,25 +195,17 @@ export default function TodayMenu({ className = "" }: TodayMenuProps) {
         // Aggregate needs by ingredient id
         const needMap = new Map<string, { name: string; q: number; w: number }>();
 
-        // Fetch all recipes in parallel instead of sequentially
-        const recipePromises = menuItems.map(item => {
-          const dishId = String(item.ma_mon_an);
-          if (recipeCache.has(dishId)) {
-            return Promise.resolve({
-              item,
-              recipe: recipeCache.get(dishId)
-            });
-          }
-          return getRecipeForDish(dishId).then(recipe => {
-            recipeCache.set(dishId, recipe);
-            return { item, recipe };
-          });
-        });
+        // Fetch all recipes in batch
+        const dishIds = menuItems.map(item => String(item.ma_mon_an));
+        const recipesMap = await getRecipesForDishesBatch(dishIds);
         
-        const recipeResults = await Promise.all(recipePromises);
+        const recipeResults = menuItems.map(item => ({
+          item,
+          recipe: recipesMap.get(String(item.ma_mon_an)) || []
+        }));
         
         for (const { item, recipe } of recipeResults) {
-          if (!recipe) continue; // Skip if recipe is undefined
+          if (!recipe || recipe.length === 0) continue; // Skip if recipe is empty
           const multiplier = Number(item.boi_so || 1);
           for (const comp of recipe) {
             const id = String(comp.ma_nguyen_lieu || "");

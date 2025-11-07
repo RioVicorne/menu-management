@@ -782,7 +782,15 @@ nav.overflow-y-auto::-webkit-scrollbar-thumb:hover {
 }
 
 /* Full screen layout for planner page */
+[data-page="planner"] {
+  bottom: 5rem; /* Account for mobile bottom nav */
+}
+
 @media (min-width: 1024px) {
+  [data-page="planner"] {
+    bottom: 0; /* No bottom nav on desktop */
+  }
+
   .sidebar-expanded [data-page="planner"] {
     left: 16rem;
   }
@@ -790,6 +798,22 @@ nav.overflow-y-auto::-webkit-scrollbar-thumb:hover {
   .sidebar-collapsed [data-page="planner"] {
     left: 4rem;
   }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Loading animations */

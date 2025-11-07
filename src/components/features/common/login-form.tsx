@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logger } from "@/lib/logger";
+import { Eye, EyeOff } from "lucide-react";
 
 interface LoginFormProps {
   onAuthenticated?: () => void;
@@ -13,6 +14,7 @@ interface LoginFormProps {
 export default function LoginForm({ onAuthenticated }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [error, setError] = useState<string | null>(null);
@@ -117,13 +119,27 @@ export default function LoginForm({ onAuthenticated }: LoginFormProps) {
           <label className="block text-sm mb-1 text-gray-700 dark:text-gray-300">
             Mật khẩu
           </label>
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-          />
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              className="pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              {showPassword ? (
+                <EyeOff className="w-5 h-5" />
+              ) : (
+                <Eye className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -138,9 +154,7 @@ export default function LoginForm({ onAuthenticated }: LoginFormProps) {
           {loading ? "Đang xử lý..." : mode === "signin" ? "Đăng nhập" : "Đăng ký"}
         </Button>
       </form>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
-        Lưu ý: Username được ánh xạ nội bộ thành email dạng <code>{"<username>@users.local"}</code> để đăng nhập bằng Supabase trên client. Không nên dùng cho môi trường production.
-      </p>
+      
     </div>
   );
 }

@@ -8,7 +8,8 @@ import {
   Edit3, 
   Bot,
   Sparkles,
-  Clock
+  Clock,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -27,6 +28,7 @@ interface ChatSidebarProps {
   onSelectSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newTitle: string) => void;
+  onClose?: () => void;
 }
 
 export default function ChatSidebar({
@@ -35,7 +37,8 @@ export default function ChatSidebar({
   onNewChat,
   onSelectSession,
   onDeleteSession,
-  onRenameSession
+  onRenameSession,
+  onClose
 }: ChatSidebarProps) {
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -75,16 +78,26 @@ export default function ChatSidebar({
   };
 
   return (
-    <div className="w-80 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full">
+    <div className="w-80 bg-white dark:bg-gray-900 flex flex-col h-full lg:relative lg:z-auto fixed top-0 left-0 z-50 lg:z-auto h-screen lg:h-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900 flex items-center justify-between">
         <Button
           onClick={onNewChat}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl h-10"
+          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl h-11 shadow-lg hover:shadow-xl transition-all font-medium"
         >
           <Plus className="w-4 h-4 mr-2" />
           Cuộc trò chuyện mới
         </Button>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="ml-2 lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        )}
       </div>
 
       {/* Sessions List */}
@@ -114,10 +127,10 @@ export default function ChatSidebar({
             {sessions.map((session) => (
               <div
                 key={session.id}
-                className={`group relative p-3 rounded-xl mb-2 cursor-pointer transition-colors ${
+                className={`group relative p-3 rounded-xl mb-2 cursor-pointer transition-all ${
                   currentSessionId === session.id
-                    ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200 dark:border-blue-700 shadow-sm'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-sm'
                 }`}
                 onClick={() => onSelectSession(session.id)}
               >

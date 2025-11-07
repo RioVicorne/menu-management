@@ -89,7 +89,7 @@ export default function ChatInput({
   ];
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky bottom-0 z-10">
       {/* Quick Features */}
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex space-x-2 overflow-x-auto">
@@ -98,20 +98,20 @@ export default function ChatInput({
       </div>
 
       {/* Input Area */}
-      <div className="p-4">
+      <div className="p-4 bg-white dark:bg-gray-900">
         <div className="relative">
           {/* Suggestions Dropdown */}
           {showSuggestions && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-10">
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-10 animate-fade-in max-h-64 overflow-y-auto">
               <div className="p-2">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 px-2">
+                <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 px-3 py-1.5">
                   Gợi ý nhanh:
                 </div>
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={index}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    className="w-full text-left px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors"
                   >
                     {suggestion}
                   </button>
@@ -121,12 +121,16 @@ export default function ChatInput({
           )}
 
           {/* Main Input */}
-          <div className="flex items-end space-x-2 bg-gray-100 dark:bg-gray-800 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50">
+          <div className="flex items-end space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-all shadow-sm hover:shadow-md">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowSuggestions(!showSuggestions)}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className={`p-2 rounded-lg transition-colors ${
+                showSuggestions
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
               <Plus className="w-5 h-5" />
             </Button>
@@ -139,7 +143,7 @@ export default function ChatInput({
                 onKeyPress={handleKeyPress}
                 placeholder={placeholder}
                 disabled={loading || disabled}
-                className="w-full bg-transparent border-none outline-none resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm leading-relaxed min-h-[24px] max-h-[120px]"
+                className="w-full bg-transparent border-none outline-none resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm leading-relaxed min-h-[24px] max-h-[120px] py-1"
                 rows={1}
                 style={{ height: 'auto' }}
               />
@@ -149,7 +153,7 @@ export default function ChatInput({
               <Button
                 variant="ghost"
                 size="sm"
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <Paperclip className="w-5 h-5" />
               </Button>
@@ -158,10 +162,10 @@ export default function ChatInput({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsRecording(!isRecording)}
-                className={`p-2 ${
+                className={`p-2 rounded-lg transition-colors ${
                   isRecording 
-                    ? 'text-red-500 hover:text-red-600' 
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    ? 'text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20' 
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {isRecording ? (
@@ -174,7 +178,7 @@ export default function ChatInput({
               <Button
                 onClick={handleSend}
                 disabled={!inputText.trim() || loading || disabled}
-                className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl transition-colors"
+                className="p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-600 dark:disabled:to-gray-600 text-white rounded-xl transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

@@ -21,7 +21,7 @@ import {
 import { TodayMenu } from "@/components";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
-import { getMenuItems, getCalendarData, getRecipeForDish, type DishRecipeItem } from "@/lib/api";
+import { getMenuItems, getCalendarData, getRecipesForDishesBatch, type DishRecipeItem } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
@@ -116,19 +116,17 @@ export default function HomePage() {
         setWeeklyDishCount(items.length);
 
         // Aggregate ingredient usage by recipe lines * servings
-        const recipeCache = new Map<string, DishRecipeItem[]>();
+        // Use batch function to fetch all recipes at once
+        const dishIds = items.map((it: { ma_mon_an: string }) => String(it.ma_mon_an));
+        const recipesMap = await getRecipesForDishesBatch(dishIds);
+        
         let used = 0;
-        const promises = items.map(async (it: { ma_mon_an: string; boi_so?: number }) => {
+        items.forEach((it: { ma_mon_an: string; boi_so?: number }) => {
           const dishId = String(it.ma_mon_an);
-          let recipe = recipeCache.get(dishId);
-          if (!recipe) {
-            recipe = await getRecipeForDish(dishId);
-            recipeCache.set(dishId, recipe);
-          }
+          const recipe = recipesMap.get(dishId) || [];
           const lines = Array.isArray(recipe) ? recipe.length : 0;
           used += lines * Number(it.boi_so || 1);
         });
-        await Promise.all(promises);
         setWeeklyIngredientUsed(used);
 
         // If you have pricing per component, compute real cost here. Keep 0 for now.

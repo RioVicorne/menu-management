@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Menu } from "lucide-react";
+import { Bot, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
@@ -41,6 +41,7 @@ interface AIChatProps {
 
 const SESSIONS_KEY = "planner.sessions";
 const MESSAGES_KEY_PREFIX = "planner.messages.";
+const SIDEBAR_VISIBLE_KEY = "planner.sidebarVisible";
 
 function serializeSession(session: ChatSession) {
   return {
@@ -82,7 +83,71 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Load sidebar visibility preference from localStorage
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const saved = window.localStorage.getItem(SIDEBAR_VISIBLE_KEY);
+        if (saved !== null) {
+          const isVisible = JSON.parse(saved);
+          if (window.innerWidth >= 1024) {
+            setSidebarOpen(isVisible);
+          } else {
+            setSidebarOpen(false);
+          }
+        } else {
+          // Default: open on desktop, closed on mobile
+          if (window.innerWidth >= 1024) {
+            setSidebarOpen(true);
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn("Failed to load sidebar visibility preference", e);
+    }
+  }, []);
+
+  // Save sidebar visibility preference to localStorage
+  const toggleSidebar = () => {
+    const newState = !sidebarOpen;
+    setSidebarOpen(newState);
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(SIDEBAR_VISIBLE_KEY, JSON.stringify(newState));
+      }
+    } catch (e) {
+      logger.warn("Failed to save sidebar visibility preference", e);
+    }
+  };
+
+  // Handle window resize
+  useEffect(() => {
+    const checkScreenSize = () => {
+      if (window.innerWidth >= 1024) {
+        // On desktop, restore saved preference or default to open
+        try {
+          if (typeof window !== "undefined") {
+            const saved = window.localStorage.getItem(SIDEBAR_VISIBLE_KEY);
+            if (saved !== null) {
+              setSidebarOpen(JSON.parse(saved));
+            } else {
+              setSidebarOpen(true);
+            }
+          }
+        } catch (e) {
+          setSidebarOpen(true);
+        }
+      } else {
+        // On mobile, always close sidebar
+        setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -123,7 +188,10 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   // Load messages when current session changes
   useEffect(() => {
-    if (!currentSessionId) return;
+    if (!currentSessionId) {
+      setMessages([]);
+      return;
+    }
     try {
       if (typeof window === "undefined") return;
       const key = MESSAGES_KEY_PREFIX + currentSessionId;
@@ -162,19 +230,6 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     }
   }, [messages, currentSessionId]);
 
-  // Initialize with welcome message (only if not already set by storage load)
-  useEffect(() => {
-    if (messages.length === 0) {
-      const welcomeMessage: Message = {
-        id: '1',
-        text: 'Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?',
-        sender: 'bot',
-        timestamp: new Date(),
-        type: 'text'
-      };
-      setMessages([welcomeMessage]);
-    }
-  }, [messages.length]);
 
   const createNewSession = () => {
     const newSession: ChatSession = {
@@ -232,9 +287,29 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim()) return;
-    if (!currentSessionId) {
-      // Ensure a session exists
-      createNewSession();
+    
+    // Ensure a session exists before sending message
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      const newSession: ChatSession = {
+        id: Date.now().toString(),
+        title: 'Cuộc trò chuyện mới',
+        timestamp: new Date(),
+        messageCount: 0,
+        lastMessage: ''
+      };
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+      sessionId = newSession.id;
+      // Initialize with welcome message for new session
+      const welcomeMessage: Message = {
+        id: "1",
+        text: "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
+        sender: "bot",
+        timestamp: new Date(),
+        type: "text",
+      };
+      setMessages([welcomeMessage]);
     }
 
     const userMessage: Message = {
@@ -245,6 +320,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       type: 'text'
     };
 
+    // Add user message immediately
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
@@ -276,9 +352,9 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       setMessages(prev => [...prev, botMessage]);
       
       // Update session
-      if (currentSessionId) {
+      if (sessionId) {
         setSessions(prev => prev.map(s => 
-          s.id === currentSessionId 
+          s.id === sessionId 
             ? { 
                 ...s, 
                 messageCount: s.messageCount + 2,
@@ -400,9 +476,17 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   return (
-    <div className="flex h-full w-full bg-white dark:bg-gray-900 overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex h-full w-full bg-white dark:bg-gray-900 overflow-hidden relative">
+      {/* Mobile Overlay */}
       {sidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${sidebarOpen ? 'lg:block' : 'lg:hidden'} transition-transform duration-300 ease-in-out`}>
         <ChatSidebar
           sessions={sessions}
           currentSessionId={currentSessionId || undefined}
@@ -410,24 +494,30 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
           onSelectSession={selectSession}
           onDeleteSession={deleteSession}
           onRenameSession={renameSession}
+          onClose={() => setSidebarOpen(false)}
         />
-      )}
+      </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : 'lg:ml-0'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <div className="flex items-center justify-between p-4 lg:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
           <div className="flex items-center space-x-3">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden"
+              onClick={toggleSidebar}
+              className="hover:bg-gray-100 dark:hover:bg-gray-800"
+              title={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
             >
-              <Menu className="w-5 h-5" />
+              {sidebarOpen ? (
+                <PanelLeftClose className="w-5 h-5" />
+              ) : (
+                <PanelLeftOpen className="w-5 h-5" />
+              )}
             </Button>
             <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg">
                 <Bot className="w-6 h-6" />
               </div>
               <div>
@@ -441,14 +531,14 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Đang hoạt động</span>
+          <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-full">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-green-700 dark:text-green-400 font-medium">Đang hoạt động</span>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
           {messages.map((message) => (
             <ChatMessage
               key={message.id}

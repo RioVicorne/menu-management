@@ -13,16 +13,12 @@ export default function PlannerPage() {
 
   useEffect(() => {
     const loadIngredients = async () => {
-      try {
-        const ingredients = await getAllIngredients();
-        const ingredientNames = ingredients
-          .filter(ing => Number(ing.ton_kho_so_luong || 0) > 0 || Number(ing.ton_kho_khoi_luong || 0) > 0)
-          .map(ing => String(ing.ten_nguyen_lieu || ""))
-          .filter(name => name.length > 0);
-        setAvailableIngredients(ingredientNames);
-      } catch (error) {
-        logger.error("Error loading ingredients:", error);
-      }
+      const ingredients = await getAllIngredients();
+      const ingredientNames = ingredients
+        .filter(ing => Number(ing.ton_kho_so_luong || 0) > 0 || Number(ing.ton_kho_khoi_luong || 0) > 0)
+        .map(ing => String(ing.ten_nguyen_lieu || ""))
+        .filter(name => name.length > 0);
+      setAvailableIngredients(ingredientNames);
     };
 
     loadIngredients();
@@ -60,7 +56,7 @@ export default function PlannerPage() {
   };
 
   return (
-    <div className="animate-fade-in h-screen w-full fixed inset-0 lg:fixed lg:left-64 lg:right-0 lg:top-0 lg:bottom-0" data-page="planner">
+    <div className="animate-fade-in fixed inset-0" data-page="planner">
       {supabase && !isAuthed ? (
         <div className="h-full flex items-center justify-center p-4 bg-white dark:bg-gray-900">
           <LoginForm onAuthenticated={() => setIsAuthed(true)} />
