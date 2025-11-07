@@ -3,7 +3,6 @@
 import { useCallback, useState, useEffect } from "react";
 import { format } from "date-fns/format";
 import { vi } from "date-fns/locale/vi";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
 import {
@@ -34,7 +33,6 @@ interface Event {
 }
 
 export default function MenuPage() {
-  const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [yearEvents, setYearEvents] = useState<Event[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());

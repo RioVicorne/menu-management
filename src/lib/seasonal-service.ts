@@ -1,4 +1,3 @@
-import { logger } from './logger';
 
 // Interface cho thông tin thời tiết
 export interface WeatherInfo {
@@ -206,7 +205,6 @@ export class SeasonalRecommendationService {
   // Ước tính thời tiết dựa trên mùa (mock data)
   getEstimatedWeather(): WeatherInfo {
     const season = this.getCurrentSeason();
-    const hour = new Date().getHours();
     
     let temperature: number;
     let condition: WeatherInfo['condition'];

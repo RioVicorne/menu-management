@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { logger } from "./logger";
 
 /**
  * Upload an image file to Supabase Storage and return its public URL.
@@ -36,7 +37,7 @@ export async function uploadDishImage(file: File, opts?: { dishId?: string }): P
       });
 
     if (uploadError) {
-      console.error("Upload error:", uploadError);
+      logger.error("Upload error:", uploadError);
       throw new Error(`Lỗi upload: ${uploadError.message}`);
     }
 
@@ -51,7 +52,7 @@ export async function uploadDishImage(file: File, opts?: { dishId?: string }): P
 
     return publicUrlData.publicUrl;
   } catch (error) {
-    console.error("Storage upload error:", error);
+    logger.error("Storage upload error:", error);
     if (error instanceof Error) {
       throw error;
     }

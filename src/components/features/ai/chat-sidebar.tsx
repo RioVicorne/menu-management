@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { 
+import {
   Plus, 
   MessageSquare, 
   Trash2, 
@@ -12,14 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface ChatSession {
-  id: string;
-  title: string;
-  timestamp: Date;
-  messageCount: number;
-  lastMessage: string;
-}
+import type { ChatSession } from '@/types/chat';
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -78,7 +71,7 @@ export default function ChatSidebar({
   };
 
   return (
-    <div className="w-80 bg-white dark:bg-gray-900 flex flex-col h-full lg:relative lg:z-auto fixed top-0 left-0 z-50 lg:z-auto h-screen lg:h-full">
+    <div className="chat-sidebar w-80 bg-white dark:bg-gray-900 flex flex-col flex-shrink-0 h-screen lg:h-full fixed lg:static top-0 left-0 z-50 lg:z-auto border-r border-gray-100 dark:border-gray-800 shadow-xl lg:shadow-none">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900 flex items-center justify-between">
         <Button

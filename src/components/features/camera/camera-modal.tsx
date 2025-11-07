@@ -4,8 +4,7 @@ import { useState } from 'react';
 import Modal from '@/components/ui/modal';
 import CameraComponent from './camera-component';
 import { RecognitionResult } from '@/lib/camera-service';
-import { Button } from '@/components/ui/button';
-import { Camera, X } from 'lucide-react';
+import { Camera } from 'lucide-react';
 
 interface CameraModalProps {
   isOpen: boolean;

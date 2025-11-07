@@ -35,8 +35,7 @@ export default function CameraButton({
         onIngredientsRecognized(result);
       }
       
-      // Show success feedback
-      console.log('Ingredients recognized:', result.ingredients);
+      // Show success feedback (logged via onIngredientsRecognized callback)
       
     } catch (error) {
       logger.error('Error handling recognized ingredients:', error);

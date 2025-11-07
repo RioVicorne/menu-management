@@ -1,33 +1,21 @@
 "use client";
 
 import { useState } from 'react';
-import { 
-  User, 
-  Bot, 
-  Copy, 
-  ThumbsUp, 
-  ThumbsDown, 
-  RefreshCw, 
-  MoreVertical,
+import {
+  User,
+  Bot,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  RefreshCw,
   CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
+import type { ChatMessage as ChatMessageType } from '@/types/chat';
 
 interface ChatMessageProps {
-  message: {
-    id: string;
-    text: string;
-    sender: 'user' | 'bot';
-    timestamp: Date;
-    type: 'text' | 'ai-result';
-    aiData?: {
-      type: string;
-      content: string;
-      suggestions?: string[];
-      error?: string;
-    };
-  };
+  message: ChatMessageType;
   isTyping?: boolean;
   onRegenerate?: () => void;
   onFeedback?: (type: 'like' | 'dislike') => void;

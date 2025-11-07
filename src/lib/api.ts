@@ -203,16 +203,32 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
   }
 
   // Batch fetch dishes with cong_thuc_nau
+  type RawMonAnRow = {
+    id: string | number | null;
+    cong_thuc_nau: unknown;
+  };
+
   const { data: monAnRows } = await supabase
     .from("mon_an")
     .select("id, cong_thuc_nau")
-    .in("id", uncachedIds);
+    .in("id", uncachedIds) as { data: RawMonAnRow[] | null };
 
   // Batch fetch thanh_phan for dishes without cong_thuc_nau
+  type RawThanhPhanRow = {
+    id: string | number | null;
+    ma_mon_an: string | number | null;
+    ma_nguyen_lieu: string | number | null;
+    so_nguoi_an: number | null;
+    khoi_luong_nguyen_lieu: number | null;
+    so_luong_nguyen_lieu: number | null;
+    luong_calo: number | null;
+    created_at: string | null;
+  };
+
   const { data: thanhPhanRows } = await supabase
     .from("thanh_phan")
     .select("id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, luong_calo, created_at")
-    .in("ma_mon_an", uncachedIds);
+    .in("ma_mon_an", uncachedIds) as { data: RawThanhPhanRow[] | null };
 
   // Collect all ingredient IDs needed
   const ingredientIds = new Set<string>();
@@ -234,7 +250,7 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
   });
 
   // From thanh_phan
-  (thanhPhanRows || []).forEach((row: Record<string, unknown>) => {
+  (thanhPhanRows || []).forEach((row) => {
     if (row.ma_nguyen_lieu) {
       ingredientIds.add(String(row.ma_nguyen_lieu));
     }
@@ -255,8 +271,8 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
 
   // Process each dish
   const monAnMap = new Map((monAnRows || []).map(r => [String(r.id), r]));
-  const thanhPhanByDish = new Map<string, typeof thanhPhanRows>();
-  (thanhPhanRows || []).forEach((row: Record<string, unknown>) => {
+  const thanhPhanByDish = new Map<string, RawThanhPhanRow[]>();
+  (thanhPhanRows || []).forEach((row) => {
     const dishId = String(row.ma_mon_an);
     if (!thanhPhanByDish.has(dishId)) {
       thanhPhanByDish.set(dishId, []);
@@ -294,16 +310,16 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
     // Fallback to thanh_phan
     if (items.length === 0) {
       const comps = thanhPhanByDish.get(dishId) || [];
-      items = comps.map((row: Record<string, unknown>) => ({
-        id: String(row.id),
-        ma_mon_an: String(row.ma_mon_an),
-        ma_nguyen_lieu: String(row.ma_nguyen_lieu),
-        so_nguoi_an: Number(row.so_nguoi_an),
+      items = comps.map((row) => ({
+        id: String(row.id ?? ""),
+        ma_mon_an: String(row.ma_mon_an ?? ""),
+        ma_nguyen_lieu: String(row.ma_nguyen_lieu ?? ""),
+        so_nguoi_an: Number(row.so_nguoi_an ?? 0),
         khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu != null ? Number(row.khoi_luong_nguyen_lieu) : undefined,
         so_luong_nguyen_lieu: row.so_luong_nguyen_lieu != null ? Number(row.so_luong_nguyen_lieu) : undefined,
-        created_at: String(row.created_at),
+        created_at: row.created_at ? String(row.created_at) : new Date().toISOString(),
         luong_calo: row.luong_calo != null ? Number(row.luong_calo) : 0,
-        ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
+        ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu ?? "")],
       }));
     }
 

@@ -89,7 +89,10 @@ export default function ChatInput({
   ];
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky bottom-0 z-10">
+    <div
+      className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky bottom-0 z-10"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+    >
       {/* Quick Features */}
       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex space-x-2 overflow-x-auto">

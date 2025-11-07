@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen, Sparkles, User, LogOut } from "lucide-react";
+import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen, User, LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface SidebarProps {

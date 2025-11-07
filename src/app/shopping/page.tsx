@@ -180,7 +180,7 @@ export default function ShoppingPage() {
 
   // removed print feature per request
 
-  const getDefaultSuggestion = (ing: Ingredient) => {
+  const getDefaultSuggestion = (_ing: Ingredient) => {
     // Always return 1 as requested
     return 1;
   };

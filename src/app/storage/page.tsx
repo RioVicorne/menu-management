@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Package,
   AlertTriangle,
@@ -53,7 +53,7 @@ export default function StoragePage() {
 
   // Handle camera recognition results
   const handleIngredientsRecognized = (result: RecognitionResult) => {
-    console.log('Camera recognized ingredients:', result.ingredients);
+    logger.info('Camera recognized ingredients:', result.ingredients);
     
     // You can implement logic to add recognized ingredients to storage
     // For now, just show a success message
@@ -67,13 +67,13 @@ export default function StoragePage() {
   const [showAllSources, setShowAllSources] = useState(false);
 
   // Helpers to avoid duplicate sources due to casing/spacing differences
-  const collapseSpaces = (value: string) =>
+  const collapseSpaces = useCallback((value: string) =>
     String(value || "")
       .normalize("NFC")
       .replace(/\s+/g, " ")
-      .trim();
-  const normalizeSourceName = (value: string) =>
-    collapseSpaces(value).toLocaleLowerCase("vi");
+      .trim(), []);
+  const normalizeSourceName = useCallback((value: string) =>
+    collapseSpaces(value).toLocaleLowerCase("vi"), [collapseSpaces]);
 
   // Fetch ingredients from Supabase
   useEffect(() => {

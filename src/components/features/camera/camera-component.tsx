@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Camera, 
-  CameraOff, 
   RotateCcw, 
   CheckCircle, 
   AlertCircle,
@@ -290,8 +289,8 @@ export default function CameraComponent({
                     
                     <Button
                       onClick={() => {
-                        // Add ingredients to inventory or menu
-                        console.log('Adding ingredients:', recognitionResult.ingredients);
+                        // TODO: Add ingredients to inventory or menu
+                        logger.info('Adding ingredients:', recognitionResult.ingredients);
                       }}
                       className="flex items-center space-x-2"
                     >

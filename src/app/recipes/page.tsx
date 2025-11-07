@@ -23,9 +23,10 @@ import { Input } from "@/components/ui/input";
 import Modal from "@/components/ui/modal";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import Link from "next/link";
-import { Dish, getDishes, getRecipeForDish, updateDishImageAndTags } from "@/lib/api";
+import { Dish, getDishes, updateDishImageAndTags } from "@/lib/api";
 import { uploadDishImage } from "@/lib/storage";
 import NutritionAnalysis from "@/components/features/ai/nutrition-analysis";
+import { logger } from "@/lib/logger";
 
 type FilterType = "all" | "favorites" | "quick" | "vegetarian";
 
@@ -174,7 +175,7 @@ export default function RecipesPage() {
       setSelectedImageFile(null);
       setImageModalDishId(null);
     } catch (error) {
-      console.error("Error deleting image:", error);
+      logger.error("Error deleting image:", error);
     } finally {
       setDeletingImage(false);
     }
@@ -210,7 +211,7 @@ export default function RecipesPage() {
       setDishes(prev => prev ? prev.map(d => d.id === imageModalDishId ? updatedDish : d) : null);
       setImageModalDishId(null);
     } catch (error) {
-      console.error("Error saving image:", error);
+      logger.error("Error saving image:", error);
     } finally {
       setSaving(false);
     }
@@ -235,7 +236,7 @@ export default function RecipesPage() {
       setDishes(prev => prev ? prev.map(d => d.id === tagsModalDishId ? updatedDish : d) : null);
       setTagsModalDishId(null);
     } catch (error) {
-      console.error("Error saving tags:", error);
+      logger.error("Error saving tags:", error);
     } finally {
       setSaving(false);
     }

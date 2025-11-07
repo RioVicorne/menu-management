@@ -1,4 +1,3 @@
-import { logger } from './logger';
 
 // Interface cho dịp đặc biệt
 export interface SpecialOccasion {

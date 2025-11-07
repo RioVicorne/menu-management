@@ -1,10 +1,6 @@
-// ❗ I want to redesign this page structure completely from scratch.
-// Keep all logic, but throw away the current layout and rebuild UI freely.
-
 "use client";
 
 import { useEffect, useState } from "react";
-import { } from "next/navigation";
 import { 
   Calendar, 
   ChefHat, 
@@ -21,7 +17,7 @@ import {
 import { TodayMenu } from "@/components";
 import { supabase } from "@/lib/supabase";
 import { logger } from "@/lib/logger";
-import { getMenuItems, getCalendarData, getRecipesForDishesBatch, type DishRecipeItem } from "@/lib/api";
+import { getMenuItems, getCalendarData, getRecipesForDishesBatch } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {

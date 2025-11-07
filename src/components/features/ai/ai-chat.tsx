@@ -7,28 +7,14 @@ import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
 import ChatSidebar from "./chat-sidebar";
 import { logger } from "@/lib/logger";
-
-type Message = {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-  type: 'text' | 'ai-result';
-  aiData?: {
-    type: string;
-    content: string;
-    suggestions?: string[];
-    error?: string;
-  };
-};
-
-type ChatSession = {
-  id: string;
-  title: string;
-  timestamp: Date;
-  messageCount: number;
-  lastMessage: string;
-};
+import type { ChatMessage as Message, ChatSession, ChatDataSource } from "@/types/chat";
+import {
+  loadSessions as loadStoredSessions,
+  loadMessages as loadStoredMessages,
+  persistSessions,
+  persistMessages,
+  removeSession as removeStoredSession,
+} from "@/lib/chat-storage";
 
 interface AIChatProps {
   onFeatureSelect?: (feature: string, data?: unknown) => void;
@@ -39,44 +25,16 @@ interface AIChatProps {
   };
 }
 
-const SESSIONS_KEY = "planner.sessions";
-const MESSAGES_KEY_PREFIX = "planner.messages.";
 const SIDEBAR_VISIBLE_KEY = "planner.sidebarVisible";
 
-function serializeSession(session: ChatSession) {
-  return {
-    ...session,
-    timestamp: session.timestamp.toISOString(),
-  };
-}
-
-function deserializeSession(raw: any): ChatSession {
-  return {
-    id: String(raw.id),
-    title: String(raw.title || "Cuộc trò chuyện mới"),
-    timestamp: new Date(raw.timestamp || Date.now()),
-    messageCount: Number(raw.messageCount || 0),
-    lastMessage: String(raw.lastMessage || ""),
-  };
-}
-
-function serializeMessage(message: Message) {
-  return {
-    ...message,
-    timestamp: message.timestamp.toISOString(),
-  };
-}
-
-function deserializeMessage(raw: any): Message {
-  return {
-    id: String(raw.id),
-    text: String(raw.text || ""),
-    sender: raw.sender === "user" ? "user" : "bot",
-    timestamp: new Date(raw.timestamp || Date.now()),
-    type: raw.type === "ai-result" ? "ai-result" : "text",
-    aiData: raw.aiData,
-  };
-}
+const createWelcomeMessage = (): Message => ({
+  id: "welcome",
+  text:
+    "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
+  sender: "bot",
+  timestamp: new Date(),
+  type: "text",
+});
 
 export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -84,6 +42,9 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [syncSource, setSyncSource] = useState<ChatDataSource>("local");
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
   
   // Load sidebar visibility preference from localStorage
   useEffect(() => {
@@ -91,17 +52,23 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       if (typeof window !== "undefined") {
         const saved = window.localStorage.getItem(SIDEBAR_VISIBLE_KEY);
         if (saved !== null) {
-          const isVisible = JSON.parse(saved);
+          let isVisible = false;
+          if (saved === "true" || saved === "false") {
+            isVisible = saved === "true";
+          } else {
+            try {
+              isVisible = Boolean(JSON.parse(saved));
+            } catch {
+              isVisible = false;
+            }
+          }
           if (window.innerWidth >= 1024) {
             setSidebarOpen(isVisible);
           } else {
             setSidebarOpen(false);
           }
         } else {
-          // Default: open on desktop, closed on mobile
-          if (window.innerWidth >= 1024) {
-            setSidebarOpen(true);
-          }
+          setSidebarOpen(false);
         }
       }
     } catch (e) {
@@ -131,13 +98,23 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
           if (typeof window !== "undefined") {
             const saved = window.localStorage.getItem(SIDEBAR_VISIBLE_KEY);
             if (saved !== null) {
-              setSidebarOpen(JSON.parse(saved));
+              let isVisible = false;
+              if (saved === "true" || saved === "false") {
+                isVisible = saved === "true";
+              } else {
+                try {
+                  isVisible = Boolean(JSON.parse(saved));
+                } catch {
+                  isVisible = false;
+                }
+              }
+              setSidebarOpen(isVisible);
             } else {
-              setSidebarOpen(true);
+              setSidebarOpen(false);
             }
           }
         } catch (e) {
-          setSidebarOpen(true);
+          setSidebarOpen(false);
         }
       } else {
         // On mobile, always close sidebar
@@ -158,76 +135,92 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Load sessions from localStorage on mount
+  // Initial load for sessions/messages
   useEffect(() => {
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(SESSIONS_KEY) : null;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const loaded = Array.isArray(parsed) ? parsed.map(deserializeSession) : [];
-        setSessions(loaded);
-        if (loaded.length > 0) {
-          setCurrentSessionId(loaded[0].id);
+    let cancelled = false;
+
+    const init = async () => {
+      try {
+        const { data, source, error } = await loadStoredSessions();
+        if (cancelled) return;
+
+        setSyncSource(source);
+        if (error) {
+          logger.warn("Falling back to local chat sessions", error);
+          setSyncError("Không thể đồng bộ lịch sử chat với máy chủ. Đang dùng dữ liệu lưu trên máy này.");
+        } else {
+          setSyncError(null);
+        }
+
+        setSessions(data);
+        if (data.length > 0) {
+          setCurrentSessionId(data[0].id);
+        } else {
+          setMessages([createWelcomeMessage()]);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        logger.error("Failed to initialize chat sessions", error);
+        setSessions([]);
+        setMessages([createWelcomeMessage()]);
+        setSyncError("Không thể tải lịch sử chat.");
+      } finally {
+        if (!cancelled) {
+          setInitializing(false);
         }
       }
-    } catch (e) {
-      logger.warn("Failed to load planner sessions from localStorage", e);
-    }
+    };
+
+    init();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Persist sessions to localStorage when they change
+  // Persist sessions when they change
   useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const data = JSON.stringify(sessions.map(serializeSession));
-      window.localStorage.setItem(SESSIONS_KEY, data);
-    } catch (e) {
-      logger.warn("Failed to save planner sessions to localStorage", e);
-    }
+    persistSessions(sessions);
   }, [sessions]);
 
-  // Load messages when current session changes
+  // Load messages for selected session
   useEffect(() => {
     if (!currentSessionId) {
-      setMessages([]);
       return;
     }
-    try {
-      if (typeof window === "undefined") return;
-      const key = MESSAGES_KEY_PREFIX + currentSessionId;
-      const raw = window.localStorage.getItem(key);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const loaded = Array.isArray(parsed) ? parsed.map(deserializeMessage) : [];
-        setMessages(loaded);
+
+    let cancelled = false;
+
+    const loadMessages = async () => {
+      const { data, source, error } = await loadStoredMessages(currentSessionId);
+      if (cancelled) return;
+
+      setSyncSource(source);
+      if (error) {
+        logger.warn("Falling back to local chat messages", error);
+        setSyncError("Không thể đồng bộ tin nhắn với máy chủ. Đang dùng dữ liệu lưu trên máy này.");
       } else {
-        // If no stored messages, initialize with welcome message
-        const welcomeMessage: Message = {
-          id: "1",
-          text:
-            "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
-          sender: "bot",
-          timestamp: new Date(),
-          type: "text",
-        };
-        setMessages([welcomeMessage]);
+        setSyncError(null);
       }
-    } catch (e) {
-      logger.warn("Failed to load planner messages from localStorage", e);
-    }
+
+      if (data.length > 0) {
+        setMessages(data);
+      } else {
+        setMessages([createWelcomeMessage()]);
+      }
+    };
+
+    loadMessages();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentSessionId]);
 
-  // Persist messages of current session
+  // Persist messages when they change
   useEffect(() => {
     if (!currentSessionId) return;
-    try {
-      if (typeof window === "undefined") return;
-      const key = MESSAGES_KEY_PREFIX + currentSessionId;
-      const data = JSON.stringify(messages.map(serializeMessage));
-      window.localStorage.setItem(key, data);
-    } catch (e) {
-      logger.warn("Failed to save planner messages to localStorage", e);
-    }
+    persistMessages(currentSessionId, messages);
   }, [messages, currentSessionId]);
 
 
@@ -242,41 +235,29 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     
     setSessions(prev => [newSession, ...prev]);
     setCurrentSessionId(newSession.id);
-    setMessages([]);
+    setMessages([createWelcomeMessage()]);
   };
 
   const selectSession = (sessionId: string) => {
     setCurrentSessionId(sessionId);
-    // In a real app, you would load messages for this session
-    // For now, we'll just show the welcome message
-    const welcomeMessage: Message = {
-      id: '1',
-      text: 'Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?',
-      sender: 'bot',
-      timestamp: new Date(),
-      type: 'text'
-    };
-    setMessages([welcomeMessage]);
+    setSidebarOpen(false);
   };
 
   const deleteSession = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-    // Remove messages from storage
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem(MESSAGES_KEY_PREFIX + sessionId);
+    setSessions(prev => {
+      const updated = prev.filter(s => s.id !== sessionId);
+      if (currentSessionId === sessionId) {
+        if (updated.length > 0) {
+          setCurrentSessionId(updated[0].id);
+        } else {
+          setCurrentSessionId(null);
+          setMessages([createWelcomeMessage()]);
+        }
       }
-    } catch (e) {
-      logger.warn("Failed to remove session messages from localStorage", e);
-    }
-    if (currentSessionId === sessionId) {
-      if (sessions.length > 1) {
-        const remainingSessions = sessions.filter(s => s.id !== sessionId);
-        selectSession(remainingSessions[0].id);
-      } else {
-        createNewSession();
-      }
-    }
+      return updated;
+    });
+
+    removeStoredSession(sessionId);
   };
 
   const renameSession = (sessionId: string, newTitle: string) => {
@@ -286,7 +267,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   const handleSendMessage = async (messageText: string) => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || initializing) return;
     
     // Ensure a session exists before sending message
     let sessionId = currentSessionId;
@@ -301,15 +282,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       setSessions(prev => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       sessionId = newSession.id;
-      // Initialize with welcome message for new session
-      const welcomeMessage: Message = {
-        id: "1",
-        text: "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
-        sender: "bot",
-        timestamp: new Date(),
-        type: "text",
-      };
-      setMessages([welcomeMessage]);
+      setMessages([createWelcomeMessage()]);
     }
 
     const userMessage: Message = {
@@ -380,6 +353,8 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   const handleFeatureRequest = async (feature: string, data?: unknown) => {
+    if (initializing) return;
+
     // Handle special case for opening shopping page
     if (feature === 'open-shopping') {
       window.open('/shopping', '_blank');
@@ -499,7 +474,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       </div>
 
       {/* Main Chat Area */}
-      <div className={`flex-1 flex flex-col min-h-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : 'lg:ml-0'}`}>
+      <div className={`chat-main flex-1 flex flex-col min-h-0 transition-all duration-300 ${sidebarOpen ? 'pointer-events-none lg:pointer-events-auto' : ''}`}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 lg:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
           <div className="flex items-center space-x-3">
@@ -531,14 +506,36 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-full">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-green-700 dark:text-green-400 font-medium">Đang hoạt động</span>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-full">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-green-700 dark:text-green-400 font-medium">Đang hoạt động</span>
+            </div>
+            <div
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                syncSource === "remote"
+                  ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
+                  : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
+              }`}
+            >
+              <span>{syncSource === "remote" ? "Đã đồng bộ cloud" : "Lưu tạm trên thiết bị"}</span>
+            </div>
           </div>
         </div>
 
+        {syncError && (
+          <div className="px-4 py-2 lg:px-5 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+            {syncError}
+          </div>
+        )}
+
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+        <div className="chat-messages flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+          {initializing && (
+            <div className="px-4 py-3 lg:px-6 text-sm text-gray-500 dark:text-gray-400">
+              Đang tải lịch sử trò chuyện...
+            </div>
+          )}
           {messages.map((message) => (
             <ChatMessage
               key={message.id}
@@ -568,7 +565,8 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         <ChatInput
           onSendMessage={handleSendMessage}
           onFeatureRequest={handleFeatureRequest}
-          loading={isTyping}
+          loading={isTyping || initializing}
+          disabled={initializing}
         />
       </div>
     </div>
