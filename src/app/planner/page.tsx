@@ -56,7 +56,7 @@ export default function PlannerPage() {
   };
 
   return (
-    <div className="animate-fade-in fixed inset-0" data-page="planner">
+    <div className="animate-fade-in fixed overflow-hidden shadow-lg z-10" data-page="planner">
       {supabase && !isAuthed ? (
         <div className="h-full flex items-center justify-center p-4 bg-white dark:bg-gray-900">
           <LoginForm onAuthenticated={() => setIsAuthed(true)} />

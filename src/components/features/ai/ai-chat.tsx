@@ -461,7 +461,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       )}
 
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${sidebarOpen ? 'lg:block' : 'lg:hidden'} transition-transform duration-300 ease-in-out`}>
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${sidebarOpen ? 'lg:block' : 'lg:hidden'} transition-transform duration-300 ease-in-out fixed lg:static top-0 left-0 z-50 lg:z-auto`}>
         <ChatSidebar
           sessions={sessions}
           currentSessionId={currentSessionId || undefined}
@@ -474,15 +474,15 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       </div>
 
       {/* Main Chat Area */}
-      <div className={`chat-main flex-1 flex flex-col min-h-0 transition-all duration-300 ${sidebarOpen ? 'pointer-events-none lg:pointer-events-auto' : ''}`}>
+      <div className={`chat-main flex-1 flex flex-col min-h-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-0 pointer-events-none lg:pointer-events-auto' : 'lg:ml-0'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 lg:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between p-3 lg:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm flex-shrink-0">
+          <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
             <Button
               variant="ghost"
               size="sm"
               onClick={toggleSidebar}
-              className="hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="hover:bg-gray-100 dark:hover:bg-gray-800 flex-shrink-0"
               title={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
             >
               {sidebarOpen ? (
@@ -491,15 +491,15 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
                 <PanelLeftOpen className="w-5 h-5" />
               )}
             </Button>
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg">
-                <Bot className="w-6 h-6" />
+            <div className="flex items-center space-x-2 lg:space-x-3 min-w-0">
+              <div className="p-2 lg:p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg flex-shrink-0">
+                <Bot className="w-5 h-5 lg:w-6 lg:h-6" />
               </div>
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <div className="min-w-0">
+                <h1 className="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                   AI Menu Assistant
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 hidden sm:block truncate">
                   Trợ lý thông minh cho quản lý menu
                 </p>
               </div>
@@ -509,15 +509,15 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         </div>
 
         {syncError && (
-          <div className="px-4 py-2 lg:px-5 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800">
+          <div className="px-3 lg:px-5 py-2 text-xs lg:text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex-shrink-0">
             {syncError}
           </div>
         )}
 
         {/* Messages */}
-        <div className="chat-messages flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+        <div className="chat-messages flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 pb-4">
           {initializing && (
-            <div className="px-4 py-3 lg:px-6 text-sm text-gray-500 dark:text-gray-400">
+            <div className="px-3 lg:px-6 py-3 text-xs lg:text-sm text-gray-500 dark:text-gray-400">
               Đang tải lịch sử trò chuyện...
             </div>
           )}

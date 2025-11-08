@@ -704,21 +704,26 @@ nav.overflow-y-auto::-webkit-scrollbar-thumb:hover {
 }
 
 /* Full screen layout for planner page */
-[data-page="planner"] {
-  bottom: 5rem; /* Account for mobile bottom nav */
+@media (max-width: 1023px) {
+  [data-page="planner"] {
+    inset: 0;
+    bottom: 5rem; /* Account for mobile bottom nav */
+    border-radius: 0;
+  }
 }
 
 @media (min-width: 1024px) {
   [data-page="planner"] {
-    bottom: 0; /* No bottom nav on desktop */
+    inset: 1rem;
+    border-radius: 0.75rem;
   }
 
   .sidebar-expanded [data-page="planner"] {
-    left: 16rem;
+    left: 17rem; /* 16rem sidebar + 1rem margin */
   }
 
   .sidebar-collapsed [data-page="planner"] {
-    left: 4rem;
+    left: 5rem; /* 4rem sidebar + 1rem margin */
   }
 }
 

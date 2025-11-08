@@ -90,18 +90,11 @@ export default function ChatInput({
 
   return (
     <div
-      className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 sticky bottom-0 z-10"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" }}
     >
-      {/* Quick Features */}
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex space-x-2 overflow-x-auto">
-          
-        </div>
-      </div>
-
       {/* Input Area */}
-      <div className="p-4 bg-white dark:bg-gray-900">
+      <div className="p-3 lg:p-4 bg-white dark:bg-gray-900">
         <div className="relative">
           {/* Suggestions Dropdown */}
           {showSuggestions && (
@@ -124,21 +117,21 @@ export default function ChatInput({
           )}
 
           {/* Main Input */}
-          <div className="flex items-end space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-all shadow-sm hover:shadow-md">
+          <div className="flex items-end space-x-1.5 lg:space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl lg:rounded-2xl p-2 lg:p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-all shadow-sm hover:shadow-md">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowSuggestions(!showSuggestions)}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-1.5 lg:p-2 rounded-lg transition-colors flex-shrink-0 ${
                 showSuggestions
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4 lg:w-5 lg:h-5" />
             </Button>
             
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-0">
               <textarea
                 ref={textareaRef}
                 value={inputText}
@@ -146,47 +139,47 @@ export default function ChatInput({
                 onKeyPress={handleKeyPress}
                 placeholder={placeholder}
                 disabled={loading || disabled}
-                className="w-full bg-transparent border-none outline-none resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm leading-relaxed min-h-[24px] max-h-[120px] py-1"
+                className="w-full bg-transparent border-none outline-none resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm leading-relaxed min-h-[20px] max-h-[120px] py-1"
                 rows={1}
                 style={{ height: 'auto' }}
               />
             </div>
             
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-0.5 lg:space-x-1 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-1.5 lg:p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors hidden sm:inline-flex"
               >
-                <Paperclip className="w-5 h-5" />
+                <Paperclip className="w-4 h-4 lg:w-5 lg:h-5" />
               </Button>
               
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsRecording(!isRecording)}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-1.5 lg:p-2 rounded-lg transition-colors flex-shrink-0 ${
                   isRecording 
                     ? 'text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20' 
                     : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {isRecording ? (
-                  <MicOff className="w-5 h-5" />
+                  <MicOff className="w-4 h-4 lg:w-5 lg:h-5" />
                 ) : (
-                  <Mic className="w-5 h-5" />
+                  <Mic className="w-4 h-4 lg:w-5 lg:h-5" />
                 )}
               </Button>
               
               <Button
                 onClick={handleSend}
                 disabled={!inputText.trim() || loading || disabled}
-                className="p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-600 dark:disabled:to-gray-600 text-white rounded-xl transition-all shadow-lg hover:shadow-xl disabled:shadow-none"
+                className="p-2 lg:p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-600 dark:disabled:to-gray-600 text-white rounded-lg lg:rounded-xl transition-all shadow-lg hover:shadow-xl disabled:shadow-none flex-shrink-0"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 lg:w-5 lg:h-5 animate-spin" />
                 ) : (
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4 h-4 lg:w-5 lg:h-5" />
                 )}
               </Button>
             </div>
@@ -194,12 +187,13 @@ export default function ChatInput({
         </div>
         
         {/* Footer */}
-        <div className="flex items-center justify-between mt-2 px-2">
-          <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-            <Sparkles className="w-3 h-3" />
-            <span>AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.</span>
+        <div className="flex items-center justify-between mt-2 px-1 lg:px-2">
+          <div className="flex items-center space-x-1 lg:space-x-2 text-[10px] lg:text-xs text-gray-500 dark:text-gray-400">
+            <Sparkles className="w-2.5 h-2.5 lg:w-3 lg:h-3 flex-shrink-0" />
+            <span className="hidden sm:inline">AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng.</span>
+            <span className="sm:hidden">AI có thể mắc lỗi.</span>
           </div>
-          <div className="text-xs text-gray-400">
+          <div className="text-[10px] lg:text-xs text-gray-400 hidden lg:block">
             Enter để gửi, Shift+Enter để xuống dòng
           </div>
         </div>

@@ -816,6 +816,33 @@ export async function updateDish(
       : null;
   }
 
+  // Check if there are any fields to update
+  if (Object.keys(payload).length === 0) {
+    // No fields to update, just return the existing dish
+    const existingDish = await getDishById(id);
+    if (!existingDish) {
+      throw new Error(`Không tìm thấy món ăn với ID: ${id}`);
+    }
+    return existingDish;
+  }
+
+  // First, check if the dish exists
+  const { data: existingDish, error: checkError } = await supabase
+    .from("mon_an")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (checkError) {
+    logger.error("Error checking if dish exists:", id, checkError);
+    throw new Error(`Lỗi khi kiểm tra món ăn: ${checkError.message || 'Unknown error'}`);
+  }
+
+  if (!existingDish) {
+    logger.error("Dish not found for update:", id);
+    throw new Error(`Không tìm thấy món ăn để cập nhật. Món ăn có thể đã bị xóa hoặc không tồn tại.`);
+  }
+
   const { data, error } = await supabase
     .from("mon_an")
     .update(payload)
@@ -824,12 +851,24 @@ export async function updateDish(
     .single();
 
   if (error) {
-    logger.error("Error updating dish:", error);
+    logger.error("Error updating dish:", error, { dishId: id, payload });
     const message = (error as Error)?.message || (typeof error === 'string' ? error : 'Unknown database error');
-    throw new Error(message);
+    throw new Error(`Lỗi khi cập nhật món ăn: ${message}`);
   }
 
-  return data as Dish;
+  if (!data) {
+    // This should not happen if check above passed, but handle it anyway
+    logger.error("Dish update returned no data:", id);
+    throw new Error(`Không thể cập nhật món ăn. Vui lòng thử lại.`);
+  }
+
+  // Parse tags from JSON string if they exist
+  const dish = {
+    ...data,
+    tags: data.tags ? (typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags) : undefined,
+  };
+
+  return dish as Dish;
 }
 
 // Update dish image and tags
