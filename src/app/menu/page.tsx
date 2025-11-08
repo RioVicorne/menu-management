@@ -250,7 +250,8 @@ export default function MenuPage() {
 
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="bg-white dark:bg-gray-900 p-6 lg:p-8 -mx-4 sm:-mx-6 lg:-mx-8 -my-4 lg:-my-6 min-h-screen border-t border-gray-200 dark:border-gray-700 rounded-t-2xl">
+      <div className="space-y-8 animate-fade-in">
         {/* Header Section */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-4">
@@ -391,6 +392,7 @@ export default function MenuPage() {
             </CardContent>
           </Card>
         )}
+      </div>
     </div>
   );
 }

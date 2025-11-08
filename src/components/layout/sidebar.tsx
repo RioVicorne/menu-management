@@ -249,7 +249,6 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs lg:text-sm font-medium text-foreground truncate">{username}</p>
-                    <p className="text-[10px] lg:text-xs text-muted-foreground truncate">{userEmail}</p>
                   </div>
                 </div>
                 <button

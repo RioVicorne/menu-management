@@ -201,7 +201,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in bg-white dark:bg-gray-900 rounded-2xl p-6 lg:p-8 -mx-4 sm:-mx-6 lg:-mx-8">
       {/* Welcome Header */}
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent">

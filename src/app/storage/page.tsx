@@ -336,7 +336,7 @@ export default function StoragePage() {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-white dark:bg-gray-900 text-foreground rounded-2xl p-6 lg:p-8 -mx-4 sm:-mx-6 lg:-mx-8">
         <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center h-64">
             <div className="flex flex-col items-center space-y-4">
@@ -352,7 +352,7 @@ export default function StoragePage() {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-white dark:bg-gray-900 text-foreground rounded-2xl p-6 lg:p-8 -mx-4 sm:-mx-6 lg:-mx-8">
         <div className="py-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
             <div className="flex items-center space-x-2">

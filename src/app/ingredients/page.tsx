@@ -45,7 +45,7 @@ export default function IngredientsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in bg-white dark:bg-gray-900 rounded-2xl p-6 lg:p-8 -mx-4 sm:-mx-6 lg:-mx-8 min-h-[calc(100vh-2rem)]">
         {/* Header Section */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-4">
