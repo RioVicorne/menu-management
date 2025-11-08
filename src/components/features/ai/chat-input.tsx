@@ -117,7 +117,7 @@ export default function ChatInput({
           )}
 
           {/* Main Input */}
-          <div className="flex items-end space-x-1.5 lg:space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl lg:rounded-2xl p-2 lg:p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-opacity-50 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-all shadow-sm hover:shadow-md">
+          <div className="flex items-end space-x-1.5 lg:space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl lg:rounded-2xl p-2 lg:p-3 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:ring-offset-0 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-[border-color] duration-200 shadow-sm hover:shadow-md" style={{ transform: 'scale(1)' }}>
             <Button
               variant="ghost"
               size="sm"
