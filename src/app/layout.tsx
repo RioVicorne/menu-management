@@ -30,31 +30,49 @@ export default function RootLayout({
             __html: `
   (function() {
     try {
-      var stored = localStorage.getItem('theme');
-      var systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var shouldDark = stored === 'dark' || (stored !== 'light' && systemPrefersDark);
-      if (shouldDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+      var systemMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      var systemListener = null;
+      
+      function updateTheme() {
+        var stored = localStorage.getItem('theme');
+        var systemPrefersDark = systemMediaQuery.matches;
+        var shouldDark = stored === 'dark' || (stored !== 'light' && systemPrefersDark);
+        
+        if (shouldDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        
+        // Set up or remove system preference listener
+        if (stored !== 'light' && stored !== 'dark') {
+          // System mode: listen for changes
+          if (!systemListener) {
+            systemListener = function(e) {
+              document.documentElement.classList.toggle('dark', e.matches);
+            };
+            systemMediaQuery.addEventListener('change', systemListener);
+          }
+        } else {
+          // Manual mode: remove listener if it exists
+          if (systemListener) {
+            systemMediaQuery.removeEventListener('change', systemListener);
+            systemListener = null;
+          }
+        }
       }
-      // Keep in sync when system preference changes and user hasn't forced a choice
-      if (stored !== 'light' && stored !== 'dark') {
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-          if (e.matches) document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
-        });
-      }
+      
+      // Initial setup
+      updateTheme();
+      
       // Expose a small API for toggles
       window.__setTheme = function(mode) {
         if (mode === 'system') {
           localStorage.removeItem('theme');
-          var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          document.documentElement.classList.toggle('dark', sys);
-          return;
+        } else {
+          localStorage.setItem('theme', mode);
         }
-        localStorage.setItem('theme', mode);
-        document.documentElement.classList.toggle('dark', mode === 'dark');
+        updateTheme();
       };
     } catch (_) {}
   })();
