@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
-  Plus, 
-  MessageSquare, 
-  Trash2, 
-  Edit3, 
+  Plus,
+  MessageSquare,
+  Trash2,
+  Edit3,
   Bot,
   Sparkles,
   Clock,
-  X
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { ChatSession } from '@/types/chat';
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ChatSession } from "@/types/chat";
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -31,10 +31,10 @@ export default function ChatSidebar({
   onSelectSession,
   onDeleteSession,
   onRenameSession,
-  onClose
+  onClose,
 }: ChatSidebarProps) {
   const [editingSession, setEditingSession] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
+  const [editingTitle, setEditingTitle] = useState("");
 
   const handleEditStart = (session: ChatSession) => {
     setEditingSession(session.id);
@@ -46,27 +46,27 @@ export default function ChatSidebar({
       onRenameSession(editingSession, editingTitle.trim());
     }
     setEditingSession(null);
-    setEditingTitle('');
+    setEditingTitle("");
   };
 
   const handleEditCancel = () => {
     setEditingSession(null);
-    setEditingTitle('');
+    setEditingTitle("");
   };
 
   const formatTime = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (days === 0) {
-      return 'Hôm nay';
+      return "Hôm nay";
     } else if (days === 1) {
-      return 'Hôm qua';
+      return "Hôm qua";
     } else if (days < 7) {
       return `${days} ngày trước`;
     } else {
-      return date.toLocaleDateString('vi-VN');
+      return date.toLocaleDateString("vi-VN");
     }
   };
 
@@ -106,14 +106,6 @@ export default function ChatSidebar({
                 Bắt đầu cuộc trò chuyện đầu tiên với AI Assistant
               </p>
             </div>
-            <Button
-              onClick={onNewChat}
-              variant="outline"
-              className="w-full"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Bắt đầu chat
-            </Button>
           </div>
         ) : (
           <div className="p-2">
@@ -122,8 +114,8 @@ export default function ChatSidebar({
                 key={session.id}
                 className={`group relative p-3 rounded-xl mb-2 cursor-pointer transition-all ${
                   currentSessionId === session.id
-                    ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200 dark:border-blue-700 shadow-sm'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-sm'
+                    ? "bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-200 dark:border-blue-700 shadow-sm"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-800 hover:shadow-sm"
                 }`}
                 onClick={() => onSelectSession(session.id)}
               >
@@ -131,7 +123,7 @@ export default function ChatSidebar({
                   <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white flex-shrink-0">
                     <MessageSquare className="w-4 h-4" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     {editingSession === session.id ? (
                       <input
@@ -139,8 +131,8 @@ export default function ChatSidebar({
                         onChange={(e) => setEditingTitle(e.target.value)}
                         onBlur={handleEditSave}
                         onKeyPress={(e) => {
-                          if (e.key === 'Enter') handleEditSave();
-                          if (e.key === 'Escape') handleEditCancel();
+                          if (e.key === "Enter") handleEditSave();
+                          if (e.key === "Escape") handleEditCancel();
                         }}
                         className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-gray-100"
                         autoFocus
@@ -150,11 +142,11 @@ export default function ChatSidebar({
                         {session.title}
                       </h3>
                     )}
-                    
+
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
                       {session.lastMessage}
                     </p>
-                    
+
                     <div className="flex items-center space-x-2 mt-2">
                       <div className="flex items-center space-x-1 text-xs text-gray-400">
                         <Clock className="w-3 h-3" />
@@ -166,7 +158,7 @@ export default function ChatSidebar({
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="flex items-center space-x-1">

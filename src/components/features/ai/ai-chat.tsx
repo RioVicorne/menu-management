@@ -505,22 +505,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
               </div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-green-700 dark:text-green-400 font-medium">Đang hoạt động</span>
-            </div>
-            <div
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
-                syncSource === "remote"
-                  ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
-                  : "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300"
-              }`}
-            >
-              <span>{syncSource === "remote" ? "Đã đồng bộ cloud" : "Lưu tạm trên thiết bị"}</span>
-            </div>
-          </div>
+  
         </div>
 
         {syncError && (
