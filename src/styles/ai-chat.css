@@ -163,6 +163,23 @@
   .message-bubble {
     max-width: calc(100vw - 80px);
   }
+
+  /* Prevent zoom and scale on mobile when focusing input */
+  textarea,
+  input[type="text"],
+  input[type="email"],
+  input[type="search"] {
+    font-size: 16px !important;
+    transform: scale(1) !important;
+    -webkit-transform: scale(1) !important;
+  }
+
+  /* Prevent scale on focus for input containers */
+  div:has(textarea:focus),
+  div:has(input:focus) {
+    transform: scale(1) !important;
+    -webkit-transform: scale(1) !important;
+  }
 }
 
 .chat-sidebar {
