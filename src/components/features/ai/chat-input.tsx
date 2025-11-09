@@ -117,7 +117,7 @@ export default function ChatInput({
           )}
 
           {/* Main Input */}
-          <div className="flex items-end space-x-1.5 lg:space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl lg:rounded-2xl p-2 lg:p-3 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:ring-offset-0 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-[border-color] duration-200 shadow-sm hover:shadow-md" style={{ transform: 'scale(1)', WebkitTransform: 'scale(1)' }}>
+          <div className="chat-input-container flex items-end space-x-1.5 lg:space-x-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl lg:rounded-2xl p-2 lg:p-3 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:ring-offset-0 focus-within:border-blue-500 dark:focus-within:border-blue-500 transition-[border-color] duration-200 shadow-sm hover:shadow-md">
             <Button
               variant="ghost"
               size="sm"
@@ -141,7 +141,7 @@ export default function ChatInput({
                 disabled={loading || disabled}
                 className="w-full bg-transparent border-none outline-none resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-base sm:text-sm leading-relaxed min-h-[20px] max-h-[120px] py-1"
                 rows={1}
-                style={{ height: 'auto', fontSize: '16px', WebkitAppearance: 'none', transform: 'scale(1)' }}
+                style={{ height: 'auto', fontSize: '16px', WebkitAppearance: 'none' }}
               />
             </div>
             

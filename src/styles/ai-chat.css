@@ -170,15 +170,11 @@
   input[type="email"],
   input[type="search"] {
     font-size: 16px !important;
-    transform: scale(1) !important;
-    -webkit-transform: scale(1) !important;
   }
 
-  /* Prevent scale on focus for input containers */
-  div:has(textarea:focus),
-  div:has(input:focus) {
-    transform: scale(1) !important;
-    -webkit-transform: scale(1) !important;
+  /* Additional mobile-specific fixes */
+  .chat-input-container {
+    will-change: border-color;
   }
 }
 
@@ -188,6 +184,17 @@
 
 .chat-main {
   min-height: 0;
+}
+
+/* Prevent scale on chat input container - apply to all screen sizes */
+.chat-input-container {
+  transform: scale(1) !important;
+  -webkit-transform: scale(1) !important;
+}
+
+.chat-input-container:focus-within {
+  transform: scale(1) !important;
+  -webkit-transform: scale(1) !important;
 }
 
 .chat-messages {

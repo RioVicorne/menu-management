@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className={`${inter.variable} scroll-smooth`} suppressHydrationWarning>
+    <html lang="vi" className={`${inter.variable} scroll-smooth`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-dvh bg-gradient-to-br from-cream-50 via-background to-sage-50 dark:from-sage-950 dark:via-background dark:to-wood-950 text-foreground antialiased font-sans">
         {/* Pre-hydration theme script to avoid FOUC and honor system/manual preference */}
         <script
