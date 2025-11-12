@@ -26,6 +26,7 @@ interface AIChatProps {
 }
 
 const SIDEBAR_VISIBLE_KEY = "planner.sidebarVisible";
+const CURRENT_SESSION_KEY = "planner.currentSessionId";
 
 const createWelcomeMessage = (): Message => ({
   id: "welcome",
@@ -45,7 +46,8 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [syncSource, setSyncSource] = useState<ChatDataSource>("local");
   const [syncError, setSyncError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
-  
+  const [hydratingMessages, setHydratingMessages] = useState(true);
+
   // Load sidebar visibility preference from localStorage
   useEffect(() => {
     try {
@@ -154,7 +156,20 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
         setSessions(data);
         if (data.length > 0) {
-          setCurrentSessionId(data[0].id);
+          let initialSessionId: string | null = null;
+          try {
+            if (typeof window !== "undefined") {
+              initialSessionId = window.localStorage.getItem(CURRENT_SESSION_KEY);
+            }
+          } catch (storageError) {
+            logger.warn("Failed to restore last chat session", storageError);
+          }
+
+          if (initialSessionId && data.some((session) => session.id === initialSessionId)) {
+            setCurrentSessionId(initialSessionId);
+          } else {
+            setCurrentSessionId(data[0].id);
+          }
         } else {
           setMessages([createWelcomeMessage()]);
         }
@@ -180,33 +195,66 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   // Persist sessions when they change
   useEffect(() => {
+    if (initializing) {
+      return;
+    }
     persistSessions(sessions);
-  }, [sessions]);
+  }, [sessions, initializing]);
+
+  // Persist the currently selected session
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      if (currentSessionId) {
+        window.localStorage.setItem(CURRENT_SESSION_KEY, currentSessionId);
+      } else {
+        window.localStorage.removeItem(CURRENT_SESSION_KEY);
+      }
+    } catch (error) {
+      logger.warn("Failed to persist current chat session", error);
+    }
+  }, [currentSessionId]);
 
   // Load messages for selected session
   useEffect(() => {
     if (!currentSessionId) {
+      setHydratingMessages(false);
       return;
     }
 
     let cancelled = false;
 
     const loadMessages = async () => {
-      const { data, source, error } = await loadStoredMessages(currentSessionId);
-      if (cancelled) return;
+      setHydratingMessages(true);
+      try {
+        const { data, source, error } = await loadStoredMessages(currentSessionId);
+        if (cancelled) return;
 
-      setSyncSource(source);
-      if (error) {
-        logger.warn("Falling back to local chat messages", error);
-        setSyncError("Không thể đồng bộ tin nhắn với máy chủ. Đang dùng dữ liệu lưu trên máy này.");
-      } else {
-        setSyncError(null);
-      }
+        setSyncSource(source);
+        if (error) {
+          logger.warn("Falling back to local chat messages", error);
+          setSyncError("Không thể đồng bộ tin nhắn với máy chủ. Đang dùng dữ liệu lưu trên máy này.");
+        } else {
+          setSyncError(null);
+        }
 
-      if (data.length > 0) {
-        setMessages(data);
-      } else {
+        if (data.length > 0) {
+          setMessages(data);
+        } else {
+          setMessages([createWelcomeMessage()]);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        logger.error("Failed to load chat messages", error);
         setMessages([createWelcomeMessage()]);
+        setSyncError("Không thể tải tin nhắn cho cuộc trò chuyện này.");
+      } finally {
+        if (!cancelled) {
+          setHydratingMessages(false);
+        }
       }
     };
 
@@ -219,9 +267,9 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   // Persist messages when they change
   useEffect(() => {
-    if (!currentSessionId) return;
+    if (initializing || !currentSessionId || hydratingMessages) return;
     persistMessages(currentSessionId, messages);
-  }, [messages, currentSessionId]);
+  }, [messages, currentSessionId, initializing, hydratingMessages]);
 
 
   const createNewSession = () => {

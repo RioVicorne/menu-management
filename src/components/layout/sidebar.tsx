@@ -2,7 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Package, ChefHat, Calendar, ShoppingCart, Menu, CalendarCheck, BookOpen, User, LogOut } from "lucide-react";
+import {
+  Home,
+  Package,
+  ChefHat,
+  Calendar,
+  ShoppingCart,
+  Menu,
+  CalendarCheck,
+  BookOpen,
+  User,
+  LogOut,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface SidebarProps {
@@ -73,13 +84,15 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       const user = email.replace(/@users\.(test|local)$/, "");
       setUsername(user || "User");
 
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-        setIsAuthed(!!newSession);
-        const newEmail = newSession?.user?.email || "";
-        setUserEmail(newEmail);
-        const newUser = newEmail.replace(/@users\.(test|local)$/, "");
-        setUsername(newUser || "User");
-      });
+      const { data: sub } = supabase.auth.onAuthStateChange(
+        (_event, newSession) => {
+          setIsAuthed(!!newSession);
+          const newEmail = newSession?.user?.email || "";
+          setUserEmail(newEmail);
+          const newUser = newEmail.replace(/@users\.(test|local)$/, "");
+          setUsername(newUser || "User");
+        }
+      );
 
       cleanup = () => {
         sub.subscription.unsubscribe();
@@ -98,73 +111,75 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   };
 
   const navigationItems = [
-    { 
-      id: "home", 
-      label: "Trang chủ", 
-      icon: Home, 
-      path: "/", 
-      color: "text-blue-600", 
+    {
+      id: "home",
+      label: "Trang chủ",
+      icon: Home,
+      path: "/",
+      color: "text-blue-600",
       bgColor: "bg-blue-100 dark:bg-blue-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
-    { 
-      id: "menu", 
-      label: "Lịch thực đơn", 
-      icon: Calendar, 
-      path: "/menu", 
-      color: "text-green-600", 
+    {
+      id: "menu",
+      label: "Lịch thực đơn",
+      icon: Calendar,
+      path: "/menu",
+      color: "text-green-600",
       bgColor: "bg-green-100 dark:bg-green-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
-    { 
-      id: "planner", 
-      label: "AI Planner", 
-      icon: CalendarCheck, 
-      path: "/planner", 
-      color: "text-emerald-600", 
+    {
+      id: "planner",
+      label: "AI Planner",
+      icon: CalendarCheck,
+      path: "/planner",
+      color: "text-emerald-600",
       bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
-    { 
-      id: "recipes", 
-      label: "Công thức", 
-      icon: BookOpen, 
-      path: "/recipes", 
-      color: "text-amber-600", 
+    {
+      id: "recipes",
+      label: "Công thức",
+      icon: BookOpen,
+      path: "/recipes",
+      color: "text-amber-600",
       bgColor: "bg-amber-100 dark:bg-amber-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
-    { 
-      id: "ingredients", 
-      label: "Món ăn", 
-      icon: ChefHat, 
-      path: "/ingredients", 
-      color: "text-orange-600", 
+    {
+      id: "ingredients",
+      label: "Món ăn",
+      icon: ChefHat,
+      path: "/ingredients",
+      color: "text-orange-600",
       bgColor: "bg-orange-100 dark:bg-orange-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
-    { 
-      id: "storage", 
-      label: "Quản lý kho", 
-      icon: Package, 
-      path: "/storage", 
-      color: "text-purple-600", 
+    {
+      id: "storage",
+      label: "Quản lý kho",
+      icon: Package,
+      path: "/storage",
+      color: "text-purple-600",
       bgColor: "bg-purple-100 dark:bg-purple-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
-    { 
-      id: "shopping", 
-      label: "Mua sắm", 
-      icon: ShoppingCart, 
-      path: "/shopping", 
-      color: "text-pink-600", 
+    {
+      id: "shopping",
+      label: "Mua sắm",
+      icon: ShoppingCart,
+      path: "/shopping",
+      color: "text-pink-600",
       bgColor: "bg-pink-100 dark:bg-pink-900/30",
-      activeColor: "text-white"
+      activeColor: "text-white",
     },
   ];
 
   return (
-    <div className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ease-in-out ${isCollapsed ? "w-16" : "w-64"} ${className}`}>
+    <div
+      className={`hidden lg:flex fixed left-0 top-0 h-full z-20 transition-all duration-300 ease-in-out ${isCollapsed ? "w-16" : "w-64"} ${className}`}
+    >
       <div className="glass-card w-full h-full flex flex-col border-r border-sage-200/30 dark:border-sage-700/30 overflow-hidden">
         {/* Logo Section */}
         <div className="flex-shrink-0 p-3 lg:p-4 border-b border-sage-200/30 dark:border-sage-700/30">
@@ -178,7 +193,9 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                   <span className="text-base lg:text-lg font-bold bg-gradient-to-r from-sage-600 to-wood-600 bg-clip-text text-transparent truncate">
                     Menu Manager
                   </span>
-                  <span className="text-xs text-muted-foreground truncate">Quản lý thực đơn</span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    Quản lý thực đơn
+                  </span>
                 </div>
               </div>
             )}
@@ -199,13 +216,13 @@ export default function Sidebar({ className = "" }: SidebarProps) {
 
             const buttonClasses = isCollapsed
               ? `w-full flex items-center justify-center px-2 py-2.5 lg:py-3 rounded-xl font-medium transition-all duration-300 group ${
-                  isActive 
-                    ? "text-foreground" 
+                  isActive
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`
               : `w-full flex items-center space-x-2 lg:space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift group ${
-                  isActive 
-                    ? "gradient-primary text-white shadow-soft" 
+                  isActive
+                    ? "gradient-primary text-white shadow-soft"
                     : "text-muted-foreground hover:text-foreground hover:bg-sage-100/50 dark:hover:bg-sage-800/50"
                 }`;
 
@@ -248,7 +265,9 @@ export default function Sidebar({ className = "" }: SidebarProps) {
                     <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs lg:text-sm font-medium text-foreground truncate">{username}</p>
+                    <p className="text-xs lg:text-sm font-medium text-foreground truncate">
+                      {username}
+                    </p>
                   </div>
                 </div>
                 <button
