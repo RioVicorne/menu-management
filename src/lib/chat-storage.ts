@@ -157,8 +157,15 @@ export async function loadSessions(): Promise<LoadResult<ChatSession[]>> {
     const sessions = await fetchRemoteSessions();
     if (sessions.length > 0) {
       saveLocalSessions(sessions);
+      return { data: sessions, source: "remote" };
     }
-    return { data: sessions, source: "remote" };
+
+    const localSessions = loadLocalSessions();
+    if (localSessions.length > 0) {
+      return { data: localSessions, source: "local" };
+    }
+
+    return { data: [], source: "remote" };
   } catch (error) {
     const sessions = loadLocalSessions();
     return { data: sessions, source: "local", error };
@@ -170,8 +177,15 @@ export async function loadMessages(sessionId: string): Promise<LoadResult<ChatMe
     const messages = await fetchRemoteMessages(sessionId);
     if (messages.length > 0) {
       saveLocalMessages(sessionId, messages);
+      return { data: messages, source: "remote" };
     }
-    return { data: messages, source: "remote" };
+
+    const localMessages = loadLocalMessages(sessionId);
+    if (localMessages.length > 0) {
+      return { data: localMessages, source: "local" };
+    }
+
+    return { data: [], source: "remote" };
   } catch (error) {
     const messages = loadLocalMessages(sessionId);
     return { data: messages, source: "local", error };

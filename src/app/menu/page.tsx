@@ -76,19 +76,50 @@ export default function MenuPage() {
           .lte("ngay", to);
 
         if (error) {
+          // Check if error is a network/fetch error
+          const isNetworkError = error.message?.includes("Failed to fetch") || 
+                                error.message?.includes("NetworkError") ||
+                                error.message?.includes("fetch");
+          
+          if (isNetworkError) {
+            // Silently handle network errors - try fallback API
+            try {
+              const data = await getCalendarData(from, to);
+              setEvents(
+                data.map((item) => ({
+                  start: new Date(item.date as string),
+                  end: new Date(item.date as string),
+                  title: `${Number(item.dishCount || 0)} dishes`,
+                  count: Number(item.dishCount || 0),
+                  allDay: true,
+                  dateIso: String(item.date || ""),
+                })),
+              );
+            } catch {
+              // If fallback also fails, set empty events
+              setEvents([]);
+            }
+            return;
+          }
+          
+          // Log non-network errors
           logger.error("Database error:", error);
           // Fallback to API function when database fails
-          const data = await getCalendarData(from, to);
-          setEvents(
-            data.map((item) => ({
-              start: new Date(item.date as string),
-              end: new Date(item.date as string),
-              title: `${Number(item.dishCount || 0)} dishes`,
-              count: Number(item.dishCount || 0),
-              allDay: true,
-              dateIso: String(item.date || ""),
-            })),
-          );
+          try {
+            const data = await getCalendarData(from, to);
+            setEvents(
+              data.map((item) => ({
+                start: new Date(item.date as string),
+                end: new Date(item.date as string),
+                title: `${Number(item.dishCount || 0)} dishes`,
+                count: Number(item.dishCount || 0),
+                allDay: true,
+                dateIso: String(item.date || ""),
+              })),
+            );
+          } catch {
+            setEvents([]);
+          }
           return;
         }
 
@@ -114,7 +145,16 @@ export default function MenuPage() {
         setEvents(evs);
         setTotalDishes(evs.reduce((sum, event) => sum + (event.count || 0), 0));
       } catch (error) {
-        logger.error("Error loading events:", error);
+        // Only log non-network errors
+        const isNetworkError = error instanceof Error && (
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError") ||
+          error.message.includes("fetch")
+        );
+        
+        if (!isNetworkError) {
+          logger.error("Error loading events:", error);
+        }
         setEvents([]);
       }
     },
@@ -128,6 +168,7 @@ export default function MenuPage() {
         if (!supabase) {
           setYearEvents([]);
           setTopDishes([]);
+          setTopIngredients([]);
           return;
         }
 
@@ -138,7 +179,21 @@ export default function MenuPage() {
           .select("ngay")
           .gte("ngay", yFrom)
           .lte("ngay", yTo);
-        if (yearErr) throw yearErr;
+        
+        // Check if error is a network/fetch error
+        if (yearErr) {
+          const isNetworkError = yearErr.message?.includes("Failed to fetch") || 
+                                yearErr.message?.includes("NetworkError") ||
+                                yearErr.message?.includes("fetch");
+          if (isNetworkError) {
+            // Silently handle network errors - don't log to console
+            setYearEvents([]);
+            setTopDishes([]);
+            setTopIngredients([]);
+            return;
+          }
+          throw yearErr;
+        }
 
         const yearMap = new Map<string, number>();
         for (const row of yearData ?? []) {
@@ -168,7 +223,20 @@ export default function MenuPage() {
           .select("ma_mon_an")
           .gte("ngay", mFrom)
           .lte("ngay", mTo);
-        if (monthErr) throw monthErr;
+        
+        // Check if error is a network/fetch error
+        if (monthErr) {
+          const isNetworkError = monthErr.message?.includes("Failed to fetch") || 
+                                monthErr.message?.includes("NetworkError") ||
+                                monthErr.message?.includes("fetch");
+          if (isNetworkError) {
+            // Silently handle network errors
+            setTopDishes([]);
+            setTopIngredients([]);
+            return;
+          }
+          throw monthErr;
+        }
 
         const counts = new Map<string, number>();
         for (const r of monthRows ?? []) {
@@ -213,7 +281,17 @@ export default function MenuPage() {
           .slice(0, 10);
         setTopIngredients(ingRanking);
       } catch (err) {
-        logger.error("Error loading yearly stats:", err);
+        // Only log non-network errors
+        const isNetworkError = err instanceof Error && (
+          err.message.includes("Failed to fetch") ||
+          err.message.includes("NetworkError") ||
+          err.message.includes("fetch")
+        );
+        
+        if (!isNetworkError) {
+          logger.error("Error loading yearly stats:", err);
+        }
+        // Always set empty states on error
         setYearEvents([]);
         setTopDishes([]);
         setTopIngredients([]);
