@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { Perplexity } from "@perplexity-ai/perplexity_ai";
-import { getMenuItems } from "./api";
+import { addDishToMenu, getMenuItems } from "./api";
 
 // Support multiple env var names to avoid misconfig in different runtimes (Node/Bun)
 const PERPLEXITY_API_KEY =
@@ -87,9 +87,19 @@ interface RecipeData {
 }
 
 type MenuIntent =
-  | { type: "today" }
-  | { type: "yesterday" }
-  | { type: "random-menu"; adults?: number; kids?: number };
+  | { type: "date"; isoDate: string; friendlyLabel: string }
+  | { type: "random-menu"; adults?: number; kids?: number }
+  | {
+      type: "add-dish";
+      isoDate: string;
+      friendlyLabel: string;
+      inferredDate: boolean;
+      servings?: number;
+      normalizedMessage: string;
+      originalMessage: string;
+    };
+
+type DateMatch = { isoDate: string; friendlyLabel: string };
 
 export class AIService {
   private static instance: AIService;
@@ -978,7 +988,10 @@ export class AIService {
     try {
       const normalizedMessage = this.normalizeText(message || "");
 
-      const menuIntent = this.detectMenuIntent(normalizedMessage);
+      const menuIntent = this.detectMenuIntent(
+        normalizedMessage,
+        message || ""
+      );
       if (!this.isMenuRelatedMessage(normalizedMessage, menuIntent)) {
         return {
           content:
@@ -988,13 +1001,13 @@ export class AIService {
       if (menuIntent?.type === "random-menu") {
         return await this.getRandomMenuResponse(menuIntent);
       }
-      if (menuIntent?.type === "yesterday") {
-        return await this.getMenuResponseForDate(this.getRelativeIsoDate(-1), {
-          friendlyLabel: "ngày hôm qua",
-        });
+      if (menuIntent?.type === "add-dish") {
+        return await this.handleAddDishIntent(menuIntent);
       }
-      if (menuIntent?.type === "today") {
-        return await this.getTodayMenuResponse();
+      if (menuIntent?.type === "date") {
+        return await this.getMenuResponseForDate(menuIntent.isoDate, {
+          friendlyLabel: menuIntent.friendlyLabel,
+        });
       }
 
       const systemPrompt = [
@@ -1051,8 +1064,71 @@ export class AIService {
     return keywords.some((keyword) => normalizedMessage.includes(keyword));
   }
 
-  private detectMenuIntent(normalizedMessage: string): MenuIntent | null {
+  private hasAddIntent(normalizedMessage: string): boolean {
+    if (!normalizedMessage) return false;
+
+    const negationPatterns = ["khong them", "khong muon them", "dung them"];
+    if (negationPatterns.some((phrase) => normalizedMessage.includes(phrase))) {
+      return false;
+    }
+
+    const addPatterns = [
+      "them mon",
+      "them vao menu",
+      "them vao thuc don",
+      "them vao bua",
+      "bo sung mon",
+      "bo sung vao",
+      "bo sung them",
+      "dua vao menu",
+      "dua vao thuc don",
+      "add mon",
+      "cap nhat mon",
+    ];
+    if (addPatterns.some((phrase) => normalizedMessage.includes(phrase))) {
+      return true;
+    }
+
+    const addVerbRegex = /\b(them|bo\s*sung|dua|add)\b/;
+    if (!addVerbRegex.test(normalizedMessage)) {
+      return false;
+    }
+
+    const contextKeywords = ["menu", "thuc don", "bua", "vao", "cho"];
+    const hasContext = contextKeywords.some((keyword) =>
+      normalizedMessage.includes(keyword)
+    );
+    if (!hasContext) {
+      return false;
+    }
+
+    // Ensure there's at least one word between the verb and the context indicator
+    const dishMentionRegex =
+      /(them|bo\s*sung|dua|add)\s+(mon\s+)?([a-z0-9\s]{2,}?)(?:\s+(vao|cho|len|cap|de|trong)\b|$)/;
+    return dishMentionRegex.test(normalizedMessage);
+  }
+
+  private detectMenuIntent(
+    normalizedMessage: string,
+    originalMessage: string
+  ): MenuIntent | null {
     if (!normalizedMessage) return null;
+
+    const addIntent = this.hasAddIntent(normalizedMessage);
+    if (addIntent) {
+      const dateMatch =
+        this.parseDateMatch(normalizedMessage, { allowLoose: true }) ?? null;
+      const servings = this.extractServings(normalizedMessage);
+      return {
+        type: "add-dish",
+        isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
+        friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
+        inferredDate: !dateMatch,
+        servings: servings ?? undefined,
+        normalizedMessage,
+        originalMessage,
+      };
+    }
 
     const hasMenuContext =
       this.hasMenuKeywords(normalizedMessage) ||
@@ -1066,32 +1142,16 @@ export class AIService {
       normalizedMessage.includes("bua an");
 
     if (!hasMenuContext) {
-      const mentionsFollowUp =
-        normalizedMessage.includes("thi sao") ||
-        normalizedMessage.includes("the nao") ||
-        normalizedMessage.includes("ra sao") ||
-        normalizedMessage.includes("sao roi") ||
-        normalizedMessage.endsWith("sao");
-
-      if (mentionsFollowUp) {
-        if (
-          normalizedMessage.includes("hom qua") ||
-          normalizedMessage.includes("ngay hom qua") ||
-          normalizedMessage.includes("homqua") ||
-          normalizedMessage.includes("hqua") ||
-          normalizedMessage.includes("qua day")
-        ) {
-          return { type: "yesterday" };
-        }
-        if (
-          normalizedMessage.includes("hom nay") ||
-          normalizedMessage.includes("hnay") ||
-          normalizedMessage.includes("ngay hom nay")
-        ) {
-          return { type: "today" };
-        }
+      const followUpDate = this.parseDateMatch(normalizedMessage, {
+        allowLoose: true,
+      });
+      if (followUpDate) {
+        return {
+          type: "date",
+          isoDate: followUpDate.isoDate,
+          friendlyLabel: followUpDate.friendlyLabel,
+        };
       }
-
       return null;
     }
 
@@ -1114,24 +1174,15 @@ export class AIService {
       };
     }
 
-    const mentionsYesterday =
-      normalizedMessage.includes("hom qua") ||
-      normalizedMessage.includes("ngay hom qua") ||
-      normalizedMessage.includes("homqua") ||
-      normalizedMessage.includes("hqua") ||
-      normalizedMessage.includes("qua day");
-
-    if (mentionsYesterday) {
-      return { type: "yesterday" };
-    }
-
-    const mentionsToday =
-      normalizedMessage.includes("hom nay") ||
-      normalizedMessage.includes("hnay") ||
-      normalizedMessage.includes("ngay hom nay");
-
-    if (mentionsToday) {
-      return { type: "today" };
+    const dateMatch = this.parseDateMatch(normalizedMessage, {
+      allowLoose: true,
+    });
+    if (dateMatch) {
+      return {
+        type: "date",
+        isoDate: dateMatch.isoDate,
+        friendlyLabel: dateMatch.friendlyLabel,
+      };
     }
 
     return null;
@@ -1163,6 +1214,391 @@ export class AIService {
     }
 
     return {};
+  }
+
+  private extractServings(normalizedMessage: string): number | undefined {
+    if (!normalizedMessage) return undefined;
+
+    const explicitPortionMatch = normalizedMessage.match(
+      /(\d+)\s*(khau phan|phan|suat|serving|phan an)/
+    );
+    if (explicitPortionMatch) {
+      return Number(explicitPortionMatch[1]);
+    }
+
+    const forPeopleMatch = normalizedMessage.match(
+      /cho\s*(\d+)\s*(nguoi|khach|phan)/
+    );
+    if (forPeopleMatch) {
+      return Number(forPeopleMatch[1]);
+    }
+
+    return undefined;
+  }
+
+  private parseDateMatch(
+    normalizedMessage: string,
+    options?: { allowLoose?: boolean }
+  ): DateMatch | null {
+    if (!normalizedMessage) return null;
+
+    const allowLoose = options?.allowLoose ?? false;
+    const cleaned = normalizedMessage.replace(/[^a-z0-9\s]/g, " ");
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    const hasToken = (token: string) => tokens.includes(token);
+    const todayIso = this.getTodayIsoDate();
+
+    const relativePatterns: Array<{
+      keywords: string[];
+      looseTokens?: string[];
+      offset: number;
+      label: string;
+    }> = [
+      {
+        keywords: ["hom nay", "hnay", "ngay hom nay"],
+        offset: 0,
+        label: "ngày hôm nay",
+      },
+      {
+        keywords: ["hom qua", "homqua", "hqua", "ngay hom qua", "qua day"],
+        offset: -1,
+        label: "ngày hôm qua",
+      },
+      {
+        keywords: ["hom kia", "homkia"],
+        offset: -2,
+        label: "ngày hôm kia",
+      },
+      {
+        keywords: ["ngay mai", "ngaymai"],
+        looseTokens: ["mai"],
+        offset: 1,
+        label: "ngày mai",
+      },
+      {
+        keywords: ["ngay kia", "ngaykia"],
+        looseTokens: ["kia"],
+        offset: 2,
+        label: "ngày kia",
+      },
+    ];
+
+    for (const pattern of relativePatterns) {
+      const directMatch = pattern.keywords.some((keyword) =>
+        normalizedMessage.includes(keyword)
+      );
+      const looseMatch =
+        allowLoose && pattern.looseTokens
+          ? pattern.looseTokens.some((token) => hasToken(token))
+          : false;
+      if (directMatch || looseMatch) {
+        const isoDate =
+          pattern.offset === 0
+            ? todayIso
+            : this.getRelativeIsoDate(pattern.offset);
+        return {
+          isoDate,
+          friendlyLabel: pattern.label,
+        };
+      }
+    }
+
+    const explicitDateResult = this.extractExplicitDate(normalizedMessage);
+    if (explicitDateResult) {
+      return explicitDateResult;
+    }
+
+    const weekdayResult = this.extractWeekdayDate(
+      normalizedMessage,
+      cleaned,
+      allowLoose
+    );
+    if (weekdayResult) {
+      return weekdayResult;
+    }
+
+    return null;
+  }
+
+  private extractExplicitDate(normalizedMessage: string): DateMatch | null {
+    const slashRegex =
+      /(?:ngay\s*)?(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/;
+    const textRegex =
+      /ngay\s*(\d{1,2})(?:\s*thang\s*(\d{1,2}))?(?:\s*nam\s*(\d{2,4}))?/;
+
+    let day: number | undefined;
+    let month: number | undefined;
+    let year: number | undefined;
+
+    const slashMatch = normalizedMessage.match(slashRegex);
+    if (slashMatch) {
+      day = Number(slashMatch[1]);
+      month = Number(slashMatch[2]);
+      if (slashMatch[3]) {
+        year = Number(slashMatch[3]);
+      }
+    } else {
+      const textMatch = normalizedMessage.match(textRegex);
+      if (textMatch) {
+        day = Number(textMatch[1]);
+        month = textMatch[2] ? Number(textMatch[2]) : undefined;
+        if (textMatch[3]) {
+          year = Number(textMatch[3]);
+        }
+      }
+    }
+
+    if (!day) {
+      return null;
+    }
+    const today = new Date();
+    if (!month) {
+      month = today.getMonth() + 1;
+    }
+    if (!year) {
+      year = today.getFullYear();
+    } else if (year < 100) {
+      year = 2000 + year;
+    }
+
+    const isoDate = this.normalizeToIsoDate(year, month, day);
+    if (!isoDate) {
+      return null;
+    }
+
+    const friendlyLabel = `ngày ${String(day).padStart(2, "0")}/${String(
+      month
+    ).padStart(2, "0")}/${year}`;
+    return { isoDate, friendlyLabel };
+  }
+
+  private extractWeekdayDate(
+    normalizedMessage: string,
+    cleanedMessage: string,
+    allowLoose: boolean
+  ): DateMatch | null {
+    const weekOffset =
+      normalizedMessage.includes("tuan sau") ||
+      normalizedMessage.includes("tuan toi") ||
+      normalizedMessage.includes("tuan tiep")
+        ? 1
+        : normalizedMessage.includes("tuan truoc") ||
+            normalizedMessage.includes("tuan vua qua")
+          ? -1
+          : 0;
+
+    const weekdayDigitMatch = cleanedMessage.match(/thu\s*([2-7])/);
+    let targetDay: number | null = null;
+    if (weekdayDigitMatch) {
+      targetDay = Number(weekdayDigitMatch[1]) - 1;
+    }
+
+    const weekdayKeywords: Array<{ keyword: string; dayIndex: number }> = [
+      { keyword: "chu nhat", dayIndex: 0 },
+      { keyword: "cn", dayIndex: 0 },
+      { keyword: "thu hai", dayIndex: 1 },
+      { keyword: "thu ba", dayIndex: 2 },
+      { keyword: "thu tu", dayIndex: 3 },
+      { keyword: "thu nam", dayIndex: 4 },
+      { keyword: "thu sau", dayIndex: 5 },
+      { keyword: "thu bay", dayIndex: 6 },
+    ];
+
+    if (targetDay === null) {
+      for (const { keyword, dayIndex } of weekdayKeywords) {
+        if (cleanedMessage.includes(keyword)) {
+          targetDay = dayIndex;
+          break;
+        }
+      }
+    }
+
+    if (targetDay === null) {
+      if (
+        allowLoose &&
+        (cleanedMessage.startsWith("thu") || cleanedMessage.startsWith("cn"))
+      ) {
+        // If user only typed something like "Thu 5?" treat as the next occurrence.
+        const fallbackMatch = cleanedMessage.match(/^thu\s*([2-7])$/);
+        if (fallbackMatch) {
+          targetDay = Number(fallbackMatch[1]) - 1;
+        }
+      }
+
+      if (targetDay === null) {
+        return null;
+      }
+    }
+
+    const today = new Date();
+    const todayDay = today.getDay(); // 0 (Sun) - 6 (Sat)
+
+    let delta = targetDay - todayDay + weekOffset * 7;
+    const mentionsPast =
+      normalizedMessage.includes("truoc") ||
+      normalizedMessage.includes("qua") ||
+      normalizedMessage.includes("vua");
+    const mentionsFuture =
+      normalizedMessage.includes("sau") ||
+      normalizedMessage.includes("toi") ||
+      normalizedMessage.includes("tiep");
+
+    if (weekOffset === 0) {
+      if (delta < 0 && !mentionsPast && mentionsFuture) {
+        delta += 7;
+      } else if (delta > 0 && mentionsPast && !mentionsFuture) {
+        delta -= 7;
+      }
+    }
+
+    const isoDate =
+      delta === 0 ? this.getTodayIsoDate() : this.getRelativeIsoDate(delta);
+
+    const weekdayName = this.getVietnameseWeekdayName(targetDay);
+    let friendlyLabel = `${weekdayName}`;
+
+    if (weekOffset === -1) {
+      friendlyLabel = `${weekdayName} tuần trước`;
+    } else if (weekOffset === 1) {
+      friendlyLabel = `${weekdayName} tuần sau`;
+    } else if (delta === 0) {
+      friendlyLabel = `${weekdayName} (hôm nay)`;
+    } else if (delta < 0) {
+      friendlyLabel = `${weekdayName} tuần này (đã qua)`;
+    } else if (delta > 0) {
+      friendlyLabel = `${weekdayName} tuần này`;
+    }
+
+    return {
+      isoDate,
+      friendlyLabel,
+    };
+  }
+
+  private normalizeToIsoDate(
+    year: number,
+    month: number,
+    day: number
+  ): string | null {
+    if (!this.isValidDate(year, month, day)) {
+      return null;
+    }
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.toISOString().slice(0, 10);
+  }
+
+  private isValidDate(year: number, month: number, day: number): boolean {
+    if (
+      Number.isNaN(year) ||
+      Number.isNaN(month) ||
+      Number.isNaN(day) ||
+      month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      day > 31
+    ) {
+      return false;
+    }
+
+    const date = new Date(year, month - 1, day);
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    );
+  }
+
+  private getVietnameseWeekdayName(dayIndex: number): string {
+    const weekdayNames = [
+      "Chủ nhật",
+      "Thứ 2",
+      "Thứ 3",
+      "Thứ 4",
+      "Thứ 5",
+      "Thứ 6",
+      "Thứ 7",
+    ];
+    return weekdayNames[dayIndex] ?? "Ngày";
+  }
+
+  private buildDishSuggestions(
+    normalizedMessage: string,
+    dishes: Dish[]
+  ): string[] {
+    if (!normalizedMessage || dishes.length === 0) {
+      return [];
+    }
+
+    const stopwords = new Set([
+      "them",
+      "vao",
+      "ngay",
+      "hom",
+      "nay",
+      "qua",
+      "mai",
+      "kia",
+      "cho",
+      "bua",
+      "thuc",
+      "don",
+      "menu",
+      "cap",
+      "nhat",
+      "bo",
+      "sung",
+      "dua",
+      "giup",
+      "toi",
+      "xin",
+      "hay",
+      "mon",
+      "monan",
+      "themmon",
+      "thucdon",
+    ]);
+
+    const messageTokens = new Set(
+      normalizedMessage
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter(
+          (token) =>
+            token.length > 1 && !stopwords.has(token.replace(/\s+/g, ""))
+        )
+    );
+
+    const scored = dishes
+      .map((dish) => {
+        const normalizedName = this.normalizeText(dish.ten_mon_an || "");
+        const dishTokens = normalizedName
+          .split(/\s+/)
+          .map((token) => token.trim())
+          .filter((token) => token.length > 1);
+        const score = dishTokens.reduce(
+          (acc, token) => acc + (messageTokens.has(token) ? 1 : 0),
+          0
+        );
+        return { dish, score };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.dish.ten_mon_an.localeCompare(b.dish.ten_mon_an);
+      })
+      .slice(0, 5)
+      .map((item) => item.dish.ten_mon_an);
+
+    if (scored.length > 0) {
+      return scored;
+    }
+
+    return dishes
+      .slice(0, 5)
+      .map((dish) => dish.ten_mon_an)
+      .filter(Boolean);
   }
 
   private isMenuRelatedMessage(
@@ -1257,10 +1693,151 @@ export class AIService {
     return `${day}/${month}/${year}`;
   }
 
-  private async getTodayMenuResponse(): Promise<AIResponse> {
-    return this.getMenuResponseForDate(this.getTodayIsoDate(), {
-      friendlyLabel: "ngày hôm nay",
-    });
+  private async handleAddDishIntent(
+    intent: Extract<MenuIntent, { type: "add-dish" }>
+  ): Promise<AIResponse> {
+    try {
+      const [dishesData, existingMenu] = await Promise.all([
+        this.getDishesData(),
+        getMenuItems(intent.isoDate),
+      ]);
+
+      const allDishes = (dishesData?.allDishes ?? []) as Dish[];
+      if (!allDishes || allDishes.length === 0) {
+        return {
+          content:
+            "Hiện chưa có món ăn nào trong cơ sở dữ liệu Supabase. Vui lòng thêm món vào hệ thống trước.",
+        };
+      }
+
+      const normalizedMessage = intent.normalizedMessage.replace(/\s+/g, "");
+      const existingDishIds = new Set(
+        (existingMenu || []).map((item) => String(item.ma_mon_an))
+      );
+
+      const matchedDishes = allDishes.filter((dish) => {
+        const normalizedDishName = this.normalizeText(dish.ten_mon_an || "");
+        const compactDishName = normalizedDishName.replace(/\s+/g, "");
+        if (!compactDishName || compactDishName.length < 3) {
+          return false;
+        }
+        return normalizedMessage.includes(compactDishName);
+      });
+
+      if (matchedDishes.length === 0) {
+        const suggestions = this.buildDishSuggestions(
+          intent.normalizedMessage,
+          allDishes
+        );
+
+        let content =
+          "Mình chưa tìm thấy món nào trùng với yêu cầu của bạn trong cơ sở dữ liệu.\n";
+        if (suggestions.length > 0) {
+          content += `\n**Có thể bạn muốn:**\n${suggestions
+            .map((name, idx) => `${idx + 1}. ${name}`)
+            .join("\n")}\n`;
+          content +=
+            "\nVui lòng nhập lại chính xác tên món muốn thêm vào thực đơn.";
+        } else {
+          content +=
+            "\nVui lòng kiểm tra lại tên món hoặc thêm món vào hệ thống trước khi cập nhật thực đơn.";
+        }
+
+        return {
+          content,
+          suggestions,
+        };
+      }
+
+      const additions: Dish[] = [];
+      const alreadyExists: Dish[] = [];
+      const failures: Array<{ dish: Dish; error: string }> = [];
+
+      const servings =
+        intent.servings && intent.servings > 0
+          ? Math.max(1, Math.round(intent.servings))
+          : 1;
+
+      for (const dish of matchedDishes) {
+        if (existingDishIds.has(String(dish.id))) {
+          alreadyExists.push(dish);
+          continue;
+        }
+
+        try {
+          await addDishToMenu(String(dish.id), intent.isoDate, servings);
+          additions.push(dish);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Không rõ nguyên nhân";
+          failures.push({ dish, error: message });
+        }
+      }
+
+      if (
+        additions.length === 0 &&
+        alreadyExists.length === 0 &&
+        failures.length > 0
+      ) {
+        const failureLines = failures.map(
+          ({ dish, error }) => `- ${dish.ten_mon_an}: ${error}`
+        );
+        return {
+          content: `Không thể thêm các món sau vào thực đơn ${
+            intent.friendlyLabel
+          } (${this.formatVietnamDate(intent.isoDate)}):\n${failureLines.join(
+            "\n"
+          )}`,
+          suggestions: failures.map(({ dish }) => dish.ten_mon_an),
+        };
+      }
+
+      let content = `📅 **Cập nhật thực đơn ${intent.friendlyLabel} (${this.formatVietnamDate(
+        intent.isoDate
+      )})**\n\n`;
+
+      if (intent.inferredDate) {
+        content +=
+          "• Bạn không chỉ định ngày cụ thể nên mình mặc định sử dụng ngày hôm nay.\n\n";
+      }
+
+      if (additions.length > 0) {
+        content += `**Đã thêm (${servings} khẩu phần mỗi món):**\n${additions
+          .map((dish, index) => `${index + 1}. ${dish.ten_mon_an}`)
+          .join("\n")}\n\n`;
+      }
+
+      if (alreadyExists.length > 0) {
+        content += `**Đã có sẵn trong thực đơn:**\n${alreadyExists
+          .map((dish, index) => `${index + 1}. ${dish.ten_mon_an}`)
+          .join("\n")}\n\n`;
+      }
+
+      if (failures.length > 0) {
+        content += `**Không thể thêm:**\n${failures
+          .map(({ dish, error }) => `- ${dish.ten_mon_an}: ${error}`)
+          .join("\n")}\n\n`;
+      }
+
+      content += "Bạn có muốn xem lại thực đơn hoặc thêm món khác không?";
+
+      const suggestions = [
+        ...additions.map((dish) => `Xem món ${dish.ten_mon_an}`),
+        ...alreadyExists.map((dish) => `Kiểm tra ${dish.ten_mon_an}`),
+      ].slice(0, 5);
+
+      return {
+        content,
+        suggestions,
+      };
+    } catch (error) {
+      logger.error("Error handling add-dish intent:", error);
+      return {
+        content:
+          "Không thể cập nhật thực đơn ngay lúc này. Bạn có muốn tôi gợi ý các bước tự thêm món thủ công không?",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   }
 
   private async getRandomMenuResponse(
