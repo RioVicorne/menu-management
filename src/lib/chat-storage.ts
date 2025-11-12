@@ -20,7 +20,7 @@ type RemoteSessionPayload = {
 type RemoteMessagePayload = {
   id: string;
   sessionId: string;
-  sender: "user" | "bot";
+  sender: "user" | "bot" | "assistant" | "system";
   text: string;
   type: "text" | "ai-result";
   aiData?: ChatMessage["aiData"];
@@ -35,12 +35,38 @@ function serializeSession(session: ChatSession) {
 }
 
 function deserializeSession(raw: any): ChatSession {
+  const timestampRaw =
+    raw?.timestamp ??
+    raw?.createdAt ??
+    raw?.created_at ??
+    raw?.updatedAt ??
+    raw?.updated_at;
+  const parsedTimestamp =
+    typeof timestampRaw === "string" || typeof timestampRaw === "number"
+      ? new Date(timestampRaw)
+      : timestampRaw instanceof Date
+        ? timestampRaw
+        : new Date();
+
   return {
-    id: String(raw.id),
-    title: String(raw.title || "Cuộc trò chuyện mới"),
-    timestamp: new Date(raw.timestamp || Date.now()),
-    messageCount: Number(raw.messageCount || 0),
-    lastMessage: String(raw.lastMessage || ""),
+    id: String(raw?.id ?? Date.now().toString()),
+    title: String(raw?.title || "Cuộc trò chuyện mới"),
+    timestamp: parsedTimestamp instanceof Date && !Number.isNaN(parsedTimestamp.getTime())
+      ? parsedTimestamp
+      : new Date(),
+    messageCount: Number(
+      raw?.messageCount ??
+        raw?.message_count ??
+        raw?.messages?.length ??
+        0,
+    ),
+    lastMessage: String(
+      raw?.lastMessage ??
+        raw?.last_message ??
+        raw?.preview ??
+        raw?.summary ??
+        "",
+    ),
   };
 }
 
@@ -51,14 +77,115 @@ function serializeMessage(message: ChatMessage) {
   };
 }
 
+function normalizeMessageCollection(payload: unknown): unknown[] {
+  if (!payload) {
+    return [];
+  }
+
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (typeof payload !== "object" || payload === null) {
+    return [];
+  }
+
+  const container = payload as Record<string, unknown>;
+  const candidateKeys = ["messages", "data", "items", "list", "records"];
+
+  for (const key of candidateKeys) {
+    const value = container[key];
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (value && typeof value === "object") {
+      const nestedValues = Object.values(value as Record<string, unknown>);
+      if (nestedValues.every((item) => item && typeof item === "object")) {
+        return nestedValues;
+      }
+    }
+  }
+
+  if (container.byId && typeof container.byId === "object") {
+    return Object.values(container.byId as Record<string, unknown>);
+  }
+
+  const objectValues = Object.values(container);
+  const messageLikeValues = objectValues.filter((value) => {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+    const record = value as Record<string, unknown>;
+    return (
+      "text" in record ||
+      "content" in record ||
+      "message" in record ||
+      "sender" in record ||
+      "role" in record ||
+      "timestamp" in record ||
+      "createdAt" in record ||
+      "created_at" in record
+    );
+  });
+
+  if (messageLikeValues.length > 0) {
+    return messageLikeValues;
+  }
+
+  return [];
+}
+
 function deserializeMessage(raw: any): ChatMessage {
+  const textValue =
+    raw?.text ??
+    raw?.content ??
+    raw?.message ??
+    raw?.body ??
+    "";
+
+  const senderValue =
+    raw?.sender ??
+    raw?.role ??
+    raw?.from ??
+    "bot";
+
+  const timestampRaw =
+    raw?.timestamp ??
+    raw?.createdAt ??
+    raw?.created_at ??
+    raw?.updatedAt ??
+    raw?.updated_at ??
+    raw?.time;
+  const parsedTimestamp =
+    typeof timestampRaw === "string" || typeof timestampRaw === "number"
+      ? new Date(timestampRaw)
+      : timestampRaw instanceof Date
+        ? timestampRaw
+        : new Date();
+
+  const typeValue =
+    raw?.type ??
+    raw?.messageType ??
+    raw?.kind ??
+    "text";
+
   return {
-    id: String(raw.id),
-    text: String(raw.text || ""),
-    sender: raw.sender === "user" ? "user" : "bot",
-    timestamp: new Date(raw.timestamp || raw.createdAt || Date.now()),
-    type: raw.type === "ai-result" ? "ai-result" : "text",
-    aiData: raw.aiData,
+    id: String(raw?.id ?? Date.now().toString()),
+    text: String(textValue || ""),
+    sender:
+      senderValue === "user"
+        ? "user"
+        : senderValue === "assistant"
+          ? "bot"
+          : senderValue === "bot"
+            ? "bot"
+            : "bot",
+    timestamp:
+      parsedTimestamp instanceof Date && !Number.isNaN(parsedTimestamp.getTime())
+        ? parsedTimestamp
+        : new Date(),
+    type: typeValue === "ai-result" ? "ai-result" : "text",
+    aiData: raw?.aiData ?? raw?.details ?? raw?.data,
   };
 }
 
@@ -95,7 +222,8 @@ function loadLocalMessages(sessionId: string): ChatMessage[] {
     const raw = window.localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(deserializeMessage) : [];
+    const normalized = normalizeMessageCollection(parsed);
+    return normalized.map(deserializeMessage);
   } catch {
     return [];
   }
@@ -142,14 +270,8 @@ async function fetchRemoteMessages(sessionId: string): Promise<ChatMessage[]> {
     throw new Error(`Failed to fetch chat messages: ${response.status}`);
   }
   const payload = (await response.json()) as { messages: RemoteMessagePayload[] };
-  return (payload.messages || []).map((m) => ({
-    id: String(m.id),
-    text: m.text || "",
-    sender: m.sender === "user" ? "user" : "bot",
-    timestamp: new Date(m.createdAt || Date.now()),
-    type: m.type === "ai-result" ? "ai-result" : "text",
-    aiData: m.aiData,
-  }));
+  const normalized = normalizeMessageCollection(payload?.messages ?? payload);
+  return normalized.map(deserializeMessage);
 }
 
 export async function loadSessions(): Promise<LoadResult<ChatSession[]>> {

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Bot, UserCircle, LogOut, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
-import ChatSidebar from "./chat-sidebar";
 import { logger } from "@/lib/logger";
+import { supabase } from "@/lib/supabase";
 import type { ChatMessage as Message, ChatSession, ChatDataSource } from "@/types/chat";
 import {
   loadSessions as loadStoredSessions,
@@ -25,7 +25,6 @@ interface AIChatProps {
   };
 }
 
-const SIDEBAR_VISIBLE_KEY = "planner.sidebarVisible";
 const CURRENT_SESSION_KEY = "planner.currentSessionId";
 
 const createWelcomeMessage = (): Message => ({
@@ -42,92 +41,16 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [syncSource, setSyncSource] = useState<ChatDataSource>("local");
   const [syncError, setSyncError] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [hydratingMessages, setHydratingMessages] = useState(true);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [username, setUsername] = useState<string>("Người dùng");
+  const [userEmail, setUserEmail] = useState<string>("");
 
-  // Load sidebar visibility preference from localStorage
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const saved = window.localStorage.getItem(SIDEBAR_VISIBLE_KEY);
-        if (saved !== null) {
-          let isVisible = false;
-          if (saved === "true" || saved === "false") {
-            isVisible = saved === "true";
-          } else {
-            try {
-              isVisible = Boolean(JSON.parse(saved));
-            } catch {
-              isVisible = false;
-            }
-          }
-          if (window.innerWidth >= 1024) {
-            setSidebarOpen(isVisible);
-          } else {
-            setSidebarOpen(false);
-          }
-        } else {
-          setSidebarOpen(false);
-        }
-      }
-    } catch (e) {
-      logger.warn("Failed to load sidebar visibility preference", e);
-    }
-  }, []);
-
-  // Save sidebar visibility preference to localStorage
-  const toggleSidebar = () => {
-    const newState = !sidebarOpen;
-    setSidebarOpen(newState);
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(SIDEBAR_VISIBLE_KEY, JSON.stringify(newState));
-      }
-    } catch (e) {
-      logger.warn("Failed to save sidebar visibility preference", e);
-    }
-  };
-
-  // Handle window resize
-  useEffect(() => {
-    const checkScreenSize = () => {
-      if (window.innerWidth >= 1024) {
-        // On desktop, restore saved preference or default to open
-        try {
-          if (typeof window !== "undefined") {
-            const saved = window.localStorage.getItem(SIDEBAR_VISIBLE_KEY);
-            if (saved !== null) {
-              let isVisible = false;
-              if (saved === "true" || saved === "false") {
-                isVisible = saved === "true";
-              } else {
-                try {
-                  isVisible = Boolean(JSON.parse(saved));
-                } catch {
-                  isVisible = false;
-                }
-              }
-              setSidebarOpen(isVisible);
-            } else {
-              setSidebarOpen(false);
-            }
-          }
-        } catch (e) {
-          setSidebarOpen(false);
-        }
-      } else {
-        // On mobile, always close sidebar
-        setSidebarOpen(false);
-      }
-    };
-    
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,6 +59,50 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load user info
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        if (!supabase) {
+          logger.warn("Supabase client not available");
+          return;
+        }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserEmail(user.email || "");
+          // Try to get username from user metadata or extract from email
+          const displayName = user.user_metadata?.username || 
+                             user.user_metadata?.display_name || 
+                             user.user_metadata?.full_name ||
+                             user.email?.split('@')[0].replace(/\.(test|local)$/, "") ||
+                             "Người dùng";
+          setUsername(displayName);
+        }
+      } catch (error) {
+        logger.error("Failed to load user info", error);
+      }
+    };
+
+    loadUserInfo();
+  }, []);
+
+  // Handle click outside profile menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showProfileMenu]);
 
   // Initial load for sessions/messages
   useEffect(() => {
@@ -233,6 +200,12 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         const { data, source, error } = await loadStoredMessages(currentSessionId);
         if (cancelled) return;
 
+        logger.info(`Loading messages for session ${currentSessionId}:`, {
+          totalMessages: data.length,
+          source,
+          hasError: !!error
+        });
+
         setSyncSource(source);
         if (error) {
           logger.warn("Falling back to local chat messages", error);
@@ -241,9 +214,18 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
           setSyncError(null);
         }
 
-        if (data.length > 0) {
+        // Filter out welcome messages if there are real messages
+        const realMessages = data.filter(msg => msg.id !== 'welcome');
+        
+        logger.info(`Real messages count: ${realMessages.length}`);
+        
+        if (realMessages.length > 0) {
+          setMessages(realMessages);
+        } else if (data.length > 0) {
+          // If only welcome message exists, use it
           setMessages(data);
         } else {
+          // No messages at all, create welcome message
           setMessages([createWelcomeMessage()]);
         }
       } catch (error) {
@@ -268,7 +250,12 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   // Persist messages when they change
   useEffect(() => {
     if (initializing || !currentSessionId || hydratingMessages) return;
-    persistMessages(currentSessionId, messages);
+    
+    // Only persist if there are real messages (not just welcome message)
+    const realMessages = messages.filter(msg => msg.id !== 'welcome');
+    if (realMessages.length > 0) {
+      persistMessages(currentSessionId, realMessages);
+    }
   }, [messages, currentSessionId, initializing, hydratingMessages]);
 
 
@@ -288,7 +275,6 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   const selectSession = (sessionId: string) => {
     setCurrentSessionId(sessionId);
-    setSidebarOpen(false);
   };
 
   const deleteSession = (sessionId: string) => {
@@ -498,62 +484,107 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     // In a real app, you would send this feedback to your backend
   };
 
+  const handleLogout = async () => {
+    try {
+      setShowProfileMenu(false);
+      if (!supabase) {
+        logger.warn("Supabase client not available");
+        window.location.href = '/planner';
+        return;
+      }
+      await supabase.auth.signOut();
+      logger.info('User logged out successfully');
+      // Redirect to planner page (will show login form after logout)
+      window.location.href = '/planner';
+    } catch (error) {
+      logger.error('Failed to logout', error);
+      // Even if logout fails, redirect to planner
+      window.location.href = '/planner';
+    }
+  };
+
   return (
     <div className="flex h-full w-full bg-white dark:bg-gray-900 overflow-hidden relative">
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${sidebarOpen ? 'lg:block' : 'lg:hidden'} transition-transform duration-300 ease-in-out fixed lg:static top-0 left-0 z-50 lg:z-auto`}>
-        <ChatSidebar
-          sessions={sessions}
-          currentSessionId={currentSessionId || undefined}
-          onNewChat={createNewSession}
-          onSelectSession={selectSession}
-          onDeleteSession={deleteSession}
-          onRenameSession={renameSession}
-          onClose={() => setSidebarOpen(false)}
-        />
-      </div>
-
-      {/* Main Chat Area */}
-      <div className={`chat-main flex-1 flex flex-col min-h-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-0 pointer-events-none lg:pointer-events-auto' : 'lg:ml-0'}`}>
+      {/* Main Chat Area - Full Width */}
+      <div className="chat-main flex-1 flex flex-col min-h-0 w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-3 lg:p-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm flex-shrink-0">
           <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
+            <div className="p-2 lg:p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg flex-shrink-0">
+              <Bot className="w-5 h-5 lg:w-6 lg:h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                AI Menu Assistant
+              </h1>
+              <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 hidden sm:block truncate">
+                Trợ lý thông minh cho quản lý menu
+              </p>
+            </div>
+          </div>
+          
+          {/* Profile Menu */}
+          <div className="relative" ref={profileMenuRef}>
             <Button
               variant="ghost"
               size="sm"
-              onClick={toggleSidebar}
-              className="hover:bg-gray-100 dark:hover:bg-gray-800 flex-shrink-0"
-              title={sidebarOpen ? "Ẩn sidebar" : "Hiện sidebar"}
+              className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full p-2 flex-shrink-0"
+              title="Hồ sơ người dùng"
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
             >
-              {sidebarOpen ? (
-                <PanelLeftClose className="w-5 h-5" />
-              ) : (
-                <PanelLeftOpen className="w-5 h-5" />
-              )}
+              <UserCircle className="w-6 h-6 lg:w-7 lg:h-7 text-gray-600 dark:text-gray-400" />
             </Button>
-            <div className="flex items-center space-x-2 lg:space-x-3 min-w-0">
-              <div className="p-2 lg:p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg flex-shrink-0">
-                <Bot className="w-5 h-5 lg:w-6 lg:h-6" />
+
+            {/* Dropdown Menu */}
+            {showProfileMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {username}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    // Navigate to profile page
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3"
+                >
+                  <User className="w-4 h-4" />
+                  <span>Hồ sơ</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    // Navigate to settings page
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span>Cài đặt</span>
+                </button>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                
+                <button
+                  onClick={handleLogout}
+                  className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-3"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Đăng xuất</span>
+                </button>
               </div>
-              <div className="min-w-0">
-                <h1 className="text-base lg:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                  AI Menu Assistant
-                </h1>
-                <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 hidden sm:block truncate">
-                  Trợ lý thông minh cho quản lý menu
-                </p>
-              </div>
-            </div>
+            )}
           </div>
-  
         </div>
 
         {syncError && (

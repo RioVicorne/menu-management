@@ -74,14 +74,16 @@ export default function ChatSidebar({
     <div className="chat-sidebar w-80 max-w-[85vw] bg-white dark:bg-gray-900 flex flex-col flex-shrink-0 h-screen lg:h-full border-r border-gray-100 dark:border-gray-800 shadow-xl lg:shadow-none">
       {/* Header */}
       <div className="p-3 lg:p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-900 flex items-center justify-between flex-shrink-0">
-        <Button
-          onClick={onNewChat}
-          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg lg:rounded-xl h-10 lg:h-11 shadow-lg hover:shadow-xl transition-all font-medium text-sm lg:text-base"
-        >
-          <Plus className="w-4 h-4 mr-1.5 lg:mr-2" />
-          <span className="hidden sm:inline">Cuộc trò chuyện mới</span>
-          <span className="sm:hidden">Mới</span>
-        </Button>
+        <div className="flex-1 flex items-center space-x-2 lg:space-x-3">
+          <div className="p-2 lg:p-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white flex-shrink-0">
+            <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm lg:text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+              Cuộc trò chuyện
+            </h2>
+          </div>
+        </div>
         {onClose && (
           <Button
             variant="ghost"

@@ -11,8 +11,6 @@ import {
   Menu,
   CalendarCheck,
   BookOpen,
-  User,
-  LogOut,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -26,8 +24,6 @@ export default function Sidebar({ className = "" }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<string>("home");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isAuthed, setIsAuthed] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
     if (!pathname) {
@@ -78,19 +74,10 @@ export default function Sidebar({ className = "" }: SidebarProps) {
       const { data } = await supabase.auth.getSession();
       const session = data.session;
       setIsAuthed(!!session);
-      const email = session?.user?.email || "";
-      setUserEmail(email);
-      // Extract username from email (remove @users.test or @users.local)
-      const user = email.replace(/@users\.(test|local)$/, "");
-      setUsername(user || "User");
 
       const { data: sub } = supabase.auth.onAuthStateChange(
         (_event, newSession) => {
           setIsAuthed(!!newSession);
-          const newEmail = newSession?.user?.email || "";
-          setUserEmail(newEmail);
-          const newUser = newEmail.replace(/@users\.(test|local)$/, "");
-          setUsername(newUser || "User");
         }
       );
 
@@ -254,54 +241,6 @@ export default function Sidebar({ className = "" }: SidebarProps) {
             );
           })}
         </nav>
-
-        {/* Profile Section - Bottom Left */}
-        {isAuthed && (
-          <div className="flex-shrink-0 p-3 lg:p-4 border-t border-sage-200/30 dark:border-sage-700/30">
-            {!isCollapsed ? (
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 lg:space-x-3 p-2.5 lg:p-3 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-colors">
-                  <div className="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shrink-0">
-                    <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs lg:text-sm font-medium text-foreground truncate">
-                      {username}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={async () => {
-                    if (!supabase) return;
-                    await supabase.auth.signOut();
-                  }}
-                  className="w-full flex items-center space-x-2 lg:space-x-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-xl text-left font-medium transition-all duration-300 hover-lift text-muted-foreground hover:text-foreground hover:bg-sage-100/50 dark:hover:bg-sage-800/50"
-                >
-                  <div className="p-1.5 lg:p-2 rounded-xl bg-red-100 dark:bg-red-900/30 shrink-0">
-                    <LogOut className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-red-600 dark:text-red-400" />
-                  </div>
-                  <span className="text-xs lg:text-sm">Đăng xuất</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center space-y-2">
-                <div className="w-9 h-9 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center shrink-0">
-                  <User className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
-                </div>
-                <button
-                  onClick={async () => {
-                    if (!supabase) return;
-                    await supabase.auth.signOut();
-                  }}
-                  className="p-2 rounded-xl hover:bg-sage-100/50 dark:hover:bg-sage-800/50 transition-colors"
-                  title="Đăng xuất"
-                >
-                  <LogOut className="h-4 w-4 lg:h-5 lg:w-5 text-red-600 dark:text-red-400" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

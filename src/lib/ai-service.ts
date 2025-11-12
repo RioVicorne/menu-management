@@ -109,8 +109,31 @@ type MenuIntent =
 
 type DateMatch = { isoDate: string; friendlyLabel: string };
 
+type LastInteraction =
+  | {
+      type: "view-date";
+      isoDate: string;
+      friendlyLabel: string;
+      timestamp: number;
+    }
+  | {
+      type: "edit-date";
+      isoDate: string;
+      friendlyLabel: string;
+      action: "add" | "remove";
+      timestamp: number;
+    }
+  | {
+      type: "random-menu";
+      content: string;
+      suggestions?: string[];
+      timestamp: number;
+    };
+
 export class AIService {
   private static instance: AIService;
+
+  private lastInteraction: LastInteraction | null = null;
 
   private constructor() {}
 
@@ -1003,6 +1026,10 @@ export class AIService {
       );
 
       if (isFollowUp && !menuIntent) {
+        const followUpResponse = await this.handleFollowUpResponse();
+        if (followUpResponse) {
+          return followUpResponse;
+        }
         return {
           content:
             "Bạn muốn xem lại phần nào? Bạn có thể nói rõ hơn, ví dụ:\n• “Xem lại thực đơn ngày hôm qua”\n• “Xem lại món vừa thêm cho hôm nay”\n• “Xem lại các món trong menu ngày mai”",
@@ -1119,6 +1146,31 @@ export class AIService {
     }
 
     return false;
+  }
+
+  private async handleFollowUpResponse(): Promise<AIResponse | null> {
+    if (!this.lastInteraction) {
+      return null;
+    }
+
+    switch (this.lastInteraction.type) {
+      case "view-date":
+      case "edit-date":
+        return await this.getMenuResponseForDate(this.lastInteraction.isoDate, {
+          friendlyLabel: this.lastInteraction.friendlyLabel,
+        });
+      case "random-menu":
+        return {
+          content: this.lastInteraction.content,
+          suggestions: this.lastInteraction.suggestions,
+        };
+      default:
+        return null;
+    }
+  }
+
+  private setLastInteraction(interaction: LastInteraction) {
+    this.lastInteraction = interaction;
   }
 
   private hasAddIntent(normalizedMessage: string): boolean {
@@ -1966,6 +2018,14 @@ export class AIService {
         ...alreadyExists.map((dish) => `Kiểm tra ${dish.ten_mon_an}`),
       ].slice(0, 5);
 
+      this.setLastInteraction({
+        type: "edit-date",
+        isoDate: intent.isoDate,
+        friendlyLabel: intent.friendlyLabel,
+        action: "add",
+        timestamp: Date.now(),
+      });
+
       return {
         content,
         suggestions,
@@ -2131,6 +2191,14 @@ export class AIService {
         "Kiểm tra thực đơn ngày khác",
       ];
 
+      this.setLastInteraction({
+        type: "edit-date",
+        isoDate: intent.isoDate,
+        friendlyLabel: intent.friendlyLabel,
+        action: "remove",
+        timestamp: Date.now(),
+      });
+
       return {
         content,
         suggestions: suggestions.slice(0, 5),
@@ -2241,6 +2309,13 @@ export class AIService {
         .filter(Boolean)
         .slice(0, 5) as string[];
 
+      this.setLastInteraction({
+        type: "random-menu",
+        content,
+        suggestions,
+        timestamp: Date.now(),
+      });
+
       return {
         content,
         suggestions,
@@ -2286,9 +2361,23 @@ export class AIService {
       const dishLines = uniqueDishes.map(
         (dish, index) => `${index + 1}. ${dish}`
       );
+      const friendlyLabel =
+        options?.friendlyLabel ?? `ngày ${this.formatVietnamDate(isoDate)}`;
+      const content = `Thực đơn ${
+        options?.friendlyLabel
+          ? `${options.friendlyLabel} (${formattedDate})`
+          : `ngày ${formattedDate}`
+      }:\n${dishLines.join("\n")}`;
+
+      this.setLastInteraction({
+        type: "view-date",
+        isoDate,
+        friendlyLabel,
+        timestamp: Date.now(),
+      });
 
       return {
-        content: `Thực đơn ${options?.friendlyLabel ? `${options.friendlyLabel} (${formattedDate})` : `ngày ${formattedDate}`}:\n${dishLines.join("\n")}`,
+        content,
       };
     } catch (error) {
       logger.error("Error fetching menu for AI:", { isoDate, error });
