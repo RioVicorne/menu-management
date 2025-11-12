@@ -1023,6 +1023,82 @@ export class AIService {
     }
   }
 
+  // Use LLM to analyze intent with better NLP understanding
+  private async analyzeIntentWithLLM(message: string): Promise<{
+    intent: string;
+    entities: Record<string, any>;
+    confidence: number;
+  } | null> {
+    try {
+      const intentPrompt = `Phân tích ý định (intent) của người dùng trong câu sau. Sử dụng khả năng NLP để hiểu ngữ nghĩa, ngữ cảnh, và ý định thực sự:
+
+Câu: "${message}"
+
+INTENT CÓ THỂ:
+1. "add-dish" - Thêm món cụ thể vào menu
+   Ví dụ: "thêm món bò kho", "cho món gà vào menu", "đưa món salad vào thực đơn"
+
+2. "remove-dish" - Xóa món cụ thể khỏi menu
+   Ví dụ: "xóa món cá", "bỏ món salad", "loại món gà khỏi menu"
+
+3. "random-add" - Thêm món BẤT KỲ/NGẪU NHIÊN (không chỉ định món cụ thể)
+   Ví dụ: "thêm món bất kỳ", "cho món gì đó vào menu", "thêm món random", "đưa cái gì vào cũng được"
+
+4. "random-remove" - Xóa món NGẪU NHIÊN
+   Ví dụ: "xóa món ngẫu nhiên", "bỏ món gì đó", "xóa bất kỳ món nào"
+
+5. "check-inventory" - Kiểm tra món ăn/nguyên liệu có trong kho
+   Ví dụ: "còn cà chua không?", "có món bò kho không?", "kiểm tra trong kho có bao nhiêu món", "xem kho có gì"
+
+6. "view-menu" - Xem thực đơn theo ngày
+   Ví dụ: "xem menu hôm nay", "thực đơn ngày mai", "hôm nay ăn gì"
+
+7. "random-menu" - Tạo/gợi ý thực đơn ngẫu nhiên
+   Ví dụ: "tạo menu ngẫu nhiên", "gợi ý menu tuần này", "làm thực đơn cho mình"
+
+8. "other" - Yêu cầu khác ngoài phạm vi trên
+
+HƯỚNG DẪN:
+- Sử dụng semantic analysis để hiểu ý định thật sự, không chỉ dựa vào từ khóa
+- Nhận diện entities: tên món, nguyên liệu, ngày tháng, số lượng
+- Phân biệt "thêm món cụ thể" vs "thêm món bất kỳ"
+- Confidence cao (0.8-1.0) nếu rõ ràng, trung bình (0.5-0.7) nếu mơ hồ
+
+RESPONSE FORMAT (JSON only):
+{
+  "intent": "tên intent từ danh sách trên",
+  "entities": {
+    "dishName": "tên món nếu có (null nếu không)",
+    "ingredientName": "tên nguyên liệu nếu có (null nếu không)",
+    "searchQuery": "từ khóa tìm kiếm nếu có",
+    "isRandom": true/false,
+    "date": "ngày nếu có (null nếu không)",
+    "servings": số khẩu phần nếu có (null nếu không)
+  },
+  "confidence": số từ 0.0-1.0,
+  "reasoning": "1 câu giải thích ngắn gọn tại sao chọn intent này"
+}
+
+CHỈ trả về JSON, không thêm text nào khác.`;
+
+      const response = await this.callPerplexityAPI([
+        { role: "user", content: intentPrompt },
+      ]);
+
+      // Try to parse JSON from response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return parsed;
+      }
+
+      return null;
+    } catch (error) {
+      logger.warn("Failed to analyze intent with LLM:", error);
+      return null;
+    }
+  }
+
   // Chat tổng quát dùng Perplexity để hội thoại tự nhiên
   // Sử dụng function calling để lấy data từ Supabase khi cần
   async chatAboutMenuManagement(
@@ -1037,30 +1113,118 @@ export class AIService {
       const normalizedMessage = this.normalizeText(message || "");
       const isFollowUp = this.isFollowUpRequest(normalizedMessage);
 
+      // Try LLM-based intent detection first
+      const llmIntent = await this.analyzeIntentWithLLM(message);
+
+      // Fallback to pattern-based detection
       const menuIntent = this.detectMenuIntent(
         normalizedMessage,
         message || ""
       );
 
-      if (isFollowUp && !menuIntent) {
+      if (isFollowUp && !menuIntent && !llmIntent) {
         const followUpResponse = await this.handleFollowUpResponse();
         if (followUpResponse) {
           return followUpResponse;
         }
         return {
           content:
-            "Bạn muốn xem lại phần nào? Bạn có thể nói rõ hơn, ví dụ:\n• “Xem lại thực đơn ngày hôm qua”\n• “Xem lại món vừa thêm cho hôm nay”\n• “Xem lại các món trong menu ngày mai”",
+            'Bạn muốn xem lại phần nào? Bạn có thể nói rõ hơn, ví dụ:\n• "Xem lại thực đơn ngày hôm qua"\n• "Xem lại món vừa thêm cho hôm nay"\n• "Xem lại các món trong menu ngày mai"',
         };
       }
 
-      if (!this.isMenuRelatedMessage(normalizedMessage, menuIntent)) {
+      if (
+        !this.isMenuRelatedMessage(normalizedMessage, menuIntent) &&
+        (!llmIntent || llmIntent.intent === "other")
+      ) {
         return {
           content:
             "Xin lỗi, tôi chỉ hỗ trợ các thao tác liên quan đến thực đơn như kiểm tra, cập nhật, gợi ý món, tạo menu hoặc tính khẩu phần.",
         };
       }
 
-      // Check inventory intent
+      // Use LLM intent if available and reasonably confident
+      if (llmIntent && llmIntent.confidence > 0.5) {
+        logger.info("Using LLM-detected intent:", llmIntent);
+
+        // Handle LLM-detected intents
+        if (llmIntent.intent === "check-inventory") {
+          // Use searchQuery from LLM if available
+          if (llmIntent.entities?.searchQuery) {
+            const modifiedMessage = llmIntent.entities.searchQuery;
+            return await this.handleCheckInventoryIntent(
+              this.normalizeText(modifiedMessage),
+              modifiedMessage
+            );
+          }
+          return await this.handleCheckInventoryIntent(
+            normalizedMessage,
+            message
+          );
+        }
+
+        if (llmIntent.intent === "view-menu") {
+          const dateMatch = this.parseDateMatch(normalizedMessage, {
+            allowLoose: true,
+          });
+          if (dateMatch) {
+            return await this.getMenuResponseForDate(dateMatch.isoDate, {
+              friendlyLabel: dateMatch.friendlyLabel,
+            });
+          }
+          // Default to today
+          return await this.getMenuResponseForDate(this.getTodayIsoDate(), {
+            friendlyLabel: "hôm nay",
+          });
+        }
+
+        if (
+          llmIntent.intent === "random-add" &&
+          menuIntent?.type !== "add-dish"
+        ) {
+          // Create intent from LLM analysis
+          const dateMatch = this.parseDateMatch(normalizedMessage, {
+            allowLoose: true,
+          });
+          return await this.handleRandomAddDishIntent({
+            type: "random-add",
+            isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
+            friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
+            inferredDate: !dateMatch,
+            servings: llmIntent.entities?.servings,
+            normalizedMessage,
+            originalMessage: message,
+          });
+        }
+
+        if (
+          llmIntent.intent === "random-remove" &&
+          menuIntent?.type !== "remove-dish"
+        ) {
+          const dateMatch = this.parseDateMatch(normalizedMessage, {
+            allowLoose: true,
+          });
+          return await this.handleRandomRemoveDishIntent({
+            type: "random-remove",
+            isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
+            friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
+            inferredDate: !dateMatch,
+            normalizedMessage,
+            originalMessage: message,
+          });
+        }
+
+        if (llmIntent.intent === "random-menu") {
+          const servingInfo = this.parseServingInfo(normalizedMessage);
+          return await this.getRandomMenuResponse({
+            type: "random-menu",
+            adults: servingInfo.adults,
+            kids: servingInfo.kids,
+          });
+        }
+      }
+
+      // Check inventory intent (pattern-based fallback)
       if (this.hasCheckInventoryIntent(normalizedMessage)) {
         return await this.handleCheckInventoryIntent(
           normalizedMessage,
@@ -1090,17 +1254,41 @@ export class AIService {
       }
 
       const systemPrompt = [
-        "Bạn là trợ lý quản lý thực đơn chuyên dụng.",
-        "Chỉ hỗ trợ các thao tác liên quan tới thực đơn: thêm/xóa món, kiểm tra thực đơn theo ngày, gợi ý món từ nguyên liệu, tạo menu ngẫu nhiên, tính khẩu phần hoặc calo.",
-        "Chỉ sử dụng dữ liệu thực tế được cung cấp từ hệ thống (ví dụ: Supabase). Nếu thiếu dữ liệu cần thiết, hãy hỏi người dùng có muốn nhận gợi ý từ nguồn ngoài hay không trước khi tiếp tục.",
-        "Nếu người dùng hỏi ngoài phạm vi này, hãy lịch sự từ chối và nhắc rằng bạn chỉ hỗ trợ về thực đơn.",
-        "Khi cần, yêu cầu người dùng cung cấp ngày cụ thể, nguyên liệu hoặc thông tin bổ sung để xử lý yêu cầu.",
-        "Trả lời ngắn gọn, rõ ràng, có cấu trúc, bằng tiếng Việt tự nhiên.",
-        "Ngữ cảnh hiện có (nếu có):",
-        `- Nguyên liệu còn: ${(context?.availableIngredients || []).join(", ") || "không rõ"}`,
-        `- Thực đơn hiện tại: ${(context?.currentMenu || []).join(", ") || "không rõ"}`,
-        `- Sở thích dinh dưỡng: ${(context?.dietaryPreferences || []).join(", ") || "không rõ"}`,
-      ].join("\n");
+        "Bạn là một trợ lý thông minh giúp quản lý thực đơn hàng ngày. Hãy trò chuyện TỰ NHIÊN như một người bạn thân thiện, KHÔNG dùng format markdown hay emoji phức tạp.",
+        "",
+        "PHONG CÁCH TRÒ CHUYỆN:",
+        "- Nói chuyện như bạn bè, thân thiện, gần gũi",
+        "- Dùng câu ngắn gọn, dễ hiểu",
+        '- Có thể dùng "mình", "bạn", "nha", "nhé" để thân thiện hơn',
+        "- KHÔNG dùng emoji nhiều (chỉ 1-2 emoji tối đa nếu thực sự cần)",
+        "- KHÔNG dùng markdown format phức tạp (**, ##, bullet points nhiều)",
+        "- Trả lời ngắn gọn, đi thẳng vào vấn đề",
+        "",
+        "NHIỆM VỤ CỦA BẠN:",
+        "- Giúp thêm/xóa món ăn vào thực đơn",
+        "- Kiểm tra món ăn và nguyên liệu trong kho",
+        "- Gợi ý món ăn từ nguyên liệu có sẵn",
+        "- Tạo thực đơn tuần/tháng",
+        "- Trả lời câu hỏi về dinh dưỡng, khẩu phần",
+        "",
+        "KHI TRẢ LỜI:",
+        "- Nếu người dùng hỏi ngoài phạm vi thực đơn, lịch sự từ chối và gợi ý cách giúp đỡ",
+        "- Nếu thiếu thông tin (ngày, tên món...), hỏi thêm một cách tự nhiên",
+        "- Chỉ sử dụng dữ liệu thật từ hệ thống, đừng bịa ra thông tin",
+        "",
+        "NGỮ CẢNH HIỆN TẠI:",
+        context?.availableIngredients && context.availableIngredients.length > 0
+          ? `- Nguyên liệu còn: ${context.availableIngredients.join(", ")}`
+          : "",
+        context?.currentMenu && context.currentMenu.length > 0
+          ? `- Thực đơn hiện tại: ${context.currentMenu.join(", ")}`
+          : "",
+        context?.dietaryPreferences && context.dietaryPreferences.length > 0
+          ? `- Sở thích: ${context.dietaryPreferences.join(", ")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
 
       const content = await this.callPerplexityAPI([
         { role: "system", content: systemPrompt },
@@ -1964,6 +2152,24 @@ export class AIService {
     return false;
   }
 
+  // Helper to make response more natural and conversational
+  private makeNaturalResponse(
+    mainMessage: string,
+    details?: string[],
+    suggestions?: string[]
+  ): AIResponse {
+    let content = mainMessage;
+
+    if (details && details.length > 0) {
+      content += `\n\n${details.join("\n")}`;
+    }
+
+    return {
+      content,
+      suggestions: suggestions?.slice(0, 5),
+    };
+  }
+
   private getTodayIsoDate(): string {
     const now = new Date();
     const offsetMs = now.getTimezoneOffset() * 60 * 1000;
@@ -2182,27 +2388,27 @@ export class AIService {
       try {
         await addDishToMenu(String(randomDish.id), intent.isoDate, servings);
 
-        let content = `🎲 **Đã thêm món ngẫu nhiên vào ${intent.friendlyLabel} (${this.formatVietnamDate(
-          intent.isoDate
-        )})**\n\n`;
+        const dateInfo = intent.inferredDate
+          ? ""
+          : ` vào ${intent.friendlyLabel}`;
 
-        if (intent.inferredDate) {
-          content +=
-            "• Bạn không chỉ định ngày cụ thể nên mình mặc định sử dụng ngày hôm nay.\n\n";
-        }
-
-        content += `**Món được chọn:**\n`;
-        content += `• ${randomDish.ten_mon_an}`;
+        let content = `Mình đã chọn món ${randomDish.ten_mon_an}`;
         if (randomDish.loai_mon_an) {
           content += ` (${randomDish.loai_mon_an})`;
         }
-        content += `\n• Khẩu phần: ${servings}\n\n`;
+        content += ` và thêm vào thực đơn${dateInfo} rồi nha!`;
 
-        content += `Món này được chọn ngẫu nhiên từ ${availableDishes.length} món có sẵn.\n\n`;
-        content += "Bạn có muốn thêm món ngẫu nhiên khác không?";
+        if (servings > 1) {
+          content += ` Khẩu phần: ${servings}.`;
+        }
+
+        const details = [
+          `Món này mình chọn ngẫu nhiên từ ${availableDishes.length} món đang có.`,
+          "Bạn muốn thêm món nào khác nữa không?",
+        ];
 
         const suggestions = [
-          `Xem món ${randomDish.ten_mon_an}`,
+          `Xem công thức ${randomDish.ten_mon_an}`,
           "Thêm món ngẫu nhiên khác",
           "Xem thực đơn hôm nay",
         ];
@@ -2215,10 +2421,7 @@ export class AIService {
           timestamp: Date.now(),
         });
 
-        return {
-          content,
-          suggestions,
-        };
+        return this.makeNaturalResponse(content, details, suggestions);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Không rõ nguyên nhân";
@@ -2342,9 +2545,33 @@ export class AIService {
       );
 
       if (!searchTerms || searchTerms.length === 0) {
+        // If asking about total count, show summary
+        if (
+          normalizedMessage.includes("bao nhieu") ||
+          normalizedMessage.includes("tat ca")
+        ) {
+          const dishesData = await this.getDishesData();
+          const allDishes = (dishesData?.allDishes ?? []) as Dish[];
+
+          const baseUrl =
+            process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+          const ingredientsResponse = await fetch(
+            `${baseUrl}/api/ai-data?type=ingredients`
+          );
+          const ingredientsData = await ingredientsResponse.json();
+          const allIngredients = ingredientsData?.allIngredients ?? [];
+
+          const content = `Trong kho hiện có:\n- ${allDishes.length} món ăn\n- ${allIngredients.length} loại nguyên liệu\n\nBạn muốn kiểm tra món cụ thể nào không?`;
+
+          return {
+            content,
+            suggestions: ["Xem tất cả món ăn", "Xem tất cả nguyên liệu"],
+          };
+        }
+
         return {
           content:
-            "Bạn muốn kiểm tra món ăn hay nguyên liệu nào? Vui lòng nói rõ hơn, ví dụ:\n• Kiểm tra món bò kho có trong kho không\n• Xem nguyên liệu cà chua còn bao nhiêu\n• Có món gà rán không",
+            'Bạn muốn kiểm tra món gì thế? Ví dụ: "Còn cà chua không?", "Có món bò kho không?"',
         };
       }
 
@@ -2361,9 +2588,8 @@ export class AIService {
       const ingredientsData = await ingredientsResponse.json();
       const allIngredients = ingredientsData?.allIngredients ?? [];
 
-      let content = "🔍 **Kết quả kiểm tra kho:**\n\n";
-      let foundSomething = false;
-      const suggestions: string[] = [];
+      const foundDishes: Dish[] = [];
+      const foundIngredients: Ingredient[] = [];
 
       for (const term of searchTerms) {
         const normalizedTerm = this.normalizeText(term);
@@ -2372,61 +2598,70 @@ export class AIService {
         const matchedDishes = allDishes.filter((dish) =>
           this.normalizeText(dish.ten_mon_an || "").includes(normalizedTerm)
         );
-
-        if (matchedDishes.length > 0) {
-          foundSomething = true;
-          content += `**Món ăn tìm thấy:**\n`;
-          matchedDishes.forEach((dish) => {
-            content += `• ${dish.ten_mon_an}`;
-            if (dish.loai_mon_an) {
-              content += ` (${dish.loai_mon_an})`;
-            }
-            content += `\n`;
-            suggestions.push(`Xem công thức ${dish.ten_mon_an}`);
-          });
-          content += `\n`;
-        }
+        foundDishes.push(...matchedDishes);
 
         // Check ingredients
         const matchedIngredients = allIngredients.filter((ing: Ingredient) =>
           this.normalizeText(ing.ten_nguyen_lieu || "").includes(normalizedTerm)
         );
+        foundIngredients.push(...matchedIngredients);
+      }
 
-        if (matchedIngredients.length > 0) {
-          foundSomething = true;
-          content += `**Nguyên liệu tìm thấy:**\n`;
-          matchedIngredients.forEach((ing: Ingredient) => {
-            content += `• ${ing.ten_nguyen_lieu}`;
+      // Build natural response
+      let content = "";
+      const suggestions: string[] = [];
 
-            const qty = Number(ing.ton_kho_so_luong || 0);
-            const wgt = Number(ing.ton_kho_khoi_luong || 0);
-
-            if (qty > 0) {
-              content += ` - Tồn kho: ${qty} (số lượng)`;
-            } else if (wgt > 0) {
-              content += ` - Tồn kho: ${wgt}kg`;
-            } else {
-              content += ` - ❌ Hết hàng`;
-            }
+      if (foundDishes.length > 0) {
+        if (foundDishes.length === 1) {
+          content = `Có nha, mình có món ${foundDishes[0].ten_mon_an}`;
+          if (foundDishes[0].loai_mon_an) {
+            content += ` (${foundDishes[0].loai_mon_an})`;
+          }
+          content += " trong danh sách đây.";
+          suggestions.push(`Thêm ${foundDishes[0].ten_mon_an} vào menu`);
+        } else {
+          content = `Mình tìm thấy ${foundDishes.length} món:\n`;
+          foundDishes.slice(0, 5).forEach((dish) => {
+            content += `- ${dish.ten_mon_an}`;
+            if (dish.loai_mon_an) content += ` (${dish.loai_mon_an})`;
             content += `\n`;
           });
-          content += `\n`;
         }
       }
 
-      if (!foundSomething) {
-        content += `Không tìm thấy món ăn hoặc nguyên liệu nào phù hợp với: **${searchTerms.join(", ")}**\n\n`;
-        content += `**Gợi ý:**\n`;
-        content += `• Kiểm tra lại tên món ăn hoặc nguyên liệu\n`;
-        content += `• Xem danh sách tất cả món ăn tại trang Recipes\n`;
-        content += `• Xem danh sách nguyên liệu tại trang Storage`;
+      if (foundIngredients.length > 0) {
+        if (content) content += "\n";
 
+        foundIngredients.forEach((ing: Ingredient) => {
+          const qty = Number(ing.ton_kho_so_luong || 0);
+          const wgt = Number(ing.ton_kho_khoi_luong || 0);
+
+          if (foundIngredients.length === 1) {
+            content += `Nguyên liệu ${ing.ten_nguyen_lieu} `;
+            if (qty > 0) {
+              content += `còn ${qty} (số lượng) nha.`;
+            } else if (wgt > 0) {
+              content += `còn ${wgt}kg nha.`;
+            } else {
+              content += `đang hết rồi bạn ơi.`;
+            }
+          } else {
+            content += `- ${ing.ten_nguyen_lieu}: `;
+            if (qty > 0) {
+              content += `${qty} (số lượng)`;
+            } else if (wgt > 0) {
+              content += `${wgt}kg`;
+            } else {
+              content += `hết`;
+            }
+            content += `\n`;
+          }
+        });
+      }
+
+      if (!foundDishes.length && !foundIngredients.length) {
+        content = `Hmm, mình không tìm thấy "${searchTerms.join(", ")}" trong kho. Bạn có thể kiểm tra lại tên không? Hoặc có thể món/nguyên liệu đó chưa được thêm vào hệ thống.`;
         suggestions.push("Xem tất cả món ăn", "Xem tất cả nguyên liệu");
-      } else {
-        content += `**💡 Bạn có thể:**\n`;
-        content += `• Thêm món vào thực đơn\n`;
-        content += `• Xem công thức chi tiết\n`;
-        content += `• Cập nhật tồn kho nguyên liệu`;
       }
 
       return {
@@ -2447,62 +2682,109 @@ export class AIService {
     normalizedMessage: string,
     originalMessage: string
   ): string[] {
-    // Remove common check keywords
+    // Special case: if asking about quantity of all items
+    if (
+      normalizedMessage.includes("bao nhieu mon") ||
+      normalizedMessage.includes("bao nhieu nguyen lieu") ||
+      normalizedMessage.includes("co bao nhieu") ||
+      normalizedMessage.includes("tat ca")
+    ) {
+      // Return empty to trigger showing all items message
+      return [];
+    }
+
+    // Remove common check keywords but keep important nouns
     let cleaned = normalizedMessage;
     const removePatterns = [
+      "kiem tra xem",
       "kiem tra",
+      "xem xem",
       "xem",
-      "co",
+      "trong kho co",
       "trong kho",
-      "kho",
       "con khong",
       "het chua",
       "con bao nhieu",
+      "bao nhieu",
       "ton kho",
       "co san",
       "con ton",
-      "mon",
-      "nguyen lieu",
+      "co khong",
+      "co ",
       "khong",
       "hay",
+      "nao",
+      "gi",
     ];
 
+    // Remove patterns one by one
     removePatterns.forEach((pattern) => {
-      cleaned = cleaned.replace(new RegExp(`\\b${pattern}\\b`, "g"), " ");
+      cleaned = cleaned.replace(new RegExp(pattern, "g"), " ");
     });
 
     // Clean up extra spaces
     cleaned = cleaned.replace(/\s+/g, " ").trim();
 
-    // If nothing left, try to extract from original message
-    if (!cleaned || cleaned.length < 2) {
-      // Try to find quoted terms or capitalized words
-      const quoted = originalMessage.match(/"([^"]+)"|'([^']+)'/g);
-      if (quoted) {
-        return quoted.map((q) => q.replace(/["']/g, "").trim());
-      }
-
-      // Extract words longer than 2 characters
-      const words = originalMessage
+    // If we still have meaningful words, use them
+    if (cleaned && cleaned.length >= 2) {
+      // Remove single letters and common words
+      const words = cleaned
         .split(/\s+/)
-        .filter((word) => word.length > 2)
-        .filter(
-          (word) =>
-            !removePatterns.some((pattern) =>
-              this.normalizeText(word).includes(pattern)
-            )
-        );
+        .filter((word) => word.length > 1)
+        .filter((word) => !["an", "o", "i", "a", "va", "hoac"].includes(word));
 
-      return words.slice(0, 3);
+      if (words.length > 0) {
+        return words.slice(0, 3);
+      }
     }
 
-    // Split by common separators
-    const terms = cleaned
-      .split(/[,;]/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 1);
+    // If nothing meaningful left, try to extract nouns from original message
+    const originalNormalized = this.normalizeText(originalMessage);
 
-    return terms.slice(0, 3); // Limit to 3 terms
+    // Look for specific patterns like "món X", "nguyên liệu Y"
+    const dishPattern =
+      /mon\s+([a-z\s]{2,}?)(?:\s+(?:khong|het|con|co|nao|gi|trong)|$)/;
+    const ingredientPattern =
+      /nguyen\s*lieu\s+([a-z\s]{2,}?)(?:\s+(?:khong|het|con|co|nao|gi|trong)|$)/;
+
+    const dishMatch = originalNormalized.match(dishPattern);
+    if (dishMatch && dishMatch[1]) {
+      return [dishMatch[1].trim()];
+    }
+
+    const ingredientMatch = originalNormalized.match(ingredientPattern);
+    if (ingredientMatch && ingredientMatch[1]) {
+      return [ingredientMatch[1].trim()];
+    }
+
+    // Last resort: extract all words longer than 3 chars that aren't common words
+    const stopwords = new Set([
+      "kiem",
+      "tra",
+      "xem",
+      "trong",
+      "kho",
+      "con",
+      "het",
+      "bao",
+      "nhieu",
+      "khong",
+      "mon",
+      "nguyen",
+      "lieu",
+      "san",
+      "ton",
+      "chua",
+      "nao",
+      "nay",
+    ]);
+
+    const meaningfulWords = originalNormalized
+      .split(/\s+/)
+      .filter((word) => word.length > 3 && !stopwords.has(word))
+      .slice(0, 3);
+
+    return meaningfulWords;
   }
 
   private async handleRemoveDishIntent(
