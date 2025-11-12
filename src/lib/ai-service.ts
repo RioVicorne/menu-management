@@ -105,6 +105,23 @@ type MenuIntent =
       servings?: number;
       normalizedMessage: string;
       originalMessage: string;
+    }
+  | {
+      type: "random-add";
+      isoDate: string;
+      friendlyLabel: string;
+      inferredDate: boolean;
+      servings?: number;
+      normalizedMessage: string;
+      originalMessage: string;
+    }
+  | {
+      type: "random-remove";
+      isoDate: string;
+      friendlyLabel: string;
+      inferredDate: boolean;
+      normalizedMessage: string;
+      originalMessage: string;
     };
 
 type DateMatch = { isoDate: string; friendlyLabel: string };
@@ -1042,8 +1059,23 @@ export class AIService {
             "Xin lỗi, tôi chỉ hỗ trợ các thao tác liên quan đến thực đơn như kiểm tra, cập nhật, gợi ý món, tạo menu hoặc tính khẩu phần.",
         };
       }
+
+      // Check inventory intent
+      if (this.hasCheckInventoryIntent(normalizedMessage)) {
+        return await this.handleCheckInventoryIntent(
+          normalizedMessage,
+          message
+        );
+      }
+
       if (menuIntent?.type === "random-menu") {
         return await this.getRandomMenuResponse(menuIntent);
+      }
+      if (menuIntent?.type === "random-add") {
+        return await this.handleRandomAddDishIntent(menuIntent);
+      }
+      if (menuIntent?.type === "random-remove") {
+        return await this.handleRandomRemoveDishIntent(menuIntent);
       }
       if (menuIntent?.type === "remove-dish") {
         return await this.handleRemoveDishIntent(menuIntent);
@@ -1173,6 +1205,21 @@ export class AIService {
     this.lastInteraction = interaction;
   }
 
+  private hasRandomKeyword(normalizedMessage: string): boolean {
+    const randomKeywords = [
+      "ngau nhien",
+      "random",
+      "bat ky",
+      "tu chon",
+      "tu dong",
+      "ngau ung",
+      "bat ki",
+    ];
+    return randomKeywords.some((keyword) =>
+      normalizedMessage.includes(keyword)
+    );
+  }
+
   private hasAddIntent(normalizedMessage: string): boolean {
     if (!normalizedMessage) return false;
 
@@ -1272,7 +1319,41 @@ export class AIService {
   ): MenuIntent | null {
     if (!normalizedMessage) return null;
 
+    const hasRandom = this.hasRandomKeyword(normalizedMessage);
     const removeIntent = this.hasRemoveIntent(normalizedMessage);
+    const addIntent = this.hasAddIntent(normalizedMessage);
+
+    // Case 1: "thêm món ngẫu nhiên" hoặc "xóa món ngẫu nhiên"
+    if (hasRandom && (removeIntent || addIntent)) {
+      const dateMatch =
+        this.parseDateMatch(normalizedMessage, { allowLoose: true }) ?? null;
+
+      if (removeIntent) {
+        // "xóa món ngẫu nhiên" -> random-remove
+        return {
+          type: "random-remove",
+          isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
+          friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
+          inferredDate: !dateMatch,
+          normalizedMessage,
+          originalMessage,
+        };
+      } else {
+        // "thêm món ngẫu nhiên" -> random-add
+        const servings = this.extractServings(normalizedMessage);
+        return {
+          type: "random-add",
+          isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
+          friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
+          inferredDate: !dateMatch,
+          servings: servings ?? undefined,
+          normalizedMessage,
+          originalMessage,
+        };
+      }
+    }
+
+    // Case 2: Remove specific dish
     if (removeIntent) {
       const dateMatch =
         this.parseDateMatch(normalizedMessage, { allowLoose: true }) ?? null;
@@ -1286,7 +1367,7 @@ export class AIService {
       };
     }
 
-    const addIntent = this.hasAddIntent(normalizedMessage);
+    // Case 3: Add specific dish
     if (addIntent) {
       const dateMatch =
         this.parseDateMatch(normalizedMessage, { allowLoose: true }) ?? null;
@@ -1327,17 +1408,8 @@ export class AIService {
       return null;
     }
 
-    const randomMenuKeywords = [
-      "ngau nhien",
-      "random",
-      "bat ky",
-      "tu chon",
-      "tu dong",
-      "ngau ung",
-    ];
-    if (
-      randomMenuKeywords.some((keyword) => normalizedMessage.includes(keyword))
-    ) {
+    // Case 4: Random menu (tạo menu ngẫu nhiên)
+    if (hasRandom) {
       const servingInfo = this.parseServingInfo(normalizedMessage);
       return {
         type: "random-menu",
@@ -1795,12 +1867,35 @@ export class AIService {
       .filter(Boolean);
   }
 
+  private hasCheckInventoryIntent(normalizedMessage: string): boolean {
+    if (!normalizedMessage) return false;
+
+    const checkPatterns = [
+      "kiem tra kho",
+      "xem kho",
+      "ton kho",
+      "co trong kho",
+      "co san",
+      "con khong",
+      "het chua",
+      "con bao nhieu",
+      "con ton",
+      "co mon",
+      "co nguyen lieu",
+      "kiem tra nguyen lieu",
+      "xem nguyen lieu",
+    ];
+
+    return checkPatterns.some((pattern) => normalizedMessage.includes(pattern));
+  }
+
   private isMenuRelatedMessage(
     normalizedMessage: string,
     menuIntent: MenuIntent | null
   ): boolean {
     if (menuIntent) return true;
     if (this.isFollowUpRequest(normalizedMessage)) return true;
+    if (this.hasCheckInventoryIntent(normalizedMessage)) return true;
     if (!normalizedMessage) return false;
 
     const coreKeywords = [
@@ -1836,6 +1931,8 @@ export class AIService {
       "xem thuc don",
       "kiem tra menu",
       "xem menu",
+      "kho",
+      "ton kho",
     ];
 
     const mentionsCalorie =
@@ -2038,6 +2135,374 @@ export class AIService {
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
+  }
+
+  private async handleRandomAddDishIntent(
+    intent: Extract<MenuIntent, { type: "random-add" }>
+  ): Promise<AIResponse> {
+    try {
+      const [dishesData, existingMenu] = await Promise.all([
+        this.getDishesData(),
+        getMenuItems(intent.isoDate),
+      ]);
+
+      const allDishes = (dishesData?.allDishes ?? []) as Dish[];
+      if (!allDishes || allDishes.length === 0) {
+        return {
+          content:
+            "Hiện chưa có món ăn nào trong cơ sở dữ liệu. Vui lòng thêm món vào hệ thống trước.",
+        };
+      }
+
+      const existingDishIds = new Set(
+        (existingMenu || []).map((item) => String(item.ma_mon_an))
+      );
+
+      // Filter available dishes (not already in menu)
+      const availableDishes = allDishes.filter(
+        (dish) => !existingDishIds.has(String(dish.id))
+      );
+
+      if (availableDishes.length === 0) {
+        return {
+          content: `Tất cả các món đã có trong thực đơn ${intent.friendlyLabel} (${this.formatVietnamDate(
+            intent.isoDate
+          )}). Không có món nào để thêm ngẫu nhiên.`,
+        };
+      }
+
+      // Pick a random dish
+      const randomDish =
+        availableDishes[Math.floor(Math.random() * availableDishes.length)];
+      const servings =
+        intent.servings && intent.servings > 0
+          ? Math.max(1, Math.round(intent.servings))
+          : 1;
+
+      try {
+        await addDishToMenu(String(randomDish.id), intent.isoDate, servings);
+
+        let content = `🎲 **Đã thêm món ngẫu nhiên vào ${intent.friendlyLabel} (${this.formatVietnamDate(
+          intent.isoDate
+        )})**\n\n`;
+
+        if (intent.inferredDate) {
+          content +=
+            "• Bạn không chỉ định ngày cụ thể nên mình mặc định sử dụng ngày hôm nay.\n\n";
+        }
+
+        content += `**Món được chọn:**\n`;
+        content += `• ${randomDish.ten_mon_an}`;
+        if (randomDish.loai_mon_an) {
+          content += ` (${randomDish.loai_mon_an})`;
+        }
+        content += `\n• Khẩu phần: ${servings}\n\n`;
+
+        content += `Món này được chọn ngẫu nhiên từ ${availableDishes.length} món có sẵn.\n\n`;
+        content += "Bạn có muốn thêm món ngẫu nhiên khác không?";
+
+        const suggestions = [
+          `Xem món ${randomDish.ten_mon_an}`,
+          "Thêm món ngẫu nhiên khác",
+          "Xem thực đơn hôm nay",
+        ];
+
+        this.setLastInteraction({
+          type: "edit-date",
+          isoDate: intent.isoDate,
+          friendlyLabel: intent.friendlyLabel,
+          action: "add",
+          timestamp: Date.now(),
+        });
+
+        return {
+          content,
+          suggestions,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Không rõ nguyên nhân";
+        return {
+          content: `Không thể thêm món ${randomDish.ten_mon_an} vào thực đơn ${
+            intent.friendlyLabel
+          } (${this.formatVietnamDate(intent.isoDate)}):\n${message}`,
+        };
+      }
+    } catch (error) {
+      logger.error("Error handling random-add intent:", error);
+      return {
+        content:
+          "Không thể thêm món ngẫu nhiên ngay lúc này. Vui lòng thử lại sau.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  private async handleRandomRemoveDishIntent(
+    intent: Extract<MenuIntent, { type: "random-remove" }>
+  ): Promise<AIResponse> {
+    try {
+      const menuItems = await getMenuItems(intent.isoDate);
+
+      if (!menuItems || menuItems.length === 0) {
+        return {
+          content: `Thực đơn ${intent.friendlyLabel} (${this.formatVietnamDate(
+            intent.isoDate
+          )}) hiện không có món nào để xóa.`,
+        };
+      }
+
+      // Pick a random menu item
+      const randomItem =
+        menuItems[Math.floor(Math.random() * menuItems.length)];
+      const dishName = (randomItem.ten_mon_an || "").trim() || "Món không tên";
+
+      try {
+        await deleteMenuItem(String(randomItem.id));
+
+        let content = `🎲 **Đã xóa món ngẫu nhiên khỏi ${intent.friendlyLabel} (${this.formatVietnamDate(
+          intent.isoDate
+        )})**\n\n`;
+
+        if (intent.inferredDate) {
+          content +=
+            "• Bạn không chỉ định ngày cụ thể nên mình mặc định sử dụng ngày hôm nay.\n\n";
+        }
+
+        content += `**Món đã xóa:**\n`;
+        content += `• ${dishName}\n\n`;
+
+        content += `Món này được chọn ngẫu nhiên từ ${menuItems.length} món trong thực đơn.\n\n`;
+
+        const remainingMenu = await getMenuItems(intent.isoDate);
+        const remainingNames = Array.from(
+          new Set(
+            (remainingMenu || [])
+              .map((item) => (item.ten_mon_an || "").trim())
+              .filter(Boolean)
+          )
+        );
+
+        if (remainingNames.length > 0) {
+          content += `**Thực đơn còn lại:**\n${remainingNames
+            .map((name, index) => `${index + 1}. ${name}`)
+            .join("\n")}\n\n`;
+        } else {
+          content += "Hiện thực đơn không còn món nào.\n\n";
+        }
+
+        content += "Bạn có muốn xóa món ngẫu nhiên khác không?";
+
+        const suggestions = [
+          ...remainingNames.slice(0, 3).map((name) => `Xem món ${name}`),
+          "Xóa món ngẫu nhiên khác",
+          "Xem thực đơn hôm nay",
+        ];
+
+        this.setLastInteraction({
+          type: "edit-date",
+          isoDate: intent.isoDate,
+          friendlyLabel: intent.friendlyLabel,
+          action: "remove",
+          timestamp: Date.now(),
+        });
+
+        return {
+          content,
+          suggestions: suggestions.slice(0, 5),
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Không rõ nguyên nhân";
+        return {
+          content: `Không thể xóa món ${dishName} khỏi thực đơn ${
+            intent.friendlyLabel
+          } (${this.formatVietnamDate(intent.isoDate)}):\n${message}`,
+        };
+      }
+    } catch (error) {
+      logger.error("Error handling random-remove intent:", error);
+      return {
+        content:
+          "Không thể xóa món ngẫu nhiên ngay lúc này. Vui lòng thử lại sau.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  private async handleCheckInventoryIntent(
+    normalizedMessage: string,
+    originalMessage: string
+  ): Promise<AIResponse> {
+    try {
+      // Extract what user is looking for (dish name or ingredient name)
+      const searchTerms = this.extractSearchTerms(
+        normalizedMessage,
+        originalMessage
+      );
+
+      if (!searchTerms || searchTerms.length === 0) {
+        return {
+          content:
+            "Bạn muốn kiểm tra món ăn hay nguyên liệu nào? Vui lòng nói rõ hơn, ví dụ:\n• Kiểm tra món bò kho có trong kho không\n• Xem nguyên liệu cà chua còn bao nhiêu\n• Có món gà rán không",
+        };
+      }
+
+      // Try to find in dishes first
+      const dishesData = await this.getDishesData();
+      const allDishes = (dishesData?.allDishes ?? []) as Dish[];
+
+      // Try to find in ingredients
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const ingredientsResponse = await fetch(
+        `${baseUrl}/api/ai-data?type=ingredients`
+      );
+      const ingredientsData = await ingredientsResponse.json();
+      const allIngredients = ingredientsData?.allIngredients ?? [];
+
+      let content = "🔍 **Kết quả kiểm tra kho:**\n\n";
+      let foundSomething = false;
+      const suggestions: string[] = [];
+
+      for (const term of searchTerms) {
+        const normalizedTerm = this.normalizeText(term);
+
+        // Check dishes
+        const matchedDishes = allDishes.filter((dish) =>
+          this.normalizeText(dish.ten_mon_an || "").includes(normalizedTerm)
+        );
+
+        if (matchedDishes.length > 0) {
+          foundSomething = true;
+          content += `**Món ăn tìm thấy:**\n`;
+          matchedDishes.forEach((dish) => {
+            content += `• ${dish.ten_mon_an}`;
+            if (dish.loai_mon_an) {
+              content += ` (${dish.loai_mon_an})`;
+            }
+            content += `\n`;
+            suggestions.push(`Xem công thức ${dish.ten_mon_an}`);
+          });
+          content += `\n`;
+        }
+
+        // Check ingredients
+        const matchedIngredients = allIngredients.filter((ing: Ingredient) =>
+          this.normalizeText(ing.ten_nguyen_lieu || "").includes(normalizedTerm)
+        );
+
+        if (matchedIngredients.length > 0) {
+          foundSomething = true;
+          content += `**Nguyên liệu tìm thấy:**\n`;
+          matchedIngredients.forEach((ing: Ingredient) => {
+            content += `• ${ing.ten_nguyen_lieu}`;
+
+            const qty = Number(ing.ton_kho_so_luong || 0);
+            const wgt = Number(ing.ton_kho_khoi_luong || 0);
+
+            if (qty > 0) {
+              content += ` - Tồn kho: ${qty} (số lượng)`;
+            } else if (wgt > 0) {
+              content += ` - Tồn kho: ${wgt}kg`;
+            } else {
+              content += ` - ❌ Hết hàng`;
+            }
+            content += `\n`;
+          });
+          content += `\n`;
+        }
+      }
+
+      if (!foundSomething) {
+        content += `Không tìm thấy món ăn hoặc nguyên liệu nào phù hợp với: **${searchTerms.join(", ")}**\n\n`;
+        content += `**Gợi ý:**\n`;
+        content += `• Kiểm tra lại tên món ăn hoặc nguyên liệu\n`;
+        content += `• Xem danh sách tất cả món ăn tại trang Recipes\n`;
+        content += `• Xem danh sách nguyên liệu tại trang Storage`;
+
+        suggestions.push("Xem tất cả món ăn", "Xem tất cả nguyên liệu");
+      } else {
+        content += `**💡 Bạn có thể:**\n`;
+        content += `• Thêm món vào thực đơn\n`;
+        content += `• Xem công thức chi tiết\n`;
+        content += `• Cập nhật tồn kho nguyên liệu`;
+      }
+
+      return {
+        content,
+        suggestions: suggestions.slice(0, 5),
+      };
+    } catch (error) {
+      logger.error("Error checking inventory:", error);
+      return {
+        content:
+          "Không thể kiểm tra kho ngay lúc này. Vui lòng thử lại sau hoặc kiểm tra trực tiếp tại trang Storage.",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  private extractSearchTerms(
+    normalizedMessage: string,
+    originalMessage: string
+  ): string[] {
+    // Remove common check keywords
+    let cleaned = normalizedMessage;
+    const removePatterns = [
+      "kiem tra",
+      "xem",
+      "co",
+      "trong kho",
+      "kho",
+      "con khong",
+      "het chua",
+      "con bao nhieu",
+      "ton kho",
+      "co san",
+      "con ton",
+      "mon",
+      "nguyen lieu",
+      "khong",
+      "hay",
+    ];
+
+    removePatterns.forEach((pattern) => {
+      cleaned = cleaned.replace(new RegExp(`\\b${pattern}\\b`, "g"), " ");
+    });
+
+    // Clean up extra spaces
+    cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+    // If nothing left, try to extract from original message
+    if (!cleaned || cleaned.length < 2) {
+      // Try to find quoted terms or capitalized words
+      const quoted = originalMessage.match(/"([^"]+)"|'([^']+)'/g);
+      if (quoted) {
+        return quoted.map((q) => q.replace(/["']/g, "").trim());
+      }
+
+      // Extract words longer than 2 characters
+      const words = originalMessage
+        .split(/\s+/)
+        .filter((word) => word.length > 2)
+        .filter(
+          (word) =>
+            !removePatterns.some((pattern) =>
+              this.normalizeText(word).includes(pattern)
+            )
+        );
+
+      return words.slice(0, 3);
+    }
+
+    // Split by common separators
+    const terms = cleaned
+      .split(/[,;]/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 1);
+
+    return terms.slice(0, 3); // Limit to 3 terms
   }
 
   private async handleRemoveDishIntent(

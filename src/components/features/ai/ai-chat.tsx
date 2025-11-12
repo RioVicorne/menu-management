@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, UserCircle, LogOut, Settings, User } from "lucide-react";
+import { Bot, UserCircle, LogOut, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
@@ -484,6 +484,31 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     // In a real app, you would send this feedback to your backend
   };
 
+  const handleClearChatHistory = () => {
+    setShowProfileMenu(false);
+    
+    // Clear all sessions and messages from localStorage
+    try {
+      if (typeof window !== "undefined") {
+        const keys = Object.keys(window.localStorage);
+        keys.forEach(key => {
+          if (key.startsWith("planner.messages.") || key === "planner.sessions" || key === "planner.currentSessionId") {
+            window.localStorage.removeItem(key);
+          }
+        });
+      }
+      
+      // Reset state
+      setSessions([]);
+      setCurrentSessionId(null);
+      setMessages([createWelcomeMessage()]);
+      
+      logger.info('Chat history cleared successfully');
+    } catch (error) {
+      logger.error('Failed to clear chat history', error);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       setShowProfileMenu(false);
@@ -563,14 +588,11 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
                 </button>
                 
                 <button
-                  onClick={() => {
-                    setShowProfileMenu(false);
-                    // Navigate to settings page
-                  }}
+                  onClick={handleClearChatHistory}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3"
                 >
-                  <Settings className="w-4 h-4" />
-                  <span>Cài đặt</span>
+                  <Trash2 className="w-4 h-4" />
+                  <span>Xóa lịch sử chat</span>
                 </button>
 
                 <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
