@@ -14,6 +14,12 @@ export interface ChatMessage {
     suggestions?: string[];
     error?: string;
   };
+  actionButtons?: {
+    label: string;
+    action: string;
+    variant?: 'primary' | 'secondary' | 'danger';
+  }[];
+  showActions?: boolean; // Flag to control visibility
 }
 
 export interface ChatSession {

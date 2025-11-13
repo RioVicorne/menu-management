@@ -7,7 +7,11 @@ import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
 import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
-import type { ChatMessage as Message, ChatSession, ChatDataSource } from "@/types/chat";
+import type {
+  ChatMessage as Message,
+  ChatSession,
+  ChatDataSource,
+} from "@/types/chat";
 import {
   loadSessions as loadStoredSessions,
   loadMessages as loadStoredMessages,
@@ -29,8 +33,7 @@ const CURRENT_SESSION_KEY = "planner.currentSessionId";
 
 const createWelcomeMessage = (): Message => ({
   id: "welcome",
-  text:
-    "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
+  text: "Xin chào! Tôi là AI Assistant chuyên về quản lý menu và lập kế hoạch bữa ăn. Tôi có thể giúp bạn:\n\n• Gợi ý món ăn từ nguyên liệu có sẵn\n• Lập kế hoạch bữa ăn cho cả tuần\n• Tạo danh sách mua sắm thông minh\n• Tạo công thức nấu ăn chi tiết\n\nBạn muốn tôi giúp gì hôm nay?",
   sender: "bot",
   timestamp: new Date(),
   type: "text",
@@ -68,15 +71,18 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
           logger.warn("Supabase client not available");
           return;
         }
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           setUserEmail(user.email || "");
           // Try to get username from user metadata or extract from email
-          const displayName = user.user_metadata?.username || 
-                             user.user_metadata?.display_name || 
-                             user.user_metadata?.full_name ||
-                             user.email?.split('@')[0].replace(/\.(test|local)$/, "") ||
-                             "Người dùng";
+          const displayName =
+            user.user_metadata?.username ||
+            user.user_metadata?.display_name ||
+            user.user_metadata?.full_name ||
+            user.email?.split("@")[0].replace(/\.(test|local)$/, "") ||
+            "Người dùng";
           setUsername(displayName);
         }
       } catch (error) {
@@ -90,17 +96,20 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   // Handle click outside profile menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
         setShowProfileMenu(false);
       }
     };
 
     if (showProfileMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showProfileMenu]);
 
@@ -116,7 +125,9 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         setSyncSource(source);
         if (error) {
           logger.warn("Falling back to local chat sessions", error);
-          setSyncError("Không thể đồng bộ lịch sử chat với máy chủ. Đang dùng dữ liệu lưu trên máy này.");
+          setSyncError(
+            "Không thể đồng bộ lịch sử chat với máy chủ. Đang dùng dữ liệu lưu trên máy này."
+          );
         } else {
           setSyncError(null);
         }
@@ -126,13 +137,17 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
           let initialSessionId: string | null = null;
           try {
             if (typeof window !== "undefined") {
-              initialSessionId = window.localStorage.getItem(CURRENT_SESSION_KEY);
+              initialSessionId =
+                window.localStorage.getItem(CURRENT_SESSION_KEY);
             }
           } catch (storageError) {
             logger.warn("Failed to restore last chat session", storageError);
           }
 
-          if (initialSessionId && data.some((session) => session.id === initialSessionId)) {
+          if (
+            initialSessionId &&
+            data.some((session) => session.id === initialSessionId)
+          ) {
             setCurrentSessionId(initialSessionId);
           } else {
             setCurrentSessionId(data[0].id);
@@ -197,28 +212,31 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     const loadMessages = async () => {
       setHydratingMessages(true);
       try {
-        const { data, source, error } = await loadStoredMessages(currentSessionId);
+        const { data, source, error } =
+          await loadStoredMessages(currentSessionId);
         if (cancelled) return;
 
         logger.info(`Loading messages for session ${currentSessionId}:`, {
           totalMessages: data.length,
           source,
-          hasError: !!error
+          hasError: !!error,
         });
 
         setSyncSource(source);
         if (error) {
           logger.warn("Falling back to local chat messages", error);
-          setSyncError("Không thể đồng bộ tin nhắn với máy chủ. Đang dùng dữ liệu lưu trên máy này.");
+          setSyncError(
+            "Không thể đồng bộ tin nhắn với máy chủ. Đang dùng dữ liệu lưu trên máy này."
+          );
         } else {
           setSyncError(null);
         }
 
         // Filter out welcome messages if there are real messages
-        const realMessages = data.filter(msg => msg.id !== 'welcome');
-        
+        const realMessages = data.filter((msg) => msg.id !== "welcome");
+
         logger.info(`Real messages count: ${realMessages.length}`);
-        
+
         if (realMessages.length > 0) {
           setMessages(realMessages);
         } else if (data.length > 0) {
@@ -250,25 +268,24 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   // Persist messages when they change
   useEffect(() => {
     if (initializing || !currentSessionId || hydratingMessages) return;
-    
+
     // Only persist if there are real messages (not just welcome message)
-    const realMessages = messages.filter(msg => msg.id !== 'welcome');
+    const realMessages = messages.filter((msg) => msg.id !== "welcome");
     if (realMessages.length > 0) {
       persistMessages(currentSessionId, realMessages);
     }
   }, [messages, currentSessionId, initializing, hydratingMessages]);
 
-
   const createNewSession = () => {
     const newSession: ChatSession = {
       id: Date.now().toString(),
-      title: 'Cuộc trò chuyện mới',
+      title: "Cuộc trò chuyện mới",
       timestamp: new Date(),
       messageCount: 0,
-      lastMessage: ''
+      lastMessage: "",
     };
-    
-    setSessions(prev => [newSession, ...prev]);
+
+    setSessions((prev) => [newSession, ...prev]);
     setCurrentSessionId(newSession.id);
     setMessages([createWelcomeMessage()]);
   };
@@ -278,8 +295,8 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   const deleteSession = (sessionId: string) => {
-    setSessions(prev => {
-      const updated = prev.filter(s => s.id !== sessionId);
+    setSessions((prev) => {
+      const updated = prev.filter((s) => s.id !== sessionId);
       if (currentSessionId === sessionId) {
         if (updated.length > 0) {
           setCurrentSessionId(updated[0].id);
@@ -295,25 +312,131 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   const renameSession = (sessionId: string, newTitle: string) => {
-    setSessions(prev => prev.map(s => 
-      s.id === sessionId ? { ...s, title: newTitle } : s
-    ));
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, title: newTitle } : s))
+    );
+  };
+
+  // Detect if action buttons should be shown based on user message and AI response
+  const detectActionButtons = (userMessage: string, aiResponse: string) => {
+    const normalizedMsg = userMessage
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    // Clean response: remove markdown, emojis, special chars
+    const cleanResponse = aiResponse
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D")
+      .replace(/[*_~`#]/g, "") // Remove markdown
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, "") // Remove emojis
+      .replace(/✨|🎲|•/g, "") // Remove specific symbols
+      .toLowerCase()
+      .trim();
+
+    // Normalize multiple spaces to single space for better matching
+    const normalizedResponse = cleanResponse.replace(/\s+/g, " ");
+
+    const buttons: Message["actionButtons"] = [];
+
+    // Check for add intent - show buttons AFTER action is done
+    const addKeywords = ["them", "add"];
+    const hasAdd = addKeywords.some((keyword) =>
+      normalizedMsg.includes(keyword)
+    );
+
+    // Check for remove intent - show buttons AFTER action is done
+    const removeKeywords = ["xoa", "remove", "delete"];
+    const hasRemove = removeKeywords.some((keyword) =>
+      normalizedMsg.includes(keyword)
+    );
+    
+    const responseContains = (str: string) => normalizedResponse.includes(str);
+
+    const hasSuccess =
+      // For add actions
+      (hasAdd &&
+        (responseContains("da them") ||
+          responseContains("da chon") ||
+          responseContains("minh da chon") ||
+          responseContains("minh da them"))) ||
+      // For remove actions
+      (hasRemove &&
+        (responseContains("da xoa") || responseContains("minh da xoa"))) ||
+      // Generic success
+      responseContains("thanh cong") ||
+      responseContains("hoan thanh");
+
+    console.log("Detection:", {
+      hasAdd,
+      hasRemove,
+      hasSuccess,
+      normalizedResponse: normalizedResponse.substring(0, 150),
+      // Debug: check each part
+      debug: {
+        'has "da chon"': responseContains("da chon"),
+        'has "minh da chon"': responseContains("minh da chon"),
+        'has "da them"': responseContains("da them"),
+        "index da chon": normalizedResponse.indexOf("da chon"),
+        "index minh da chon": normalizedResponse.indexOf("minh da chon"),
+        first50chars: normalizedResponse.substring(0, 50).split(""),
+        first50charCodes: normalizedResponse
+          .substring(0, 50)
+          .split("")
+          .map((char) => char.charCodeAt(0)),
+      },
+    });
+
+    if (hasSuccess && hasAdd) {
+      buttons.push(
+        { label: "Thêm món khác", action: "add-more", variant: "primary" },
+        { label: "Không, cảm ơn", action: "cancel", variant: "secondary" }
+      );
+    } else if (hasSuccess && hasRemove) {
+      buttons.push(
+        { label: "Xóa món khác", action: "remove-more", variant: "danger" },
+        { label: "Không, cảm ơn", action: "cancel", variant: "secondary" }
+      );
+    }
+
+    return buttons;
+  };
+
+  // Handle action button click
+  const handleActionClick = (messageId: string, action: string) => {
+    // Hide the action buttons for this message
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, showActions: false } : msg
+      )
+    );
+
+    // Execute action based on type
+    if (action === "add-more") {
+      handleSendMessage("thêm món ngẫu nhiên vào hôm nay");
+    } else if (action === "remove-more") {
+      handleSendMessage("xóa món ngẫu nhiên hôm nay");
+    }
+    // 'cancel' action just hides the buttons, no further action needed
   };
 
   const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim() || initializing) return;
-    
+
     // Ensure a session exists before sending message
     let sessionId = currentSessionId;
     if (!sessionId) {
       const newSession: ChatSession = {
         id: Date.now().toString(),
-        title: 'Cuộc trò chuyện mới',
+        title: "Cuộc trò chuyện mới",
         timestamp: new Date(),
         messageCount: 0,
-        lastMessage: ''
+        lastMessage: "",
       };
-      setSessions(prev => [newSession, ...prev]);
+      setSessions((prev) => [newSession, ...prev]);
       setCurrentSessionId(newSession.id);
       sessionId = newSession.id;
       setMessages([createWelcomeMessage()]);
@@ -322,65 +445,78 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     const userMessage: Message = {
       id: Date.now().toString(),
       text: messageText,
-      sender: 'user',
+      sender: "user",
       timestamp: new Date(),
-      type: 'text'
+      type: "text",
     };
 
     // Add user message immediately
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/ai', {
-        method: 'POST',
+      const response = await fetch("/api/ai", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          type: 'chat',
+          type: "chat",
           data: {
             message: messageText,
-            context: context || {}
-          }
+            context: context || {},
+          },
         }),
       });
 
       const data = await response.json();
-      
+
+      // Detect if we need action buttons based on AI response
+      const actionButtons = detectActionButtons(messageText, data.content);
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: data.content || 'Xin lỗi, tôi không thể trả lời lúc này.',
-        sender: 'bot',
+        text: data.content || "Xin lỗi, tôi không thể trả lời lúc này.",
+        sender: "bot",
         timestamp: new Date(),
-        type: 'text'
+        type: "text",
+        actionButtons,
+        showActions: actionButtons.length > 0,
       };
 
-      setMessages(prev => [...prev, botMessage]);
-      
+      setMessages((prev) => [...prev, botMessage]);
+
       // Update session
       if (sessionId) {
-        setSessions(prev => prev.map(s => 
-          s.id === sessionId 
-            ? { 
-                ...s, 
-                messageCount: s.messageCount + 2,
-                lastMessage: messageText.length > 50 ? `${messageText.substring(0, 50)}...` : messageText,
-                title: s.title === 'Cuộc trò chuyện mới' ? `${messageText.substring(0, 30)}...` : s.title
-              }
-            : s
-        ));
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messageCount: s.messageCount + 2,
+                  lastMessage:
+                    messageText.length > 50
+                      ? `${messageText.substring(0, 50)}...`
+                      : messageText,
+                  title:
+                    s.title === "Cuộc trò chuyện mới"
+                      ? `${messageText.substring(0, 30)}...`
+                      : s.title,
+                }
+              : s
+          )
+        );
       }
     } catch (error) {
-      logger.error('Error calling AI API:', error);
+      logger.error("Error calling AI API:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.',
-        sender: 'bot',
+        text: "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.",
+        sender: "bot",
         timestamp: new Date(),
-        type: 'text'
+        type: "text",
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
@@ -390,57 +526,57 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     if (initializing) return;
 
     // Handle special case for opening shopping page
-    if (feature === 'open-shopping') {
-      window.open('/shopping', '_blank');
+    if (feature === "open-shopping") {
+      window.open("/shopping", "_blank");
       return;
     }
 
     setIsTyping(true);
-    
+
     try {
-      const response = await fetch('/api/ai', {
-        method: 'POST',
+      const response = await fetch("/api/ai", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           type: feature,
-          data: data || {}
+          data: data || {},
         }),
       });
 
       const result = await response.json();
-      
+
       const botMessage: Message = {
         id: Date.now().toString(),
         text: `Đây là kết quả từ tính năng ${getFeatureName(feature)}:`,
-        sender: 'bot',
+        sender: "bot",
         timestamp: new Date(),
-        type: 'ai-result',
+        type: "ai-result",
         aiData: {
           type: feature,
           content: result.content,
           suggestions: result.suggestions,
-          error: result.error
-        }
+          error: result.error,
+        },
       };
 
-      setMessages(prev => [...prev, botMessage]);
-      
+      setMessages((prev) => [...prev, botMessage]);
+
       // Call the parent callback if provided
       if (onFeatureSelect) {
         onFeatureSelect(feature, result);
       }
     } catch (error) {
-      logger.error('Error calling AI feature:', error);
+      logger.error("Error calling AI feature:", error);
       const errorMessage: Message = {
         id: Date.now().toString(),
-        text: 'Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn.',
-        sender: 'bot',
+        text: "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn.",
+        sender: "bot",
         timestamp: new Date(),
-        type: 'text'
+        type: "text",
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
@@ -448,64 +584,68 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
   const getFeatureName = (feature: string): string => {
     switch (feature) {
-      case 'suggest-dishes':
-        return 'Gợi ý món ăn';
-      case 'weekly-plan':
-        return 'Lập kế hoạch tuần';
-      case 'advanced-meal-plan':
-        return 'Kế hoạch bữa ăn nâng cao';
-      case 'seasonal-recommendations':
-        return 'Gợi ý món ăn theo mùa';
-      case 'special-occasions':
-        return 'Menu dịp đặc biệt';
-      case 'personalized-learning':
-        return 'Học từ sở thích cá nhân';
-      case 'shopping-list':
-        return 'Danh sách mua sắm';
-      case 'generate-recipe':
-        return 'Tạo công thức';
-      case 'open-shopping':
-        return 'Mở trang Shopping';
+      case "suggest-dishes":
+        return "Gợi ý món ăn";
+      case "weekly-plan":
+        return "Lập kế hoạch tuần";
+      case "advanced-meal-plan":
+        return "Kế hoạch bữa ăn nâng cao";
+      case "seasonal-recommendations":
+        return "Gợi ý món ăn theo mùa";
+      case "special-occasions":
+        return "Menu dịp đặc biệt";
+      case "personalized-learning":
+        return "Học từ sở thích cá nhân";
+      case "shopping-list":
+        return "Danh sách mua sắm";
+      case "generate-recipe":
+        return "Tạo công thức";
+      case "open-shopping":
+        return "Mở trang Shopping";
       default:
-        return 'Tính năng AI';
+        return "Tính năng AI";
     }
   };
 
   const handleRegenerate = (messageId: string) => {
     // Find the message and regenerate its content
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find((m) => m.id === messageId);
     if (message && message.aiData) {
       handleFeatureRequest(message.aiData.type);
     }
   };
 
-  const handleFeedback = (messageId: string, type: 'like' | 'dislike') => {
+  const handleFeedback = (messageId: string, type: "like" | "dislike") => {
     logger.info(`Feedback ${type} for message ${messageId}`);
     // In a real app, you would send this feedback to your backend
   };
 
   const handleClearChatHistory = () => {
     setShowProfileMenu(false);
-    
+
     // Clear all sessions and messages from localStorage
     try {
       if (typeof window !== "undefined") {
         const keys = Object.keys(window.localStorage);
-        keys.forEach(key => {
-          if (key.startsWith("planner.messages.") || key === "planner.sessions" || key === "planner.currentSessionId") {
+        keys.forEach((key) => {
+          if (
+            key.startsWith("planner.messages.") ||
+            key === "planner.sessions" ||
+            key === "planner.currentSessionId"
+          ) {
             window.localStorage.removeItem(key);
           }
         });
       }
-      
+
       // Reset state
       setSessions([]);
       setCurrentSessionId(null);
       setMessages([createWelcomeMessage()]);
-      
-      logger.info('Chat history cleared successfully');
+
+      logger.info("Chat history cleared successfully");
     } catch (error) {
-      logger.error('Failed to clear chat history', error);
+      logger.error("Failed to clear chat history", error);
     }
   };
 
@@ -514,17 +654,17 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       setShowProfileMenu(false);
       if (!supabase) {
         logger.warn("Supabase client not available");
-        window.location.href = '/planner';
+        window.location.href = "/planner";
         return;
       }
       await supabase.auth.signOut();
-      logger.info('User logged out successfully');
+      logger.info("User logged out successfully");
       // Redirect to planner page (will show login form after logout)
-      window.location.href = '/planner';
+      window.location.href = "/planner";
     } catch (error) {
-      logger.error('Failed to logout', error);
+      logger.error("Failed to logout", error);
       // Even if logout fails, redirect to planner
-      window.location.href = '/planner';
+      window.location.href = "/planner";
     }
   };
 
@@ -547,7 +687,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
               </p>
             </div>
           </div>
-          
+
           {/* Profile Menu */}
           <div className="relative" ref={profileMenuRef}>
             <Button
@@ -575,7 +715,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
                     </div>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={() => {
                     setShowProfileMenu(false);
@@ -586,7 +726,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
                   <User className="w-4 h-4" />
                   <span>Hồ sơ</span>
                 </button>
-                
+
                 <button
                   onClick={handleClearChatHistory}
                   className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3"
@@ -596,7 +736,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
                 </button>
 
                 <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                
+
                 <button
                   onClick={handleLogout}
                   className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-3"
@@ -628,22 +768,23 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
               message={message}
               onRegenerate={() => handleRegenerate(message.id)}
               onFeedback={(type) => handleFeedback(message.id, type)}
+              onActionClick={(action) => handleActionClick(message.id, action)}
             />
           ))}
-          
+
           {isTyping && (
             <ChatMessage
               message={{
-                id: 'typing',
-                text: '',
-                sender: 'bot',
+                id: "typing",
+                text: "",
+                sender: "bot",
                 timestamp: new Date(),
-                type: 'text'
+                type: "text",
               }}
               isTyping={true}
             />
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
 

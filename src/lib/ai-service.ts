@@ -2455,7 +2455,71 @@ CHỈ trả về JSON, không thêm text nào khác.`;
         };
       }
 
-      // Pick a random menu item
+      // Check if user wants to remove ALL dishes
+      const normalizedMsg = this.normalizeText(intent.originalMessage);
+      const removeAllKeywords = ['toan bo', 'tat ca', 'het', 'all', 'moi mon', 'tong'];
+      const shouldRemoveAll = removeAllKeywords.some(keyword => normalizedMsg.includes(keyword));
+
+      if (shouldRemoveAll) {
+        // Remove ALL dishes
+        const dishNames = Array.from(
+          new Set(
+            menuItems
+              .map((item) => (item.ten_mon_an || "").trim())
+              .filter(Boolean)
+          )
+        );
+
+        try {
+          // Delete all menu items
+          await Promise.all(
+            menuItems.map((item) => deleteMenuItem(String(item.id)))
+          );
+
+          let content = `✨ **Đã xóa toàn bộ thực đơn ${intent.friendlyLabel} (${this.formatVietnamDate(
+            intent.isoDate
+          )})**\n\n`;
+
+          if (intent.inferredDate) {
+            content +=
+              "• Bạn không chỉ định ngày cụ thể nên mình mặc định sử dụng ngày hôm nay.\n\n";
+          }
+
+          content += `**Món đã xóa:**\n`;
+          content += dishNames.map((name) => `• ${name}`).join("\n");
+          content += `\n\nĐã xóa ${menuItems.length} món khỏi thực đơn.\n\n`;
+          content += "Bạn có muốn thêm món mới vào thực đơn không?";
+
+          const suggestions = [
+            "Thêm món ngẫu nhiên",
+            "Thêm món mới",
+            "Xem thực đơn hôm nay",
+          ];
+
+          this.setLastInteraction({
+            type: "edit-date",
+            isoDate: intent.isoDate,
+            friendlyLabel: intent.friendlyLabel,
+            action: "remove",
+            timestamp: Date.now(),
+          });
+
+          return {
+            content,
+            suggestions,
+          };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Không rõ nguyên nhân";
+          return {
+            content: `Không thể xóa toàn bộ thực đơn ${
+              intent.friendlyLabel
+            } (${this.formatVietnamDate(intent.isoDate)}):\n${message}`,
+          };
+        }
+      }
+
+      // Remove only ONE random dish (original behavior)
       const randomItem =
         menuItems[Math.floor(Math.random() * menuItems.length)];
       const dishName = (randomItem.ten_mon_an || "").trim() || "Món không tên";

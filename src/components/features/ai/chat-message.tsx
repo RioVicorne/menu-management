@@ -378,6 +378,7 @@ interface ChatMessageProps {
   isTyping?: boolean;
   onRegenerate?: () => void;
   onFeedback?: (type: 'like' | 'dislike') => void;
+  onActionClick?: (action: string) => void;
 }
 
 export default function ChatMessage({
@@ -385,6 +386,7 @@ export default function ChatMessage({
   isTyping = false,
   onRegenerate,
   onFeedback,
+  onActionClick,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(null);
@@ -483,6 +485,27 @@ export default function ChatMessage({
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Confirmation Action Buttons */}
+        {message.actionButtons && message.showActions && onActionClick && (
+          <div className="flex items-center gap-2 mt-3 animate-fade-in">
+            {message.actionButtons.map((button, index) => (
+              <Button
+                key={index}
+                onClick={() => onActionClick(button.action)}
+                className={`text-xs lg:text-sm px-3 lg:px-4 py-2 rounded-lg transition-all ${
+                  button.variant === 'primary'
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg'
+                    : button.variant === 'danger'
+                    ? 'bg-red-500 hover:bg-red-600 text-white shadow-md hover:shadow-lg'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200'
+                }`}
+              >
+                {button.label}
+              </Button>
+            ))}
           </div>
         )}
         
