@@ -1110,181 +1110,60 @@ CHỈ trả về JSON, không thêm text nào khác.`;
     }
   ): Promise<AIResponse> {
     try {
-      const normalizedMessage = this.normalizeText(message || "");
-      const isFollowUp = this.isFollowUpRequest(normalizedMessage);
-
-      // Try LLM-based intent detection first
-      const llmIntent = await this.analyzeIntentWithLLM(message);
-
-      // Fallback to pattern-based detection
-      const menuIntent = this.detectMenuIntent(
-        normalizedMessage,
-        message || ""
-      );
-
-      if (isFollowUp && !menuIntent && !llmIntent) {
-        const followUpResponse = await this.handleFollowUpResponse();
-        if (followUpResponse) {
-          return followUpResponse;
-        }
-        return {
-          content:
-            'Bạn muốn xem lại phần nào? Bạn có thể nói rõ hơn, ví dụ:\n• "Xem lại thực đơn ngày hôm qua"\n• "Xem lại món vừa thêm cho hôm nay"\n• "Xem lại các món trong menu ngày mai"',
-        };
-      }
-
-      if (
-        !this.isMenuRelatedMessage(normalizedMessage, menuIntent) &&
-        (!llmIntent || llmIntent.intent === "other")
-      ) {
-        return {
-          content:
-            "Xin lỗi, tôi chỉ hỗ trợ các thao tác liên quan đến thực đơn như kiểm tra, cập nhật, gợi ý món, tạo menu hoặc tính khẩu phần.",
-        };
-      }
-
-      // Use LLM intent if available and reasonably confident
-      if (llmIntent && llmIntent.confidence > 0.5) {
-        logger.info("Using LLM-detected intent:", llmIntent);
-
-        // Handle LLM-detected intents
-        if (llmIntent.intent === "check-inventory") {
-          // Use searchQuery from LLM if available
-          if (llmIntent.entities?.searchQuery) {
-            const modifiedMessage = llmIntent.entities.searchQuery;
-            return await this.handleCheckInventoryIntent(
-              this.normalizeText(modifiedMessage),
-              modifiedMessage
-            );
-          }
-          return await this.handleCheckInventoryIntent(
-            normalizedMessage,
-            message
-          );
-        }
-
-        if (llmIntent.intent === "view-menu") {
-          const dateMatch = this.parseDateMatch(normalizedMessage, {
-            allowLoose: true,
-          });
-          if (dateMatch) {
-            return await this.getMenuResponseForDate(dateMatch.isoDate, {
-              friendlyLabel: dateMatch.friendlyLabel,
-            });
-          }
-          // Default to today
-          return await this.getMenuResponseForDate(this.getTodayIsoDate(), {
-            friendlyLabel: "hôm nay",
-          });
-        }
-
-        if (
-          llmIntent.intent === "random-add" &&
-          menuIntent?.type !== "add-dish"
-        ) {
-          // Create intent from LLM analysis
-          const dateMatch = this.parseDateMatch(normalizedMessage, {
-            allowLoose: true,
-          });
-          return await this.handleRandomAddDishIntent({
-            type: "random-add",
-            isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
-            friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
-            inferredDate: !dateMatch,
-            servings: llmIntent.entities?.servings,
-            normalizedMessage,
-            originalMessage: message,
-          });
-        }
-
-        if (
-          llmIntent.intent === "random-remove" &&
-          menuIntent?.type !== "remove-dish"
-        ) {
-          const dateMatch = this.parseDateMatch(normalizedMessage, {
-            allowLoose: true,
-          });
-          return await this.handleRandomRemoveDishIntent({
-            type: "random-remove",
-            isoDate: dateMatch?.isoDate ?? this.getTodayIsoDate(),
-            friendlyLabel: dateMatch?.friendlyLabel ?? "ngày hôm nay",
-            inferredDate: !dateMatch,
-            normalizedMessage,
-            originalMessage: message,
-          });
-        }
-
-        if (llmIntent.intent === "random-menu") {
-          const servingInfo = this.parseServingInfo(normalizedMessage);
-          return await this.getRandomMenuResponse({
-            type: "random-menu",
-            adults: servingInfo.adults,
-            kids: servingInfo.kids,
-          });
-        }
-      }
-
-      // Check inventory intent (pattern-based fallback)
-      if (this.hasCheckInventoryIntent(normalizedMessage)) {
-        return await this.handleCheckInventoryIntent(
-          normalizedMessage,
-          message
-        );
-      }
-
-      if (menuIntent?.type === "random-menu") {
-        return await this.getRandomMenuResponse(menuIntent);
-      }
-      if (menuIntent?.type === "random-add") {
-        return await this.handleRandomAddDishIntent(menuIntent);
-      }
-      if (menuIntent?.type === "random-remove") {
-        return await this.handleRandomRemoveDishIntent(menuIntent);
-      }
-      if (menuIntent?.type === "remove-dish") {
-        return await this.handleRemoveDishIntent(menuIntent);
-      }
-      if (menuIntent?.type === "add-dish") {
-        return await this.handleAddDishIntent(menuIntent);
-      }
-      if (menuIntent?.type === "date") {
-        return await this.getMenuResponseForDate(menuIntent.isoDate, {
-          friendlyLabel: menuIntent.friendlyLabel,
-        });
-      }
+      // Bỏ tất cả pattern matching và intent handlers
+      // Để tất cả câu hỏi đi thẳng đến Perplexity API tự nhiên như ChatGPT
 
       const systemPrompt = [
-        "Bạn là một trợ lý thông minh giúp quản lý thực đơn hàng ngày. Hãy trò chuyện TỰ NHIÊN như một người bạn thân thiện, KHÔNG dùng format markdown hay emoji phức tạp.",
+        "Bạn là AI Assistant giúp quản lý thực đơn và món ăn. Bạn có thể thêm, xóa, chỉnh sửa món ăn và kết nối Supabase để lưu dữ liệu.",
         "",
-        "PHONG CÁCH TRÒ CHUYỆN:",
-        "- Nói chuyện như bạn bè, thân thiện, gần gũi",
-        "- Dùng câu ngắn gọn, dễ hiểu",
-        '- Có thể dùng "mình", "bạn", "nha", "nhé" để thân thiện hơn',
-        "- KHÔNG dùng emoji nhiều (chỉ 1-2 emoji tối đa nếu thực sự cần)",
-        "- KHÔNG dùng markdown format phức tạp (**, ##, bullet points nhiều)",
-        "- Trả lời ngắn gọn, đi thẳng vào vấn đề",
+        "QUAN TRỌNG NHẤT - CÁCH TRÒ CHUYỆN:",
+        "Bạn PHẢI nói chuyện như một người bạn thân, hoàn toàn tự nhiên, không máy móc hay cứng nhắc.",
         "",
-        "NHIỆM VỤ CỦA BẠN:",
-        "- Giúp thêm/xóa món ăn vào thực đơn",
-        "- Kiểm tra món ăn và nguyên liệu trong kho",
-        "- Gợi ý món ăn từ nguyên liệu có sẵn",
-        "- Tạo thực đơn tuần/tháng",
-        "- Trả lời câu hỏi về dinh dưỡng, khẩu phần",
+        "VÍ DỤ CÁCH NÓI TỰ NHIÊN:",
+        "- Thay vì: 'Tôi có thể giúp bạn thêm món ăn vào thực đơn'",
+        "  Hãy nói: 'Mình có thể thêm món cho bạn nha'",
         "",
-        "KHI TRẢ LỜI:",
-        "- Nếu người dùng hỏi ngoài phạm vi thực đơn, lịch sự từ chối và gợi ý cách giúp đỡ",
-        "- Nếu thiếu thông tin (ngày, tên món...), hỏi thêm một cách tự nhiên",
-        "- Chỉ sử dụng dữ liệu thật từ hệ thống, đừng bịa ra thông tin",
+        "- Thay vì: 'Bạn muốn thêm món nào vào thực đơn?'",
+        "  Hãy nói: 'Bạn muốn thêm món gì vậy?'",
+        "",
+        "- Thay vì: 'Tôi đã thêm món thành công'",
+        "  Hãy nói: 'Xong rồi nha, mình đã thêm món đó vào thực đơn rồi'",
+        "",
+        "QUY TẮC:",
+        "- LUÔN dùng 'mình', 'bạn' thay vì 'tôi', 'bạn'",
+        "- Dùng 'nha', 'nhé', 'vậy', 'đó' để tự nhiên hơn",
+        "- Trả lời ngắn gọn, như đang chat với bạn",
+        "- KHÔNG dùng markdown phức tạp (**, ##, list dài)",
+        "- KHÔNG dùng emoji trừ khi thực sự cần (tối đa 1-2)",
+        "- Nói như người Việt thật, không như robot",
+        "- Tránh liệt kê dài dòng, nói trực tiếp vào vấn đề",
+        "",
+        "NHIỆM VỤ:",
+        "- Thêm/xóa/sửa món ăn",
+        "- Xem thực đơn theo ngày",
+        "- Gợi ý món từ nguyên liệu",
+        "- Kiểm tra kho nguyên liệu",
+        "",
+        "KHI NGƯỜI DÙNG HỎI 'BẠN LÀ AI':",
+        "Trả lời tự nhiên: 'Mình là AI Assistant giúp bạn quản lý thực đơn đó. Mình có thể thêm, xóa, sửa món ăn, kiểm tra kho, gợi ý món... Bạn cần mình giúp gì không?'",
+        "",
+        "KHI HỎI NGOÀI PHẠM VI:",
+        "Nói tự nhiên: 'Xin lỗi, mình chỉ biết về quản lý thực đơn thôi. Về phần này mình có thể giúp bạn quản lý món ăn, kiểm tra thực đơn, gợi ý món... Bạn cần gì không?'",
+        "",
+        "LUÔN NHỚ:",
+        "- Chỉ dùng dữ liệu thực từ Supabase, không bịa ra",
+        "- Xác nhận trước khi thay đổi dữ liệu",
+        "- Nếu thiếu info, hỏi lại một cách tự nhiên như bạn bè",
         "",
         "NGỮ CẢNH HIỆN TẠI:",
         context?.availableIngredients && context.availableIngredients.length > 0
-          ? `- Nguyên liệu còn: ${context.availableIngredients.join(", ")}`
+          ? `- Nguyên liệu còn trong kho: ${context.availableIngredients.join(", ")}`
           : "",
         context?.currentMenu && context.currentMenu.length > 0
           ? `- Thực đơn hiện tại: ${context.currentMenu.join(", ")}`
           : "",
         context?.dietaryPreferences && context.dietaryPreferences.length > 0
-          ? `- Sở thích: ${context.dietaryPreferences.join(", ")}`
+          ? `- Sở thích ăn uống: ${context.dietaryPreferences.join(", ")}`
           : "",
       ]
         .filter(Boolean)
@@ -2457,8 +2336,17 @@ CHỈ trả về JSON, không thêm text nào khác.`;
 
       // Check if user wants to remove ALL dishes
       const normalizedMsg = this.normalizeText(intent.originalMessage);
-      const removeAllKeywords = ['toan bo', 'tat ca', 'het', 'all', 'moi mon', 'tong'];
-      const shouldRemoveAll = removeAllKeywords.some(keyword => normalizedMsg.includes(keyword));
+      const removeAllKeywords = [
+        "toan bo",
+        "tat ca",
+        "het",
+        "all",
+        "moi mon",
+        "tong",
+      ];
+      const shouldRemoveAll = removeAllKeywords.some((keyword) =>
+        normalizedMsg.includes(keyword)
+      );
 
       if (shouldRemoveAll) {
         // Remove ALL dishes
