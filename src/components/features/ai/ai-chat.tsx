@@ -7,6 +7,8 @@ import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
 import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
+import { getDishes, getMenuItems } from "@/lib/api";
+import type { Dish } from "@/lib/api";
 import type {
   ChatMessage as Message,
   ChatSession,
@@ -39,6 +41,26 @@ const createWelcomeMessage = (): Message => ({
   type: "text",
 });
 
+type PendingActionRecord = Record<
+  string,
+  {
+    originalMessage: string;
+    sessionId: string | null;
+    type: "add" | "remove";
+    selectedDish?: Dish;
+    targetDate?: string;
+  }
+>;
+
+type PendingActionIntent = {
+  type: "add" | "remove";
+  prompt: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  confirmVariant: "primary" | "danger";
+  selectedDish?: Dish;
+};
+
 export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -51,6 +73,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [username, setUsername] = useState<string>("Người dùng");
   const [userEmail, setUserEmail] = useState<string>("");
+  const [pendingActions, setPendingActions] = useState<PendingActionRecord>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -180,7 +203,10 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     if (initializing) {
       return;
     }
-    persistSessions(sessions);
+    const saveSessions = async () => {
+      await persistSessions(sessions);
+    };
+    saveSessions();
   }, [sessions, initializing]);
 
   // Persist the currently selected session
@@ -272,7 +298,10 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     // Only persist if there are real messages (not just welcome message)
     const realMessages = messages.filter((msg) => msg.id !== "welcome");
     if (realMessages.length > 0) {
-      persistMessages(currentSessionId, realMessages);
+      const saveMessages = async () => {
+        await persistMessages(currentSessionId, realMessages);
+      };
+      saveMessages();
     }
   }, [messages, currentSessionId, initializing, hydratingMessages]);
 
@@ -285,7 +314,8 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       lastMessage: "",
     };
 
-    setSessions((prev) => [newSession, ...prev]);
+    // Replace existing session (each user should only have one session)
+    setSessions([newSession]);
     setCurrentSessionId(newSession.id);
     setMessages([createWelcomeMessage()]);
   };
@@ -315,6 +345,143 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     setSessions((prev) =>
       prev.map((s) => (s.id === sessionId ? { ...s, title: newTitle } : s))
     );
+  };
+
+  const parseDateFromMessage = (messageText: string): string => {
+    const normalized = messageText
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Check for "ngày mai" or "mai"
+    if (normalized.includes("ngay mai") || normalized.includes(" mai ")) {
+      return tomorrow.toISOString().split("T")[0];
+    }
+
+    // Check for "hôm nay" or "hnay"
+    if (normalized.includes("hom nay") || normalized.includes("hnay")) {
+      return today.toISOString().split("T")[0];
+    }
+
+    // Default to tomorrow if not specified
+    return tomorrow.toISOString().split("T")[0];
+  };
+
+  const detectPendingActionIntent = async (
+    messageText: string
+  ): Promise<PendingActionIntent | null> => {
+    const normalized = messageText
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    if (!normalized) return null;
+
+    const addKeywords = ["them", "add"];
+    const removeKeywords = ["xoa", "remove", "delete", "bo", "loai"];
+    const randomKeywords = ["ngau nhien", "random"];
+
+    const hasAdd = addKeywords.some((keyword) => normalized.includes(keyword));
+    const hasRemove = removeKeywords.some((keyword) =>
+      normalized.includes(keyword)
+    );
+
+    if (!hasAdd && !hasRemove) {
+      return null;
+    }
+
+    const isRandom = randomKeywords.some((keyword) =>
+      normalized.includes(keyword)
+    );
+
+    if (hasAdd && isRandom) {
+      // For random add, fetch a random dish immediately
+      try {
+        const targetDate = parseDateFromMessage(messageText);
+        const [allDishes, existingMenu] = await Promise.all([
+          getDishes(),
+          getMenuItems(targetDate),
+        ]);
+
+        if (!allDishes || allDishes.length === 0) {
+          return {
+            type: "add",
+            prompt:
+              "Hiện chưa có món ăn nào trong cơ sở dữ liệu. Vui lòng thêm món vào hệ thống trước.",
+            confirmLabel: "Thêm",
+            cancelLabel: "Huỷ",
+            confirmVariant: "primary",
+          };
+        }
+
+        const existingDishIds = new Set(
+          (existingMenu || []).map((item) => String(item.ma_mon_an))
+        );
+
+        const availableDishes = allDishes.filter(
+          (dish) => !existingDishIds.has(String(dish.id))
+        );
+
+        if (availableDishes.length === 0) {
+          return {
+            type: "add",
+            prompt: `Tất cả các món đã có trong thực đơn. Không có món nào để thêm ngẫu nhiên.`,
+            confirmLabel: "Thêm",
+            cancelLabel: "Huỷ",
+            confirmVariant: "primary",
+          };
+        }
+
+        // Pick a random dish
+        const randomDish =
+          availableDishes[Math.floor(Math.random() * availableDishes.length)];
+
+        return {
+          type: "add",
+          prompt: `Mình đã chọn món **${randomDish.ten_mon_an}** để thêm vào thực đơn. Bạn xác nhận thêm món này chứ?`,
+          confirmLabel: "Thêm",
+          cancelLabel: "Huỷ",
+          confirmVariant: "primary",
+          selectedDish: randomDish,
+        };
+      } catch (error) {
+        logger.error("Error fetching random dish:", error);
+        return {
+          type: "add",
+          prompt:
+            "Mình sẽ chọn một món ngẫu nhiên như bạn yêu cầu. Bạn xác nhận thêm món này chứ?",
+          confirmLabel: "Thêm",
+          cancelLabel: "Huỷ",
+          confirmVariant: "primary",
+        };
+      }
+    }
+
+    if (hasAdd) {
+      return {
+        type: "add",
+        prompt: "Bạn muốn mình thêm món theo yêu cầu này vào thực đơn không?",
+        confirmLabel: "Thêm",
+        cancelLabel: "Huỷ",
+        confirmVariant: "primary",
+      };
+    }
+
+    return {
+      type: "remove",
+      prompt: isRandom
+        ? "Mình sẽ xóa một món ngẫu nhiên khỏi thực đơn theo yêu cầu của bạn. Bạn có chắc chắn không?"
+        : "Bạn muốn mình xóa món theo yêu cầu này khỏi thực đơn chứ?",
+      confirmLabel: "Xóa",
+      cancelLabel: "Huỷ",
+      confirmVariant: "danger",
+    };
   };
 
   // Detect if action buttons should be shown based on user message and AI response
@@ -353,7 +520,7 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     const hasRemove = removeKeywords.some((keyword) =>
       normalizedMsg.includes(keyword)
     );
-    
+
     const responseContains = (str: string) => normalizedResponse.includes(str);
 
     const hasSuccess =
@@ -406,54 +573,16 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   };
 
   // Handle action button click
-  const handleActionClick = (messageId: string, action: string) => {
-    // Hide the action buttons for this message
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId ? { ...msg, showActions: false } : msg
-      )
-    );
-
-    // Execute action based on type
-    if (action === "add-more") {
-      handleSendMessage("thêm món ngẫu nhiên vào hôm nay");
-    } else if (action === "remove-more") {
-      handleSendMessage("xóa món ngẫu nhiên hôm nay");
+  const callChatAPI = async (
+    messageText: string,
+    sessionId: string | null,
+    sessionUpdate?: {
+      messageCountDelta: number;
+      updateLastMessage?: boolean;
+      updateTitle?: boolean;
     }
-    // 'cancel' action just hides the buttons, no further action needed
-  };
-
-  const handleSendMessage = async (messageText: string) => {
-    if (!messageText.trim() || initializing) return;
-
-    // Ensure a session exists before sending message
-    let sessionId = currentSessionId;
-    if (!sessionId) {
-      const newSession: ChatSession = {
-        id: Date.now().toString(),
-        title: "Cuộc trò chuyện mới",
-        timestamp: new Date(),
-        messageCount: 0,
-        lastMessage: "",
-      };
-      setSessions((prev) => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-      sessionId = newSession.id;
-      setMessages([createWelcomeMessage()]);
-    }
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: messageText,
-      sender: "user",
-      timestamp: new Date(),
-      type: "text",
-    };
-
-    // Add user message immediately
-    setMessages((prev) => [...prev, userMessage]);
+  ) => {
     setIsTyping(true);
-
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
@@ -486,21 +615,30 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
 
       setMessages((prev) => [...prev, botMessage]);
 
-      // Update session
-      if (sessionId) {
+      if (sessionId && sessionUpdate) {
+        const lastMessage =
+          messageText.length > 50
+            ? `${messageText.substring(0, 50)}...`
+            : messageText;
+        const titleSuggestion =
+          messageText.length > 30
+            ? `${messageText.substring(0, 30)}...`
+            : messageText;
+
         setSessions((prev) =>
           prev.map((s) =>
             s.id === sessionId
               ? {
                   ...s,
-                  messageCount: s.messageCount + 2,
-                  lastMessage:
-                    messageText.length > 50
-                      ? `${messageText.substring(0, 50)}...`
-                      : messageText,
+                  messageCount:
+                    s.messageCount + (sessionUpdate.messageCountDelta ?? 1),
+                  lastMessage: sessionUpdate.updateLastMessage
+                    ? lastMessage
+                    : s.lastMessage,
                   title:
+                    sessionUpdate.updateTitle &&
                     s.title === "Cuộc trò chuyện mới"
-                      ? `${messageText.substring(0, 30)}...`
+                      ? titleSuggestion
                       : s.title,
                 }
               : s
@@ -519,6 +657,203 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handleActionClick = (messageId: string, action: string) => {
+    // Hide the action buttons for this message
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === messageId ? { ...msg, showActions: false } : msg
+      )
+    );
+
+    if (action.startsWith("confirm:")) {
+      const pendingId = action.split(":")[1];
+      const pending = pendingActions[pendingId];
+      if (!pending) return;
+
+      setPendingActions((prev) => {
+        const { [pendingId]: _, ...rest } = prev;
+        return rest;
+      });
+
+      // If we have a selected dish for random add, include it in the message
+      let messageToSend = pending.originalMessage;
+      if (pending.selectedDish && pending.type === "add") {
+        // Modify the message to specify the exact dish so API treats it as specific add, not random
+        const today = new Date().toISOString().split("T")[0];
+        const dateText = pending.targetDate === today ? "hôm nay" : "ngày mai";
+        messageToSend = `thêm món ${pending.selectedDish.ten_mon_an} vào ${dateText}`;
+      }
+
+      callChatAPI(messageToSend, pending.sessionId, {
+        messageCountDelta: 1,
+        updateLastMessage: false,
+        updateTitle: false,
+      });
+      return;
+    }
+
+    if (action.startsWith("cancel:")) {
+      const pendingId = action.split(":")[1];
+      const pending = pendingActions[pendingId];
+      setPendingActions((prev) => {
+        const { [pendingId]: _, ...rest } = prev;
+        return rest;
+      });
+      // Không hiển thị tin nhắn khi huỷ
+      return;
+    }
+
+    // Execute quick actions based on type
+    if (action === "add-more") {
+      handleSendMessage("thêm món ngẫu nhiên vào hôm nay");
+    } else if (action === "remove-more") {
+      handleSendMessage("xóa món ngẫu nhiên hôm nay");
+    }
+    // 'cancel' (legacy) just hides the buttons, no further action needed
+  };
+
+  const handleSendMessage = async (
+    messageText: string,
+    options?: { skipConfirmation?: boolean }
+  ) => {
+    if (!messageText.trim() || initializing) return;
+
+    try {
+      // Ensure a session exists before sending message
+      let sessionId = currentSessionId;
+      if (!sessionId) {
+        const newSession: ChatSession = {
+          id: Date.now().toString(),
+          title: "Cuộc trò chuyện mới",
+          timestamp: new Date(),
+          messageCount: 0,
+          lastMessage: "",
+        };
+        // Replace existing session (each user should only have one session)
+        setSessions([newSession]);
+        setCurrentSessionId(newSession.id);
+        sessionId = newSession.id;
+        setMessages([createWelcomeMessage()]);
+      }
+
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: messageText,
+        sender: "user",
+        timestamp: new Date(),
+        type: "text",
+      };
+
+      // Add user message immediately
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Show typing indicator while detecting intent
+      setIsTyping(true);
+
+      let pendingIntent: PendingActionIntent | null = null;
+      try {
+        pendingIntent = options?.skipConfirmation
+          ? null
+          : await detectPendingActionIntent(messageText);
+      } catch (error) {
+        logger.error("Error detecting pending intent:", error);
+        // Continue without confirmation if detection fails
+        pendingIntent = null;
+      } finally {
+        setIsTyping(false);
+      }
+
+      const newMessages: Message[] = [];
+
+      if (pendingIntent) {
+        const pendingId = `pending-${Date.now()}`;
+        const confirmationMessage: Message = {
+          id: pendingId,
+          text: pendingIntent.prompt,
+          sender: "bot",
+          timestamp: new Date(),
+          type: "text",
+          actionButtons: [
+            {
+              label: pendingIntent.confirmLabel,
+              action: `confirm:${pendingId}`,
+              variant: pendingIntent.confirmVariant,
+            },
+            {
+              label: pendingIntent.cancelLabel,
+              action: `cancel:${pendingId}`,
+              variant: "secondary",
+            },
+          ],
+          showActions: true,
+        };
+        newMessages.push(confirmationMessage);
+
+        setPendingActions((prev) => ({
+          ...prev,
+          [pendingId]: {
+            originalMessage: messageText,
+            sessionId,
+            type: pendingIntent.type,
+            selectedDish: pendingIntent.selectedDish,
+            targetDate: parseDateFromMessage(messageText),
+          },
+        }));
+      }
+
+      // Add confirmation message if any
+      if (newMessages.length > 0) {
+        setMessages((prev) => [...prev, ...newMessages]);
+      }
+
+      if (pendingIntent && sessionId) {
+        const lastMessage =
+          messageText.length > 50
+            ? `${messageText.substring(0, 50)}...`
+            : messageText;
+        const titleSuggestion =
+          messageText.length > 30
+            ? `${messageText.substring(0, 30)}...`
+            : messageText;
+
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messageCount: s.messageCount + newMessages.length,
+                  lastMessage,
+                  title:
+                    s.title === "Cuộc trò chuyện mới"
+                      ? titleSuggestion
+                      : s.title,
+                }
+              : s
+          )
+        );
+        return;
+      }
+
+      await callChatAPI(messageText, sessionId, {
+        messageCountDelta: 2,
+        updateLastMessage: true,
+        updateTitle: true,
+      });
+    } catch (error) {
+      logger.error("Error in handleSendMessage:", error);
+      setIsTyping(false);
+      // Show error message to user
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại.",
+        sender: "bot",
+        timestamp: new Date(),
+        type: "text",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 

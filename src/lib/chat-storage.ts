@@ -1,4 +1,5 @@
 import type { ChatMessage, ChatSession, ChatDataSource } from "@/types/chat";
+import { supabase } from "./supabase";
 
 const SESSIONS_KEY = "planner.sessions";
 const MESSAGES_KEY_PREFIX = "planner.messages.";
@@ -249,8 +250,27 @@ function removeLocalMessages(sessionId: string) {
   }
 }
 
+async function getAuthToken(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchRemoteSessions(): Promise<ChatSession[]> {
-  const response = await fetch("/api/chat/sessions");
+  const token = await getAuthToken();
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch("/api/chat/sessions", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch chat sessions: ${response.status}`);
   }
@@ -265,7 +285,16 @@ async function fetchRemoteSessions(): Promise<ChatSession[]> {
 }
 
 async function fetchRemoteMessages(sessionId: string): Promise<ChatMessage[]> {
-  const response = await fetch(`/api/chat/messages?sessionId=${encodeURIComponent(sessionId)}`);
+  const token = await getAuthToken();
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(`/api/chat/messages?sessionId=${encodeURIComponent(sessionId)}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch chat messages: ${response.status}`);
   }
@@ -314,12 +343,84 @@ export async function loadMessages(sessionId: string): Promise<LoadResult<ChatMe
   }
 }
 
-export function persistSessions(sessions: ChatSession[]) {
+export async function persistSessions(sessions: ChatSession[]) {
+  // Always save to local storage as backup
   saveLocalSessions(sessions);
+
+  // Try to save to Supabase if authenticated
+  if (!supabase) return;
+
+  try {
+    const token = await getAuthToken();
+    if (!token) return; // Not authenticated, skip remote save
+
+    // Only persist the first session (since each user should only have one)
+    const session = sessions[0];
+    if (!session) return;
+
+    const response = await fetch("/api/chat/sessions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        id: session.id,
+        title: session.title,
+        messageCount: session.messageCount,
+        lastMessage: session.lastMessage,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to persist session: ${response.status}`);
+    }
+  } catch (error) {
+    // Silently fail - local storage is the fallback
+    console.warn("Failed to persist session to Supabase:", error);
+  }
 }
 
-export function persistMessages(sessionId: string, messages: ChatMessage[]) {
+export async function persistMessages(sessionId: string, messages: ChatMessage[]) {
+  // Always save to local storage as backup
   saveLocalMessages(sessionId, messages);
+
+  // Try to save to Supabase if authenticated
+  if (!supabase) return;
+
+  try {
+    const token = await getAuthToken();
+    if (!token) return; // Not authenticated, skip remote save
+
+    // Filter out welcome message
+    const realMessages = messages.filter((msg) => msg.id !== "welcome");
+    if (realMessages.length === 0) return;
+
+    const response = await fetch("/api/chat/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        sessionId,
+        messages: realMessages.map((msg) => ({
+          id: msg.id,
+          sender: msg.sender,
+          text: msg.text,
+          type: msg.type,
+          aiData: msg.aiData,
+        })),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to persist messages: ${response.status}`);
+    }
+  } catch (error) {
+    // Silently fail - local storage is the fallback
+    console.warn("Failed to persist messages to Supabase:", error);
+  }
 }
 
 export function removeSession(sessionId: string) {
