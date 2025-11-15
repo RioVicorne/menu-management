@@ -19,7 +19,11 @@ type TextBlock =
   | { type: 'paragraph'; lines: string[] }
   | { type: 'ordered-list'; items: string[] }
   | { type: 'unordered-list'; items: string[] }
-  | { type: 'table'; title?: string; items: string[] };
+  | { type: 'table'; title?: string; items: string[] }
+  | { type: 'heading'; level: 1 | 2 | 3; text: string }
+  | { type: 'blockquote'; lines: string[] }
+  | { type: 'code-block'; language?: string; code: string }
+  | { type: 'hr' };
 
 const ensureListLineBreaks = (text: string) => {
   if (!text) {
@@ -117,6 +121,63 @@ const splitIntoBlocks = (text: string): TextBlock[] => {
       continue;
     }
 
+    // Code block ```lang ... ```
+    const fenceStart = line.match(/^```([a-zA-Z0-9+#-]*)\s*$/);
+    if (fenceStart) {
+      flushParagraph();
+      const language = fenceStart[1] ? fenceStart[1].toLowerCase() : undefined;
+      index += 1;
+      const codeLines: string[] = [];
+      while (index < rawLines.length) {
+        const current = rawLines[index] ?? '';
+        if (/^```$/.test(current.trim())) {
+          index += 1;
+          break;
+        }
+        codeLines.push(current.replace(/\r$/, ''));
+        index += 1;
+      }
+      blocks.push({ type: 'code-block', language, code: codeLines.join('\n') });
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^(\*\s*\*\s*\*|-{3,}|_{3,})$/.test(line)) {
+      flushParagraph();
+      blocks.push({ type: 'hr' });
+      index += 1;
+      continue;
+    }
+
+    // Headings # / ## / ###
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      const level = headingMatch[1].length as 1 | 2 | 3;
+      const textContent = headingMatch[2].trim();
+      blocks.push({ type: 'heading', level, text: textContent });
+      index += 1;
+      continue;
+    }
+
+    // Blockquote
+    if (/^>\s?/.test(line)) {
+      flushParagraph();
+      const quoteLines: string[] = [];
+      while (index < rawLines.length) {
+        const current = rawLines[index]?.trim() ?? '';
+        if (!/^>\s?/.test(current)) {
+          break;
+        }
+        quoteLines.push(current.replace(/^>\s?/, ''));
+        index += 1;
+      }
+      if (quoteLines.length > 0) {
+        blocks.push({ type: 'blockquote', lines: quoteLines });
+      }
+      continue;
+    }
+
     const orderedMatch = /^\d+[\.\)]\s+/.test(line);
     if (orderedMatch) {
       flushParagraph();
@@ -179,6 +240,60 @@ const renderInline = (text: string, keyPrefix: string): ReactNode[] => {
   };
 
   while (i < text.length) {
+    // Link: [label](url)
+    if (text[i] === '[') {
+      const endLabel = text.indexOf(']', i + 1);
+      if (endLabel !== -1 && text[endLabel + 1] === '(') {
+        const endUrl = text.indexOf(')', endLabel + 2);
+        if (endUrl !== -1) {
+          const label = text.slice(i + 1, endLabel);
+          const url = text.slice(endLabel + 2, endUrl).trim();
+          if (/^https?:\/\//.test(url)) {
+            flushBuffer();
+            const key = `${keyPrefix}-link-${tokenIndex++}`;
+            nodes.push(
+              <a
+                key={key}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline decoration-blue-400 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                {renderInline(label, `${key}-inner`)}
+              </a>,
+            );
+            i = endUrl + 1;
+            continue;
+          }
+        }
+      }
+    }
+
+    // Autolink: http(s)://...
+    if (text.startsWith('http://', i) || text.startsWith('https://', i)) {
+      const start = i;
+      let end = start;
+      while (end < text.length && !/\s/.test(text[end]) && !/[)\]]/.test(text[end])) {
+        end += 1;
+      }
+      const url = text.slice(start, end);
+      flushBuffer();
+      const key = `${keyPrefix}-autolink-${tokenIndex++}`;
+      nodes.push(
+        <a
+          key={key}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline decoration-blue-400 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+        >
+          {url}
+        </a>,
+      );
+      i = end;
+      continue;
+    }
+
     if (text.startsWith('**', i)) {
       const end = text.indexOf('**', i + 2);
       if (end !== -1) {
@@ -189,6 +304,38 @@ const renderInline = (text: string, keyPrefix: string): ReactNode[] => {
           <strong key={key} className="font-semibold">
             {renderInline(content, `${key}-inner`)}
           </strong>,
+        );
+        i = end + 2;
+        continue;
+      }
+    }
+
+    if (text.startsWith('__', i)) {
+      const end = text.indexOf('__', i + 2);
+      if (end !== -1) {
+        flushBuffer();
+        const content = text.slice(i + 2, end);
+        const key = `${keyPrefix}-underline-${tokenIndex++}`;
+        nodes.push(
+          <span key={key} className="underline underline-offset-2">
+            {renderInline(content, `${key}-inner`)}
+          </span>,
+        );
+        i = end + 2;
+        continue;
+      }
+    }
+
+    if (text.startsWith('~~', i)) {
+      const end = text.indexOf('~~', i + 2);
+      if (end !== -1) {
+        flushBuffer();
+        const content = text.slice(i + 2, end);
+        const key = `${keyPrefix}-strike-${tokenIndex++}`;
+        nodes.push(
+          <span key={key} className="line-through">
+            {renderInline(content, `${key}-inner`)}
+          </span>,
         );
         i = end + 2;
         continue;
@@ -314,6 +461,60 @@ const FormattedMessage = ({ text }: { text: string }) => {
     <div className="space-y-3 text-sm leading-relaxed text-gray-900 dark:text-gray-100">
       {blocks.map((block, blockIndex) => {
         const keyBase = `block-${blockIndex}`;
+
+        if (block.type === 'hr') {
+          return <hr key={keyBase} className="my-3 border-gray-200 dark:border-gray-700" />;
+        }
+
+        if (block.type === 'heading') {
+          const common = 'font-semibold text-gray-900 dark:text-gray-100';
+          if (block.level === 1) {
+            return (
+              <h1 key={keyBase} className={`text-lg lg:text-xl ${common}`}>
+                {renderInline(block.text, `${keyBase}-h1`)}
+              </h1>
+            );
+          }
+          if (block.level === 2) {
+            return (
+              <h2 key={keyBase} className={`text-base lg:text-lg ${common}`}>
+                {renderInline(block.text, `${keyBase}-h2`)}
+              </h2>
+            );
+          }
+          return (
+            <h3 key={keyBase} className={`text-sm lg:text-base ${common}`}>
+              {renderInline(block.text, `${keyBase}-h3`)}
+            </h3>
+          );
+        }
+
+        if (block.type === 'blockquote') {
+          return (
+            <blockquote
+              key={keyBase}
+              className="border-l-4 border-gray-300 pl-3 italic text-gray-700 dark:text-gray-300 dark:border-gray-700"
+            >
+              <div className="space-y-1">
+                {block.lines.map((line, i) => (
+                  <p key={`${keyBase}-q-${i}`}>{renderInline(line, `${keyBase}-q-${i}`)}</p>
+                ))}
+              </div>
+            </blockquote>
+          );
+        }
+
+        if (block.type === 'code-block') {
+          return (
+            <div key={keyBase} className="overflow-x-auto">
+              <pre className="rounded-lg bg-gray-900 text-gray-100 p-3 text-xs lg:text-sm">
+                <code>
+                  {block.code}
+                </code>
+              </pre>
+            </div>
+          );
+        }
 
         if (block.type === 'ordered-list') {
           if (block.items.length >= 6) {

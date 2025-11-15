@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
       case 'chat':
         response = await aiService.chatAboutMenuManagement(
           data.message || '',
-          data.context || {}
+          data.context || {},
+          data.conversationHistory || []
         );
         break;
       
