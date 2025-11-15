@@ -33,6 +33,7 @@ interface AIChatProps {
   context?: {
     currentMenu?: string[];
     availableIngredients?: string[];
+    availableDishes?: string[];
     dietaryPreferences?: string[];
   };
 }
@@ -357,6 +358,53 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     );
   };
 
+  // Helper function to detect additional requests in a message
+  const detectAdditionalRequests = (
+    messageText: string,
+    alreadyDetectedIntents: string[]
+  ): { count: number; types: string[] } => {
+    const normalized = messageText
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    const additionalTypes: string[] = [];
+
+    // Check for count menu requests
+    if (
+      !alreadyDetectedIntents.includes("count-menu") &&
+      (normalized.includes("tong cong") ||
+        normalized.includes("tổng cộng") ||
+        normalized.includes("tong so") ||
+        normalized.includes("tổng số") ||
+        normalized.includes("bao nhieu mon") ||
+        normalized.includes("bao nhiêu món") ||
+        normalized.includes("co bao nhieu") ||
+        normalized.includes("có bao nhiêu") ||
+        normalized.includes("dem") ||
+        normalized.includes("đếm"))
+    ) {
+      additionalTypes.push("count-menu");
+    }
+
+    // Check for view menu requests
+    if (
+      !alreadyDetectedIntents.includes("view-menu") &&
+      (normalized.includes("xem menu") ||
+        normalized.includes("xem thuc don") ||
+        normalized.includes("menu co gi") ||
+        normalized.includes("menu có gì"))
+    ) {
+      additionalTypes.push("view-menu");
+    }
+
+    return {
+      count: additionalTypes.length,
+      types: additionalTypes,
+    };
+  };
+
   const parseDateFromMessage = (messageText: string): string => {
     const normalized = messageText
       .normalize("NFD")
@@ -589,9 +637,23 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         const randomDish =
           availableDishes[Math.floor(Math.random() * availableDishes.length)];
 
+        // Check if message has additional requests (multiple clauses)
+        const hasAdditionalRequests = detectAdditionalRequests(messageText, [
+          "add",
+          "random-add",
+        ]);
+
+        let prompt = `Mình đã chọn món **${randomDish.ten_mon_an}** để thêm vào thực đơn. Bạn xác nhận thêm món này chứ?`;
+
+        if (hasAdditionalRequests.count) {
+          if (hasAdditionalRequests.types.includes("count-menu")) {
+            prompt += ` Sau khi bạn xác nhận thêm, mình sẽ báo cho bạn biết tổng số món trong menu hôm nay nha!`;
+          }
+        }
+
         return {
           type: "add",
-          prompt: `Mình đã chọn món **${randomDish.ten_mon_an}** để thêm vào thực đơn. Bạn xác nhận thêm món này chứ?`,
+          prompt,
           confirmLabel: "Thêm",
           cancelLabel: "Huỷ",
           confirmVariant: "primary",
@@ -1180,8 +1242,34 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
               await addDishToMenu(dishToAdd.id, targetDate, 1);
             }
 
-            // No response message - just add silently
-            logger.info("Dish added successfully, no response message shown");
+            // Check if original message has additional requests (like count menu)
+            const hasAdditionalRequests = detectAdditionalRequests(
+              pending.originalMessage,
+              ["add", "random-add"]
+            );
+
+            // Handle additional request: count menu
+            if (
+              hasAdditionalRequests.count > 0 &&
+              hasAdditionalRequests.types.includes("count-menu")
+            ) {
+              // Get current menu count after adding
+              const currentMenu = await getMenuItems(targetDate);
+              const totalDishes = currentMenu.length;
+
+              const countMessage: Message = {
+                id: Date.now().toString(),
+                text: `Mình đã thêm món **${dishToAdd.ten_mon_an}** vào thực đơn ${dateText} rồi nha! Hiện tại menu ${dateText} có tổng cộng **${totalDishes} món**.`,
+                sender: "bot",
+                timestamp: new Date(),
+                type: "text",
+              };
+              setMessages((prev) => [...prev, countMessage]);
+              logger.info("Dish added and count displayed:", { totalDishes });
+            } else {
+              // No response message - just add silently
+              logger.info("Dish added successfully, no response message shown");
+            }
           } catch (error) {
             logger.error("Error adding dish to menu:", error);
             // Only show error message if something goes wrong

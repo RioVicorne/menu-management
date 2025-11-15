@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { AIChat } from "@/components/features/ai";
 import { LoginForm } from "@/components/features/common";
 import { supabase } from "@/lib/supabase";
-import { getAllIngredients } from "@/lib/api";
+import { getAllIngredients, getMenuItems, getDishes } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
 export default function PlannerPage() {
   const [availableIngredients, setAvailableIngredients] = useState<string[]>([]);
+  const [currentMenu, setCurrentMenu] = useState<string[]>([]);
+  const [availableDishes, setAvailableDishes] = useState<string[]>([]);
   const [isAuthed, setIsAuthed] = useState<boolean>(false);
 
   useEffect(() => {
@@ -22,6 +24,43 @@ export default function PlannerPage() {
     };
 
     loadIngredients();
+  }, []);
+
+  // Load today's menu for AI context
+  useEffect(() => {
+    const loadTodayMenu = async () => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        const menuItems = await getMenuItems(today);
+        const dishNames = menuItems
+          .map(item => String(item.ten_mon_an || ""))
+          .filter(name => name.length > 0);
+        setCurrentMenu(dishNames);
+      } catch (error) {
+        logger.error("Failed to load today's menu for AI context", error);
+        setCurrentMenu([]);
+      }
+    };
+
+    loadTodayMenu();
+  }, []);
+
+  // Load available dishes from database for AI context
+  useEffect(() => {
+    const loadAvailableDishes = async () => {
+      try {
+        const dishes = await getDishes();
+        const dishNames = dishes
+          .map(dish => String(dish.ten_mon_an || ""))
+          .filter(name => name.length > 0);
+        setAvailableDishes(dishNames);
+      } catch (error) {
+        logger.error("Failed to load available dishes for AI context", error);
+        setAvailableDishes([]);
+      }
+    };
+
+    loadAvailableDishes();
   }, []);
 
   // Auth: check current session and listen for changes
@@ -51,7 +90,8 @@ export default function PlannerPage() {
 
   const aiContext = {
     availableIngredients,
-    currentMenu: [],
+    currentMenu,
+    availableDishes,
     dietaryPreferences: []
   };
 
