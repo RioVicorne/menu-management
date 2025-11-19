@@ -1,6 +1,19 @@
 import { logger } from "./logger";
 import { Perplexity } from "@perplexity-ai/perplexity_ai";
-import { addDishToMenu, deleteMenuItem, getMenuItems } from "./api";
+import {
+  addDishToMenu,
+  createDish,
+  createIngredient,
+  deleteDish,
+  deleteIngredient,
+  deleteMenuItem,
+  deleteMenuItemsByDate,
+  getAllIngredients,
+  getDishes,
+  getMenuItems,
+  updateDish,
+  updateIngredient,
+} from "./api";
 
 // Support multiple env var names to avoid misconfig in different runtimes (Node/Bun)
 const PERPLEXITY_API_KEY =
@@ -57,6 +70,115 @@ export interface AIResponse {
   suggestions?: string[];
   error?: string;
   aiData?: AIData;
+}
+
+type PlannerToolAction =
+  | {
+      action: "chat";
+      response?: string;
+    }
+  | {
+      action: "add_dish_to_menu";
+      params?: PlannerAddDishParams;
+    }
+  | {
+      action: "remove_dish_from_menu";
+      params?: PlannerRemoveDishParams;
+    }
+  | {
+      action: "view_menu";
+      params?: PlannerViewMenuParams;
+    }
+  | {
+      action: "view_inventory";
+      params?: PlannerInventoryParams;
+    }
+  | {
+      action: "clear_menu_by_date";
+      params?: PlannerClearMenuParams;
+    }
+  | {
+      action: "create_dish";
+      params?: PlannerCreateDishParams;
+    }
+  | {
+      action: "update_dish";
+      params?: PlannerUpdateDishParams;
+    }
+  | {
+      action: "delete_dish";
+      params?: PlannerDeleteDishParams;
+    }
+  | {
+      action: "create_ingredient";
+      params?: PlannerCreateIngredientParams;
+    }
+  | {
+      action: "update_ingredient";
+      params?: PlannerUpdateIngredientParams;
+    }
+  | {
+      action: "delete_ingredient";
+      params?: PlannerDeleteIngredientParams;
+    };
+
+interface PlannerAddDishParams {
+  dish_name?: string;
+  date?: string;
+  servings?: number;
+}
+
+interface PlannerRemoveDishParams {
+  dish_name?: string;
+  date?: string;
+}
+
+interface PlannerViewMenuParams {
+  date?: string;
+}
+
+interface PlannerInventoryParams {
+  ingredient_name?: string;
+}
+
+interface PlannerClearMenuParams {
+  date?: string;
+}
+
+interface PlannerCreateDishParams {
+  dish_name?: string;
+  image_url?: string;
+  tags?: string[];
+}
+
+interface PlannerUpdateDishParams {
+  dish_name?: string;
+  new_name?: string;
+  image_url?: string;
+  tags?: string[];
+}
+
+interface PlannerDeleteDishParams {
+  dish_name?: string;
+}
+
+interface PlannerCreateIngredientParams {
+  ingredient_name?: string;
+  quantity?: number;
+  weight?: number;
+  source?: string;
+}
+
+interface PlannerUpdateIngredientParams {
+  ingredient_name?: string;
+  new_name?: string;
+  quantity?: number;
+  weight?: number;
+  source?: string;
+}
+
+interface PlannerDeleteIngredientParams {
+  ingredient_name?: string;
 }
 
 interface Dish {
@@ -1115,291 +1237,71 @@ CHỈ trả về JSON, không thêm text nào khác.`;
     }> = []
   ): Promise<AIResponse> {
     try {
-      // Bỏ tất cả pattern matching và intent handlers
-      // Để tất cả câu hỏi đi thẳng đến Perplexity API tự nhiên như ChatGPT
-
-      const systemPrompt = [
-        "[Vai trò & Mục tiêu]",
-        "Bạn là một Trợ lý Quản lý Thực đơn (Menu Management Assistant) chuyên nghiệp và thân thiện. Mục tiêu chính của bạn là giúp người dùng quản lý cơ sở dữ liệu món ăn của họ một cách nhanh chóng và hiệu quả thông qua giao tiếp tự nhiên.",
-        "",
-        "[Ngữ cảnh & Công cụ]",
-        "Bạn được kết nối trực tiếp với cơ sở dữ liệu Supabase của người dùng.",
-        "Bạn có toàn quyền chỉnh sửa: ĐỌC (xem món ăn), TẠO (thêm món mới), CẬP NHẬT (sửa thông tin/giá món ăn), và XÓA (xóa món ăn).",
-        "",
-        "[Nhiệm vụ chính]",
-        "Nhiệm vụ của bạn tập trung chuyên biệt vào 3 mảng sau:",
-        "1. Lên kế hoạch thực đơn: Gợi ý, tạo thực đơn cho ngày/tuần, hoặc sắp xếp các món ăn theo yêu cầu.",
-        "2. Sửa đổi món ăn: Nhận các yêu cầu như 'Sửa giá món Phở Bò thành 50,000' hoặc 'Cập nhật mô tả cho món Cơm Gà'.",
-        "3. Xóa món ăn: Thực hiện các lệnh như 'Xóa món Bún Đậu ra khỏi menu'.",
-        "",
-        "[Hiểu Ý Định Người Dùng - QUAN TRỌNG]",
-        "",
-        "Mỗi người sẽ hỏi theo cách khác nhau, nhưng cùng một ý nghĩa. BẠN PHẢI hiểu được hàm ý cốt lõi, không chỉ dựa vào từ khóa.",
-        "",
-        "VÍ DỤ CÁC CÁCH HỎI CÙNG Ý NGHĨA:",
-        "",
-        "1. Hỏi về thực đơn hôm nay:",
-        "   - 'thực đơn hôm nay là gì'",
-        "   - 'ngày hôm nay có thực đơn là gì'",
-        "   - 'menu hôm nay có gì'",
-        "   - 'hôm nay ăn gì'",
-        "   - 'hôm nay có món gì'",
-        "   - 'xem thực đơn hôm nay'",
-        "   - 'cho mình xem menu hôm nay'",
-        "   - 'thực đơn ngày hôm nay'",
-        "   → TẤT CẢ đều có ý nghĩa: 'XEM THỰC ĐƠN HÔM NAY'",
-        "",
-        "2. Thêm món vào menu:",
-        "   - 'thêm món Phở Bò'",
-        "   - 'cho món Phở Bò vào menu'",
-        "   - 'đưa Phở Bò vào thực đơn'",
-        "   - 'muốn thêm Phở Bò'",
-        "   - 'add Phở Bò'",
-        "   → TẤT CẢ đều có ý nghĩa: 'THÊM MÓN PHỞ BÒ'",
-        "",
-        "3. Xóa món khỏi menu:",
-        "   - 'xóa món Gà Rán'",
-        "   - 'bỏ món Gà Rán'",
-        "   - 'loại Gà Rán khỏi menu'",
-        "   - 'remove Gà Rán'",
-        "   - 'đừng có món Gà Rán nữa'",
-        "   → TẤT CẢ đều có ý nghĩa: 'XÓA MÓN GÀ RÁN'",
-        "",
-        "4. Hỏi về nguyên liệu trong kho:",
-        "   - 'còn cà chua không'",
-        "   - 'có cà chua trong kho không'",
-        "   - 'kiểm tra cà chua'",
-        "   - 'xem kho có cà chua không'",
-        "   - 'cà chua còn bao nhiêu'",
-        "   → TẤT CẢ đều có ý nghĩa: 'KIỂM TRA NGUYÊN LIỆU CÀ CHUA'",
-        "",
-        "5. Gợi ý món từ nguyên liệu:",
-        "   - 'gợi ý món từ cà chua và trứng'",
-        "   - 'có thể nấu gì với cà chua'",
-        "   - 'món nào dùng cà chua và trứng'",
-        "   - 'suggest món với cà chua'",
-        "   → TẤT CẢ đều có ý nghĩa: 'GỢI Ý MÓN TỪ NGUYÊN LIỆU'",
-        "",
-        "6. Hỏi về menu ngày mai:",
-        "   - 'thực đơn ngày mai'",
-        "   - 'menu mai có gì'",
-        "   - 'ngày mai ăn gì'",
-        "   - 'mai có món gì'",
-        "   - 'xem menu ngày mai'",
-        "   → TẤT CẢ đều có ý nghĩa: 'XEM MENU NGÀY MAI'",
-        "",
-        "NGUYÊN TẮC HIỂU Ý ĐỊNH:",
-        "- Phân tích SEMANTIC (ngữ nghĩa), không chỉ SYNTAX (cú pháp)",
-        "  * Ví dụ: 'hôm nay ăn gì' và 'thực đơn hôm nay' → CÙNG Ý NGHĨA",
-        "- Tìm kiếm từ khóa chính (thực đơn, menu, món, thêm, xóa, gợi ý, etc.)",
-        "  * Các từ đồng nghĩa: menu = thực đơn, thêm = add = cho vào, xóa = remove = bỏ",
-        "- Nhận diện entities (tên món, ngày tháng, số lượng)",
-        "  * 'hôm nay' = ngày hiện tại, 'mai' = ngày mai, 'hôm qua' = ngày hôm qua",
-        "- Hiểu ngữ cảnh từ conversation history",
-        "  * Nếu user vừa nói 'thêm Phở Bò' rồi hỏi 'thêm chưa' → Hỏi về Phở Bò",
-        "- Xử lý lỗi chính tả và viết tắt",
-        "  * 'thuc don' = 'thực đơn', 'mon an' = 'món ăn', 'hnay' = 'hôm nay'",
-        "- Khi không chắc, hỏi lại một cách tự nhiên để làm rõ",
-        "  * 'Bạn đang hỏi về món nào vậy?' hoặc 'Bạn muốn xem menu ngày nào vậy?'",
-        "",
-        "[XỬ LÝ CÂU CÓ NHIỀU MỆNH ĐỀ - QUAN TRỌNG]",
-        "",
-        "Khi người dùng đặt câu có NHIỀU yêu cầu trong một câu, BẠN PHẢI xử lý TẤT CẢ các yêu cầu, không chỉ một phần.",
-        "",
-        "VÍ DỤ CÂU CÓ NHIỀU MỆNH ĐỀ:",
-        "",
-        "1. Câu có 2 yêu cầu:",
-        "   User: 'thêm món ngẫu nhiên vào menu hôm nay và xem có tổng cộng bao nhiêu món'",
-        "   → Có 2 ý định:",
-        "      a) Thêm món ngẫu nhiên vào menu hôm nay",
-        "      b) Đếm và hiển thị tổng số món sau khi thêm",
-        "   → BẠN PHẢI:",
-        "      - Xử lý yêu cầu thêm món (hoặc hỏi xác nhận nếu cần)",
-        "      - SAU ĐÓ đếm và hiển thị tổng số món hiện tại",
-        "   → Trả lời: 'Mình đã chọn món X. Bạn xác nhận thêm món này chứ? [Sau khi xác nhận] Hiện tại menu hôm nay có tổng cộng Y món.'",
-        "",
-        "2. Câu có nhiều yêu cầu tuần tự:",
-        "   User: 'thêm Phở Bò vào menu hôm nay rồi cho mình xem lại menu'",
-        "   → Có 2 ý định:",
-        "      a) Thêm món Phở Bò",
-        "      b) Hiển thị lại menu sau khi thêm",
-        "   → BẠN PHẢI xử lý cả hai (hoặc nói rõ sẽ làm sau khi thêm)",
-        "",
-        "3. Câu hỏi kết hợp:",
-        "   User: 'menu hôm nay có gì và còn nguyên liệu nào không'",
-        "   → Có 2 ý định:",
-        "      a) Xem menu hôm nay",
-        "      b) Kiểm tra nguyên liệu còn trong kho",
-        "   → BẠN PHẢI trả lời cả hai:",
-        "      'Hôm nay có các món: X, Y, Z. Và trong kho còn có: A, B, C'",
-        "",
-        "4. Câu có yêu cầu và điều kiện:",
-        "   User: 'thêm món ngẫu nhiên vào menu và cho mình biết tổng cộng có bao nhiêu món'",
-        "   → Có 2 ý định:",
-        "      a) Thêm món ngẫu nhiên",
-        "      b) Đếm tổng số món (SAU KHI thêm)",
-        "   → BẠN PHẢI thực hiện cả hai, không chỉ một",
-        "",
-        "NGUYÊN TẮC XỬ LÝ NHIỀU MỆNH ĐỀ:",
-        "- PHÂN TÍCH câu để tìm TẤT CẢ các yêu cầu (thêm, xóa, xem, đếm, kiểm tra, etc.)",
-        "- Nhận diện các từ nối: 'và', 'rồi', 'sau đó', 'đồng thời' → Cho biết có nhiều yêu cầu",
-        "- Xử lý TUẦN TỰ hoặc CÙNG LÚC tùy theo logic (thêm xong rồi mới đếm)",
-        "- Trả lời ĐẦY ĐỦ cho TẤT CẢ các yêu cầu, không bỏ sót",
-        "- Nếu một yêu cầu cần xác nhận (như thêm món), nói rõ:",
-        "  'Mình đã chọn món X. Sau khi bạn xác nhận thêm, mình sẽ báo cho bạn biết tổng số món nha!'",
-        "- Sau khi xác nhận và thực hiện, PHẢI quay lại xử lý các yêu cầu còn lại",
-        "",
-        "LƯU Ý QUAN TRỌNG:",
-        "- KHÔNG chỉ xử lý yêu cầu ĐẦU TIÊN và bỏ qua các yêu cầu khác",
-        "- Nếu câu có 'và', 'rồi', 'sau đó' → Chắc chắn có nhiều yêu cầu",
-        "- Luôn nhắc lại các yêu cầu còn lại nếu chưa thể thực hiện ngay (ví dụ: cần xác nhận trước)",
-        "",
-        "[Phong cách & Quy tắc tương tác]",
-        "",
-        "1. Ngôn ngữ tự nhiên (Bắt buộc):",
-        "   Luôn luôn trả lời bằng ngôn ngữ đàm thoại, thân thiện và hữu ích. Tránh trả lời cộc lốc hoặc quá máy móc.",
-        "",
-        "   TỐT: 'OK, mình đã cập nhật giá món Cơm Gà thành 45,000 rồi nhé!'",
-        "   TRÁNH: 'Thực thi: CẬP NHẬT 'Cơm Gà' SET 'Giá' = 45000. Thành công.'",
-        "",
-        "   - LUÔN dùng 'mình', 'bạn' thay vì 'tôi', 'bạn'",
-        "   - Dùng 'nha', 'nhé', 'vậy', 'đó' để tự nhiên hơn",
-        "   - Trả lời ngắn gọn, như đang chat với bạn",
-        "   - KHÔNG dùng markdown phức tạp (**, ##, list dài)",
-        "   - KHÔNG dùng emoji trừ khi thực sự cần (tối đa 1-2)",
-        "   - Nói như người Việt thật, không như robot",
-        "",
-        "2. Chủ động xác nhận:",
-        "   Đối với các thao tác quan trọng hoặc có tính phá hủy (như XÓA hoặc SỬA nhiều mục), hãy luôn hỏi lại để xác nhận trước khi thực hiện.",
-        "   Ví dụ: 'Bạn có chắc chắn muốn xóa món 'Gà Rán' khỏi thực đơn không?'",
-        "",
-        "3. Bám sát chủ đề:",
-        "   Nếu người dùng hỏi về các chủ đề không liên quan (ví dụ: thời tiết, tin tức, lịch sử...), hãy nhẹ nhàng trả lời rằng bạn chỉ tập trung vào việc quản lý thực đơn và hỏi xem họ có cần giúp gì liên quan đến món ăn không.",
-        "",
-        "4. Ghi nhớ ngữ cảnh cuộc trò chuyện (QUAN TRỌNG):",
-        "   Bạn có quyền truy cập vào lịch sử cuộc trò chuyện trước đó. Hãy LUÔN LUÔN sử dụng thông tin này để hiểu rõ hơn về các yêu cầu của người dùng.",
-        "",
-        "   VÍ DỤ CỤ THỂ VỀ HIỂU Ý ĐỊNH TỪ NGỮ CẢNH:",
-        "",
-        "   a) Hỏi về hành động vừa thực hiện:",
-        "      History: 'User: thêm món Phở Bò vào menu'",
-        "      User hỏi: 'đã thêm chưa?' / 'thêm chưa đó?' / 'thêm rồi chưa?' / 'xong chưa?'",
-        "      → PHẢI hiểu: Hỏi về việc thêm món Phở Bò",
-        "      → Trả lời: 'Rồi nha, mình đã thêm món Phở Bò vào thực đơn rồi đó!'",
-        "",
-        "   b) Hỏi về món đã đề cập trước đó:",
-        "      History: 'User: xóa món Gà Rán'",
-        "      User hỏi: 'xóa chưa?' / 'bỏ chưa?' / 'loại chưa?'",
-        "      → PHẢI hiểu: Hỏi về việc xóa món Gà Rán",
-        "      → Trả lời dựa trên trạng thái thực tế",
-        "",
-        "   c) Hỏi về thông tin vừa được cung cấp:",
-        "      History: 'Assistant: Hôm nay có 5 món: Phở Bò, Cơm Gà, Canh Chua...'",
-        "      User hỏi: 'có món gì vậy?' / 'bao nhiêu món?' / 'món nào?'",
-        "      → PHẢI hiểu: Hỏi lại về menu vừa được nêu",
-        "      → Trả lời: 'Hôm nay có 5 món: Phở Bò, Cơm Gà, Canh Chua, Salad, Bánh mì'",
-        "",
-        "   d) Hỏi không rõ ràng - Cần làm rõ:",
-        "      User hỏi: 'thêm chưa?' nhưng không có context trong history",
-        "      → PHẢI hỏi lại: 'Bạn đang hỏi về món nào vậy? Mình cần biết rõ để trả lời chính xác nha.'",
-        "",
-        "   QUY TẮC XỬ LÝ NGỮ CẢNH:",
-        "   - LUÔN đọc conversation history TRƯỚC khi trả lời",
-        "   - Khi user hỏi về trạng thái (đã thêm chưa, đã xóa chưa, etc.), tìm trong history xem họ đã yêu cầu gì",
-        "   - Nếu tìm thấy context, sử dụng nó để trả lời chính xác",
-        "   - Nếu KHÔNG tìm thấy context, hỏi lại một cách tự nhiên để làm rõ",
-        "   - KHÔNG bao giờ trả lời generic/khoa trương khi có thể tìm thấy thông tin cụ thể trong history",
-        "   - Khi user dùng đại từ (nó, cái đó, món đó), tìm xem họ đang nói về gì trong history",
-        "",
-        "LUÔN NHỚ - QUY TẮC QUAN TRỌNG NHẤT:",
-        "- CHỈ dùng dữ liệu THỰC TẾ từ Supabase, KHÔNG BAO GIỜ bịa ra hoặc tạo ra dữ liệu",
-        "- Nếu user hỏi về meal plan, menu, hoặc món ăn:",
-        "  * BẠN PHẢI chỉ sử dụng các món ăn CÓ THẬT trong database của user",
-        "  * KHÔNG được tạo ra món ăn mới hoặc suggest món ăn không có trong database",
-        "  * Nếu database có ít món, chỉ dùng những món đó, KHÔNG bịa thêm",
-        "  * Nếu user hỏi về meal plan tuần nhưng database chỉ có 5 món, chỉ dùng 5 món đó",
-        "- Xác nhận trước khi thay đổi dữ liệu",
-        "- Nếu thiếu info hoặc không có dữ liệu, hỏi lại một cách tự nhiên:",
-        "  * 'Hiện tại trong hệ thống có [số] món: [danh sách]. Bạn muốn mình tạo meal plan từ các món này không?'",
-        "  * KHÔNG được bịa ra món ăn để làm cho meal plan đầy đủ",
-        "",
-        "VÍ DỤ SAI (KHÔNG BAO GIỜ LÀM):",
-        "- User hỏi meal plan tuần, database chỉ có 'Phở Bò' và 'Cơm Gà'",
-        "- AI tạo ra: 'Thứ 2: Bún chả, Thứ 3: Cá kho...' (CÁC MÓN KHÔNG CÓ TRONG DATABASE)",
-        "- → SAI! AI đang bịa ra dữ liệu",
-        "",
-        "VÍ DỤ ĐÚNG:",
-        "- User hỏi meal plan tuần, database có 'Phở Bò', 'Cơm Gà', 'Canh Chua'",
-        "- AI trả lời: 'Hiện tại hệ thống có 3 món: Phở Bò, Cơm Gà, Canh Chua. Mình có thể tạo meal plan tuần từ 3 món này không? Hoặc bạn muốn thêm món mới vào hệ thống trước?'",
-        "- → ĐÚNG! AI chỉ dùng dữ liệu thực tế",
-        "",
-        "QUAN TRỌNG - SỬ DỤNG NGỮ CẢNH:",
-        "- Khi người dùng hỏi về thực đơn hôm nay, hôm nay, hoặc menu hiện tại, BẠN PHẢI sử dụng thông tin trong 'NGỮ CẢNH HIỆN TẠI' bên dưới",
-        "- Nếu trong ngữ cảnh có 'Thực đơn hôm nay', hãy LIỆT KÊ CỤ THỂ các món ăn đó khi trả lời",
-        "- KHÔNG được nói 'không có dữ liệu' nếu trong ngữ cảnh đã có thông tin menu",
-        "- Nếu menu trống (rỗng), hãy nói 'Hôm nay chưa có món nào trong thực đơn' thay vì 'không có dữ liệu'",
-        "",
-        "CẢNH BÁO QUAN TRỌNG:",
-        "- KHÔNG TÌM KIẾM TRÊN WEB về menu của người dùng",
-        "- KHÔNG đề cập đến 'kết quả tìm kiếm', 'search results', hay các nguồn bên ngoài",
-        "- KHÔNG dùng kiến thức tổng quát hoặc kinh nghiệm cá nhân để tạo ra món ăn",
-        "- CHỈ dùng dữ liệu từ NGỮ CẢNH HIỆN TẠI hoặc database của người dùng",
-        "- Nếu có menu trong context, hãy trả lời TRỰC TIẾP: 'Hôm nay có các món: [danh sách món]'",
-        "- KHÔNG bắt đầu bằng 'Mình xin lỗi, nhưng kết quả tìm kiếm...' khi trả lời về menu",
-        "- Nếu có dữ liệu menu, bỏ qua bất kỳ thông tin tìm kiếm nào và chỉ dùng dữ liệu từ context",
-        "",
-        "KHI USER HỎI VỀ MEAL PLAN:",
-        "- Nếu trong NGỮ CẢNH HIỆN TẠI có 'Các món ăn có sẵn trong database' → CHỈ dùng các món đó để tạo meal plan",
-        "- Nếu có danh sách món trong context → CHỈ dùng các món đó, KHÔNG tạo thêm món mới",
-        "- Nếu không có đủ món cho meal plan → Nói rõ: 'Hiện tại hệ thống có [số] món: [danh sách]. Mình có thể tạo meal plan từ các món này, hoặc bạn muốn thêm món mới vào hệ thống trước?'",
-        "- KHÔNG được tự tạo ra món ăn mới dựa trên kiến thức tổng quát",
-        "- KHÔNG được suggest món ăn từ internet hoặc kiến thức chung",
-        "- Ví dụ: Nếu context có 'Các món ăn có sẵn: Phở Bò, Cơm Gà' → CHỈ dùng 2 món đó để tạo meal plan, KHÔNG tạo thêm 'Bún chả', 'Cá kho'...",
-        "- QUAN TRỌNG: Khi tạo meal plan, phải kiểm tra trong NGỮ CẢNH HIỆN TẠI xem có bao nhiêu món, và CHỈ dùng các món đó",
-        "",
-        "NGỮ CẢNH HIỆN TẠI:",
-        context?.availableIngredients && context.availableIngredients.length > 0
-          ? `- Nguyên liệu còn trong kho: ${context.availableIngredients.join(", ")}`
-          : "- Nguyên liệu còn trong kho: (chưa có dữ liệu)",
-        context?.availableDishes && context.availableDishes.length > 0
-          ? `- Các món ăn có sẵn trong database (TỔNG: ${context.availableDishes.length} món): ${context.availableDishes.join(", ")}`
-          : "- Các món ăn có sẵn trong database: (chưa có dữ liệu)",
-        context?.currentMenu && context.currentMenu.length > 0
-          ? (() => {
-              const today = new Date();
-              const dateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
-              return `- Thực đơn hôm nay (${dateStr}): ${context.currentMenu.join(", ")}`;
-            })()
-          : (() => {
-              const today = new Date();
-              const dateStr = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
-              return `- Thực đơn hôm nay (${dateStr}): (chưa có món nào)`;
-            })(),
-        context?.dietaryPreferences && context.dietaryPreferences.length > 0
-          ? `- Sở thích ăn uống: ${context.dietaryPreferences.join(", ")}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      // Xây dựng messages array với conversation history
+      const systemPrompt = this.buildPlannerToolsPrompt(context);
       const messagesToSend: AIMessage[] = [
         { role: "system", content: systemPrompt },
-        // Thêm conversation history trước message hiện tại
         ...conversationHistory.map((msg) => ({
-          role: msg.role as "user" | "assistant",
+          role: msg.role,
           content: msg.content,
         })),
-        // Thêm message hiện tại
         { role: "user", content: message },
       ];
 
-      const content = await this.callPerplexityAPI(messagesToSend);
+      const rawResponse = await this.callPerplexityAPI(messagesToSend);
+      const structuredAction = this.parsePlannerAction(rawResponse);
 
-      return {
-        content,
-        // Giữ suggestions trống để phản hồi thuần hội thoại giống ChatGPT
-      };
+      if (!structuredAction) {
+        logger.warn("Planner AI could not parse structured action", {
+          rawResponse,
+        });
+        return {
+          content:
+            rawResponse ||
+            "Mình chưa hiểu yêu cầu. Bạn mô tả rõ hơn giúp mình nha.",
+        };
+      }
+      logger.info("Planner structured action", structuredAction);
+
+      switch (structuredAction.action) {
+        case "chat":
+          return {
+            content:
+              structuredAction.response ||
+              "Mình đang sẵn sàng hỗ trợ bạn về thực đơn nè.",
+          };
+        case "add_dish_to_menu":
+          return await this.executeAddDishAction(structuredAction.params);
+        case "remove_dish_from_menu":
+          return await this.executeRemoveDishAction(structuredAction.params);
+        case "view_menu":
+          return await this.executeViewMenuAction(structuredAction.params);
+        case "view_inventory":
+          return await this.executeViewInventoryAction(structuredAction.params);
+        case "clear_menu_by_date":
+          return await this.executeClearMenuAction(structuredAction.params);
+        case "create_dish":
+          return await this.executeCreateDishAction(structuredAction.params);
+        case "update_dish":
+          return await this.executeUpdateDishAction(structuredAction.params);
+        case "delete_dish":
+          return await this.executeDeleteDishAction(structuredAction.params);
+        case "create_ingredient":
+          return await this.executeCreateIngredientAction(
+            structuredAction.params
+          );
+        case "update_ingredient":
+          return await this.executeUpdateIngredientAction(
+            structuredAction.params
+          );
+        case "delete_ingredient":
+          return await this.executeDeleteIngredientAction(
+            structuredAction.params
+          );
+        default:
+          return {
+            content: "Mình chưa rõ yêu cầu, bạn mô tả cụ thể hơn nha.",
+          };
+      }
     } catch (error) {
       logger.error("Error in chat (LLM):", error);
       return {
@@ -1408,6 +1310,858 @@ CHỈ trả về JSON, không thêm text nào khác.`;
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
+  }
+
+  private buildPlannerToolsPrompt(context?: {
+    currentMenu?: string[];
+    availableIngredients?: string[];
+    availableDishes?: string[];
+    dietaryPreferences?: string[];
+  }): string {
+    const contextSummary = this.buildPlannerContextSummary(context);
+    return [
+      "Bạn là một quản lý nhà hàng thông minh, phụ trách cập nhật thực đơn dựa trên yêu cầu hội thoại.",
+      "",
+      "Bạn có quyền sử dụng các CÔNG CỤ ảo sau (chỉ mô tả, hệ thống sẽ thi hành giúp bạn):",
+      "1. add_dish_to_menu: thêm món vào thực đơn. Tham số: dish_name (bắt buộc), date (YYYY-MM-DD, mặc định hôm nay), servings (mặc định 1).",
+      "2. remove_dish_from_menu: xóa món khỏi thực đơn. Tham số: dish_name (bắt buộc), date (YYYY-MM-DD, mặc định hôm nay).",
+      "3. view_menu: xem thực đơn theo ngày. Tham số: date (YYYY-MM-DD, mặc định hôm nay).",
+      "4. clear_menu_by_date: xóa toàn bộ món của một ngày. Tham số: date (YYYY-MM-DD, mặc định hôm nay).",
+      "5. view_inventory: xem tồn kho nguyên liệu. Tham số: ingredient_name (tùy chọn, nếu không có thì tóm tắt các nguyên liệu nổi bật).",
+      "6. create_dish: tạo món ăn mới. Tham số: dish_name (bắt buộc), image_url (tùy chọn), tags (mảng chuỗi, tùy chọn).",
+      "7. update_dish: cập nhật tên/hình/tags của món. Tham số: dish_name (bắt buộc), new_name/image_url/tags (tùy chọn).",
+      "8. delete_dish: xóa món khỏi cơ sở dữ liệu. Tham số: dish_name (bắt buộc).",
+      "9. create_ingredient: thêm nguyên liệu kho. Tham số: ingredient_name (bắt buộc), quantity (đơn vị đếm), weight (kg), source.",
+      "10. update_ingredient: cập nhật tồn kho/tên/ngồn nhập. Tham số: ingredient_name (bắt buộc), new_name/quantity/weight/source (tùy chọn).",
+      "11. delete_ingredient: xóa nguyên liệu khi không còn sử dụng. Tham số: ingredient_name (bắt buộc).",
+      "12. chat: dùng cho các câu hỏi trò chuyện/giải thích bình thường.",
+      'QUAN TRỌNG: Khi người dùng nói "xóa khỏi hệ thống/cơ sở dữ liệu" hoặc "thêm nguyên liệu mới vào kho", hãy dùng các tool CRUD tương ứng. Chỉ dùng add/remove menu khi thao tác với thực đơn theo ngày.',
+      '- Khi người dùng yêu cầu "xóa toàn bộ/thực đơn ngày X trống" hãy ưu tiên clear_menu_by_date thay vì xóa từng món.',
+      "",
+      "QUY TẮC:",
+      "- Nếu người dùng yêu cầu thay đổi dữ liệu, BẮT BUỘC trả về JSON đúng chuẩn.",
+      "- Nếu chỉ trò chuyện, trả JSON với action=chat và response là câu trả lời thân thiện.",
+      "- LUÔN chỉ trả về JSON, không thêm chữ nào bên ngoài.",
+      "",
+      "ĐỊNH DẠNG JSON:",
+      `{ "action": "<tên công cụ>", "params": { ... }, "response": "<chỉ dùng cho action chat>" }`,
+      '- Ví dụ thêm món: { "action": "add_dish_to_menu", "params": { "dish_name": "Phở bò", "date": "2025-11-19" } }',
+      '- Ví dụ chat: { "action": "chat", "response": "Xin chào, mình có thể giúp gì về thực đơn hôm nay?" }',
+      "",
+      "Lưu ý: tự động hiểu các câu nói tự nhiên (ví dụ 'cho Phở lên sóng', 'set kèo Phở cho hôm nay').",
+      "Nếu thiếu thông tin (ví dụ chưa rõ tên món), trả JSON với action=chat để hỏi lại.",
+      "",
+      "Ngữ cảnh hiện tại:",
+      contextSummary,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  private buildPlannerContextSummary(context?: {
+    currentMenu?: string[];
+    availableIngredients?: string[];
+    availableDishes?: string[];
+    dietaryPreferences?: string[];
+  }): string {
+    if (!context) {
+      return "- Chưa có dữ liệu bổ sung.";
+    }
+
+    const sections: string[] = [];
+
+    if (context.availableDishes && context.availableDishes.length > 0) {
+      const list =
+        context.availableDishes.length > 30
+          ? `${context.availableDishes.slice(0, 30).join(", ")} ... (+${
+              context.availableDishes.length - 30
+            } món nữa)`
+          : context.availableDishes.join(", ");
+      sections.push(
+        `- Các món đang có (${context.availableDishes.length}): ${list}`
+      );
+    }
+
+    if (context.currentMenu && context.currentMenu.length > 0) {
+      sections.push(`- Menu hôm nay: ${context.currentMenu.join(", ")}`);
+    }
+
+    if (
+      context.availableIngredients &&
+      context.availableIngredients.length > 0
+    ) {
+      sections.push(
+        `- Nguyên liệu sẵn sàng: ${context.availableIngredients
+          .slice(0, 30)
+          .join(", ")}`
+      );
+    }
+
+    if (context.dietaryPreferences && context.dietaryPreferences.length > 0) {
+      sections.push(`- Sở thích: ${context.dietaryPreferences.join(", ")}`);
+    }
+
+    if (sections.length === 0) {
+      sections.push("- Chưa có dữ liệu bổ sung.");
+    }
+
+    return sections.join("\n");
+  }
+
+  private parsePlannerAction(raw: string): PlannerToolAction | null {
+    if (!raw) return null;
+
+    const attempts: string[] = [];
+    const trimmed = raw.trim();
+    attempts.push(trimmed);
+
+    if (trimmed.startsWith("```")) {
+      const unfenced = trimmed
+        .replace(/^```(?:json)?/i, "")
+        .replace(/```$/, "")
+        .trim();
+      attempts.push(unfenced);
+    }
+
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (match) {
+      attempts.push(match[0]);
+    }
+
+    for (const candidate of attempts) {
+      if (!candidate || !candidate.startsWith("{")) continue;
+      try {
+        const parsed = JSON.parse(candidate);
+        const action = this.normalizePlannerAction(parsed, raw);
+        if (action) return action;
+      } catch {
+        continue;
+      }
+    }
+
+    logger.warn("Failed to parse planner action JSON", { raw });
+    return null;
+  }
+
+  private normalizePlannerAction(
+    parsed: Record<string, unknown>,
+    raw: string
+  ): PlannerToolAction | null {
+    const action = parsed?.action as PlannerToolAction["action"] | undefined;
+    if (!action) return null;
+
+    switch (action) {
+      case "chat":
+        return { action, response: parsed.response as string | undefined };
+      case "add_dish_to_menu":
+      case "remove_dish_from_menu":
+      case "view_menu":
+      case "view_inventory":
+      case "clear_menu_by_date":
+      case "create_dish":
+      case "update_dish":
+      case "delete_dish":
+      case "create_ingredient":
+      case "update_ingredient":
+      case "delete_ingredient":
+        return { action, params: parsed.params as Record<string, unknown> };
+      default:
+        return { action: "chat", response: raw };
+    }
+  }
+
+  private async executeAddDishAction(
+    params?: PlannerAddDishParams
+  ): Promise<AIResponse> {
+    const dishName = params?.dish_name?.trim();
+    if (!dishName) {
+      return {
+        content: "Bạn cho mình biết tên món muốn thêm vào thực đơn với nha.",
+      };
+    }
+
+    const dish = await this.findDishByName(dishName);
+    if (!dish) {
+      return {
+        content: `Mình không tìm thấy món "${dishName}" trong dữ liệu. Bạn kiểm tra lại tên giúp mình nha.`,
+      };
+    }
+
+    const { isoDate, friendlyLabel } = this.resolveDateInput(params?.date);
+    const servings =
+      typeof params?.servings === "number" && params.servings > 0
+        ? Math.round(params.servings)
+        : 1;
+
+    try {
+      await addDishToMenu(String(dish.id), isoDate, servings);
+      logger.info("AI assistant added dish to menu", {
+        dishId: dish.id,
+        isoDate,
+        servings,
+      });
+      return {
+        content: `Đã thêm món ${dish.ten_mon_an} vào thực đơn ${friendlyLabel} (${this.formatVietnamDate(isoDate)}) với ${servings} suất.`,
+      };
+    } catch (error) {
+      logger.error("Failed to add dish from AI action", {
+        error,
+        dishId: dish.id,
+        isoDate,
+      });
+      return {
+        content:
+          "Xin lỗi, hệ thống chưa thêm được món này do lỗi kết nối. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeRemoveDishAction(
+    params?: PlannerRemoveDishParams
+  ): Promise<AIResponse> {
+    const dishName = params?.dish_name?.trim();
+    if (!dishName) {
+      return {
+        content: "Bạn muốn xóa món nào khỏi menu vậy?",
+      };
+    }
+
+    const dish = await this.findDishByName(dishName);
+    if (!dish) {
+      return {
+        content: `Không tìm thấy món "${dishName}" trong cơ sở dữ liệu. Bạn cân nhắc thêm món này trước khi xóa nha.`,
+      };
+    }
+
+    const { isoDate, friendlyLabel } = this.resolveDateInput(params?.date);
+    const menuItems = await getMenuItems(isoDate);
+    const normalizedTarget = this.normalizeText(dish.ten_mon_an || "");
+
+    const menuItem = menuItems.find((item) => {
+      const normalizedName = this.normalizeText(item.ten_mon_an || "");
+      return (
+        normalizedName === normalizedTarget ||
+        String(item.ma_mon_an) === String(dish.id)
+      );
+    });
+
+    if (!menuItem) {
+      return {
+        content: `Trong thực đơn ${friendlyLabel} (${this.formatVietnamDate(
+          isoDate
+        )}) chưa có món ${dish.ten_mon_an}.`,
+      };
+    }
+
+    try {
+      await deleteMenuItem(menuItem.id);
+      logger.info("AI assistant removed dish from menu", {
+        menuItemId: menuItem.id,
+        isoDate,
+      });
+      return {
+        content: `Đã xóa món ${dish.ten_mon_an} khỏi thực đơn ${friendlyLabel} (${this.formatVietnamDate(
+          isoDate
+        )}).`,
+      };
+    } catch (error) {
+      logger.error("Failed to remove dish from AI action", {
+        error,
+        menuItemId: menuItem.id,
+      });
+      return {
+        content:
+          "Xin lỗi, hệ thống chưa xóa được món này. Bạn thử lại sau giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeClearMenuAction(
+    params?: PlannerClearMenuParams
+  ): Promise<AIResponse> {
+    const { isoDate, friendlyLabel } = this.resolveDateInput(params?.date);
+
+    try {
+      const removedCount = await deleteMenuItemsByDate(isoDate);
+      if (removedCount === 0) {
+        return {
+          content: `Thực đơn ${friendlyLabel} (${this.formatVietnamDate(
+            isoDate
+          )}) đang trống nên không có món nào để xóa.`,
+        };
+      }
+
+      return {
+        content: `Đã xóa ${removedCount} món khỏi thực đơn ${friendlyLabel} (${this.formatVietnamDate(
+          isoDate
+        )}).`,
+      };
+    } catch (error) {
+      logger.error("Failed to clear menu via AI action", { error, isoDate });
+      return {
+        content:
+          "Xin lỗi, hệ thống chưa xóa được thực đơn do lỗi kết nối. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeViewMenuAction(
+    params?: PlannerViewMenuParams
+  ): Promise<AIResponse> {
+    const { isoDate, friendlyLabel } = this.resolveDateInput(params?.date);
+    try {
+      const menuItems = await getMenuItems(isoDate);
+      if (!menuItems || menuItems.length === 0) {
+        return {
+          content: `Thực đơn ${friendlyLabel} (${this.formatVietnamDate(
+            isoDate
+          )}) hiện chưa có món nào.`,
+        };
+      }
+
+      const lines = menuItems.map((item, index) => {
+        const servingsText =
+          item.boi_so && item.boi_so > 1 ? ` x${item.boi_so}` : "";
+        return `${index + 1}. ${item.ten_mon_an || "Món"}${servingsText}`;
+      });
+
+      return {
+        content: `Thực đơn ${friendlyLabel} (${this.formatVietnamDate(
+          isoDate
+        )}):\n${lines.join("\n")}`,
+      };
+    } catch (error) {
+      logger.error("Failed to view menu via AI action", { error, isoDate });
+      return {
+        content:
+          "Mình chưa truy vấn được thực đơn vì lỗi kết nối. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeViewInventoryAction(
+    params?: PlannerInventoryParams
+  ): Promise<AIResponse> {
+    try {
+      const ingredients = await getAllIngredients();
+      if (!ingredients || ingredients.length === 0) {
+        return {
+          content:
+            "Hiện chưa có dữ liệu tồn kho trong Supabase. Bạn vui lòng kiểm tra lại bảng nguyên liệu nhé.",
+        };
+      }
+
+      if (params?.ingredient_name) {
+        const normalizedTarget = this.normalizeText(params.ingredient_name);
+        const bestMatch = ingredients
+          .map((ing) => {
+            const normalized = this.normalizeText(ing.ten_nguyen_lieu || "");
+            const score = this.calculateNameSimilarity(
+              normalized,
+              normalizedTarget
+            );
+            return {
+              ingredient: ing,
+              score,
+            };
+          })
+          .filter((item) => item.score > 0)
+          .sort((a, b) => b.score - a.score)[0];
+
+        if (!bestMatch || bestMatch.score < 0.45) {
+          return {
+            content: `Mình chưa tìm thấy nguyên liệu "${params.ingredient_name}". Bạn thử cung cấp tên chính xác hơn giúp mình nha.`,
+          };
+        }
+
+        const ingredient = bestMatch.ingredient;
+        const qty = Number(ingredient.ton_kho_so_luong || 0);
+        const weight = Number(ingredient.ton_kho_khoi_luong || 0);
+        const stockText = this.formatIngredientStock(qty, weight);
+
+        return {
+          content: `Tồn kho **${ingredient.ten_nguyen_lieu}** hiện tại: ${stockText}${
+            stockText.includes("Chưa có dữ liệu") ? "" : "."
+          }`,
+        };
+      }
+
+      const summarized = ingredients.map((ing) => {
+        const qty = Number(ing.ton_kho_so_luong || 0);
+        const weight = Number(ing.ton_kho_khoi_luong || 0);
+        const stockValue = Math.max(qty, weight, 0);
+        return { ing, qty, weight, stockValue };
+      });
+
+      const totalIngredients = summarized.length;
+      const outOfStock = summarized.filter(
+        (item) => item.stockValue === 0
+      ).length;
+      const lowStockItems = summarized
+        .filter((item) => item.stockValue > 0 && item.stockValue <= 5)
+        .sort((a, b) => a.stockValue - b.stockValue)
+        .slice(0, 10);
+      const inStock = totalIngredients - outOfStock;
+
+      const lowStockLines =
+        lowStockItems.length > 0
+          ? lowStockItems
+              .map(
+                (item, index) =>
+                  `${index + 1}. ${item.ing.ten_nguyen_lieu}: ${this.formatIngredientStock(
+                    item.qty,
+                    item.weight
+                  )}`
+              )
+              .join("\n")
+          : "• Không có nguyên liệu nào dưới ngưỡng cảnh báo.";
+
+      const storageUrl =
+        process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+        "http://localhost:3000";
+
+      return {
+        content: `📦 **Tổng quan kho nguyên liệu**\n• Tổng số nguyên liệu: ${totalIngredients}\n• Còn hàng: ${inStock}\n• Hết hàng: ${outOfStock}\n\n**Nguyên liệu cần chú ý (<= 5 đơn vị/kg):**\n${lowStockLines}\n\n👉 Xem toàn bộ chi tiết tại: ${storageUrl}/storage`,
+      };
+    } catch (error) {
+      logger.error("Failed to view inventory via AI action", { error });
+      return {
+        content:
+          "Mình chưa lấy được dữ liệu tồn kho do lỗi kết nối. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeCreateDishAction(
+    params?: PlannerCreateDishParams
+  ): Promise<AIResponse> {
+    const dishName = params?.dish_name?.trim();
+    if (!dishName) {
+      return {
+        content: "Bạn cho mình biết tên món mới muốn tạo với nha.",
+      };
+    }
+
+    try {
+      const tags = this.normalizeTagsInput(params?.tags);
+      const created = await createDish(
+        dishName,
+        undefined,
+        params?.image_url?.trim(),
+        tags
+      );
+      return {
+        content: `Đã tạo món **${created.ten_mon_an}** thành công.`,
+      };
+    } catch (error) {
+      logger.error("Failed to create dish via AI action", { error, dishName });
+      return {
+        content:
+          "Xin lỗi, có lỗi xảy ra khi tạo món mới. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeUpdateDishAction(
+    params?: PlannerUpdateDishParams
+  ): Promise<AIResponse> {
+    const dishName = params?.dish_name?.trim();
+    if (!dishName) {
+      return {
+        content: "Bạn muốn cập nhật món nào vậy?",
+      };
+    }
+
+    const dish = await this.findDishByName(dishName);
+    if (!dish) {
+      return {
+        content: `Mình chưa tìm thấy món "${dishName}". Bạn kiểm tra lại tên giúp mình nha.`,
+      };
+    }
+
+    const updates: Parameters<typeof updateDish>[1] = {};
+    if (params?.new_name && params.new_name.trim().length > 0) {
+      updates.ten_mon_an = params.new_name.trim();
+    }
+    if (params?.image_url !== undefined) {
+      updates.image_url = params.image_url?.trim() || null;
+    }
+    const normalizedTags = this.normalizeTagsInput(params?.tags);
+    if (params?.tags !== undefined) {
+      updates.tags = normalizedTags ?? null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return {
+        content:
+          "Bạn cho mình biết cụ thể muốn đổi tên, hình hay tags của món nhé.",
+      };
+    }
+
+    try {
+      const updated = await updateDish(dish.id, updates);
+      return {
+        content: `Đã cập nhật món **${updated.ten_mon_an}** thành công.`,
+      };
+    } catch (error) {
+      logger.error("Failed to update dish via AI action", {
+        error,
+        dishId: dish.id,
+      });
+      return {
+        content:
+          "Xin lỗi, có lỗi xảy ra khi cập nhật món ăn. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeDeleteDishAction(
+    params?: PlannerDeleteDishParams
+  ): Promise<AIResponse> {
+    const dishName = params?.dish_name?.trim();
+    if (!dishName) {
+      return {
+        content: "Bạn muốn xóa món nào khỏi cơ sở dữ liệu vậy?",
+      };
+    }
+
+    const dish = await this.findDishByName(dishName);
+    if (!dish) {
+      return {
+        content: `Mình chưa tìm thấy món "${dishName}" để xóa.`,
+      };
+    }
+
+    try {
+      await deleteDish(dish.id);
+      return {
+        content: `Đã xóa món **${dish.ten_mon_an}** khỏi cơ sở dữ liệu.`,
+      };
+    } catch (error) {
+      logger.error("Failed to delete dish via AI action", {
+        error,
+        dishId: dish.id,
+      });
+      return {
+        content:
+          "Xin lỗi, có lỗi xảy ra khi xóa món này. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeCreateIngredientAction(
+    params?: PlannerCreateIngredientParams
+  ): Promise<AIResponse> {
+    const name = params?.ingredient_name?.trim();
+    if (!name) {
+      return {
+        content: "Bạn muốn thêm nguyên liệu nào vậy?",
+      };
+    }
+
+    const quantity = this.parseNumberInput(params?.quantity);
+    const weight = this.parseNumberInput(params?.weight);
+
+    try {
+      const created = await createIngredient({
+        ten_nguyen_lieu: name,
+        ton_kho_so_luong: quantity ?? undefined,
+        ton_kho_khoi_luong: weight ?? undefined,
+        nguon_nhap: params?.source ?? undefined,
+      });
+
+      return {
+        content: `Đã thêm nguyên liệu **${created.ten_nguyen_lieu}** với tồn kho ${this.formatIngredientStock(
+          Number(created.ton_kho_so_luong || 0),
+          Number(created.ton_kho_khoi_luong || 0)
+        )}.`,
+      };
+    } catch (error) {
+      logger.error("Failed to create ingredient via AI action", {
+        error,
+        name,
+      });
+      return {
+        content:
+          "Xin lỗi, mình chưa thêm nguyên liệu mới được. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeUpdateIngredientAction(
+    params?: PlannerUpdateIngredientParams
+  ): Promise<AIResponse> {
+    const name = params?.ingredient_name?.trim();
+    if (!name) {
+      return {
+        content: "Bạn muốn cập nhật nguyên liệu nào vậy?",
+      };
+    }
+
+    const ingredient = await this.findIngredientByName(name);
+    if (!ingredient) {
+      return {
+        content: `Mình chưa tìm thấy nguyên liệu "${name}". Bạn kiểm tra lại tên giúp mình nhé.`,
+      };
+    }
+
+    const updates: Parameters<typeof updateIngredient>[1] = {};
+    if (params?.new_name && params.new_name.trim().length > 0) {
+      updates.ten_nguyen_lieu = params.new_name.trim();
+    }
+    if (params?.quantity !== undefined) {
+      updates.ton_kho_so_luong = this.parseNumberInput(params.quantity);
+    }
+    if (params?.weight !== undefined) {
+      updates.ton_kho_khoi_luong = this.parseNumberInput(params.weight);
+    }
+    if (params?.source !== undefined) {
+      updates.nguon_nhap = params.source ?? null;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return {
+        content: "Bạn cho mình biết muốn đổi tên, số lượng hay nguồn nhập nha.",
+      };
+    }
+
+    try {
+      const updated = await updateIngredient(ingredient.id, updates);
+      return {
+        content: `Đã cập nhật nguyên liệu **${updated.ten_nguyen_lieu}**. Tồn kho hiện tại: ${this.formatIngredientStock(
+          Number(updated.ton_kho_so_luong || 0),
+          Number(updated.ton_kho_khoi_luong || 0)
+        )}.`,
+      };
+    } catch (error) {
+      logger.error("Failed to update ingredient via AI action", {
+        error,
+        ingredientId: ingredient.id,
+      });
+      return {
+        content:
+          "Xin lỗi, có lỗi xảy ra khi cập nhật nguyên liệu. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private async executeDeleteIngredientAction(
+    params?: PlannerDeleteIngredientParams
+  ): Promise<AIResponse> {
+    const name = params?.ingredient_name?.trim();
+    if (!name) {
+      return {
+        content: "Bạn muốn xóa nguyên liệu nào vậy?",
+      };
+    }
+
+    const ingredient = await this.findIngredientByName(name);
+    if (!ingredient) {
+      return {
+        content: `Mình chưa tìm thấy nguyên liệu "${name}" để xóa.`,
+      };
+    }
+
+    try {
+      await deleteIngredient(ingredient.id);
+      return {
+        content: `Đã xóa nguyên liệu **${ingredient.ten_nguyen_lieu}** khỏi kho.`,
+      };
+    } catch (error) {
+      logger.error("Failed to delete ingredient via AI action", {
+        error,
+        ingredientId: ingredient.id,
+      });
+      return {
+        content:
+          "Xin lỗi, có lỗi xảy ra khi xóa nguyên liệu này. Bạn thử lại giúp mình nha.",
+      };
+    }
+  }
+
+  private resolveDateInput(dateInput?: string): {
+    isoDate: string;
+    friendlyLabel: string;
+  } {
+    if (!dateInput) {
+      const isoDate = this.getTodayIsoDate();
+      return {
+        isoDate,
+        friendlyLabel: "hôm nay",
+      };
+    }
+
+    const trimmed = dateInput.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return {
+        isoDate: trimmed,
+        friendlyLabel: this.describeFriendlyDate(trimmed),
+      };
+    }
+
+    const normalized = this.normalizeText(trimmed);
+    if (normalized.includes("mai")) {
+      const isoDate = this.getRelativeIsoDate(1);
+      return { isoDate, friendlyLabel: "ngày mai" };
+    }
+    if (normalized.includes("hom qua")) {
+      const isoDate = this.getRelativeIsoDate(-1);
+      return { isoDate, friendlyLabel: "hôm qua" };
+    }
+    if (
+      normalized.includes("hom nay") ||
+      normalized.includes("hnay") ||
+      normalized.includes("today")
+    ) {
+      const isoDate = this.getTodayIsoDate();
+      return { isoDate, friendlyLabel: "hôm nay" };
+    }
+
+    return {
+      isoDate: this.getTodayIsoDate(),
+      friendlyLabel: "hôm nay",
+    };
+  }
+
+  private describeFriendlyDate(isoDate: string): string {
+    if (isoDate === this.getTodayIsoDate()) return "hôm nay";
+    if (isoDate === this.getRelativeIsoDate(1)) return "ngày mai";
+    if (isoDate === this.getRelativeIsoDate(-1)) return "hôm qua";
+    return `ngày ${this.formatVietnamDate(isoDate)}`;
+  }
+
+  private async findDishByName(dishName: string): Promise<Dish | null> {
+    const normalizedTarget = this.normalizeText(dishName);
+    if (!normalizedTarget) return null;
+
+    try {
+      const dishes = await getDishes();
+      let bestMatch: { dish: Dish; score: number } | null = null;
+
+      for (const dish of dishes) {
+        const normalizedName = this.normalizeText(dish.ten_mon_an || "");
+        if (!normalizedName) continue;
+        const score = this.calculateNameSimilarity(
+          normalizedName,
+          normalizedTarget
+        );
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { dish, score };
+        }
+      }
+
+      if (bestMatch && bestMatch.score >= 0.5) {
+        return bestMatch.dish;
+      }
+    } catch (error) {
+      logger.error("Failed to find dish by name", { dishName, error });
+    }
+
+    return null;
+  }
+
+  private async findIngredientByName(
+    ingredientName: string
+  ): Promise<Ingredient | null> {
+    const normalizedTarget = this.normalizeText(ingredientName);
+    if (!normalizedTarget) return null;
+
+    try {
+      const ingredients = await getAllIngredients();
+      let bestMatch: { ingredient: Ingredient; score: number } | null = null;
+
+      for (const ingredient of ingredients) {
+        const normalizedName = this.normalizeText(
+          ingredient.ten_nguyen_lieu || ""
+        );
+        if (!normalizedName) continue;
+        const score = this.calculateNameSimilarity(
+          normalizedName,
+          normalizedTarget
+        );
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { ingredient, score };
+        }
+      }
+
+      if (bestMatch && bestMatch.score >= 0.5) {
+        return bestMatch.ingredient;
+      }
+    } catch (error) {
+      logger.error("Failed to find ingredient by name", {
+        ingredientName,
+        error,
+      });
+    }
+
+    return null;
+  }
+
+  private calculateNameSimilarity(source: string, target: string): number {
+    if (!source || !target) return 0;
+    if (source === target) return 1;
+    if (source.includes(target) || target.includes(source)) return 0.9;
+
+    const sourceTokens = Array.from(
+      new Set(source.split(/\s+/).filter(Boolean))
+    );
+    const targetTokens = Array.from(
+      new Set(target.split(/\s+/).filter(Boolean))
+    );
+
+    if (sourceTokens.length === 0 || targetTokens.length === 0) {
+      return 0;
+    }
+
+    const intersection = sourceTokens.filter((token) =>
+      targetTokens.includes(token)
+    );
+
+    return (
+      intersection.length / Math.max(sourceTokens.length, targetTokens.length)
+    );
+  }
+
+  private parseNumberInput(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === "string") {
+      const normalized = value.replace(/[^\d.,-]/g, "").replace(",", ".");
+      if (!normalized) return null;
+      const num = Number(normalized);
+      return Number.isFinite(num) ? num : null;
+    }
+    return null;
+  }
+
+  private normalizeTagsInput(input?: unknown): string[] | undefined {
+    if (input === undefined || input === null) return undefined;
+    let items: string[] = [];
+    if (Array.isArray(input)) {
+      items = input.map((item) => String(item));
+    } else if (typeof input === "string") {
+      items = input.split(/[,;]+/);
+    } else {
+      items = [String(input)];
+    }
+
+    const normalized = items.map((item) => item.trim()).filter(Boolean);
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private formatIngredientStock(quantity: number, weight: number): string {
+    const parts: string[] = [];
+    if (quantity > 0) {
+      parts.push(`${quantity.toLocaleString("vi-VN")} đơn vị`);
+    }
+    if (weight > 0) {
+      parts.push(`${weight.toLocaleString("vi-VN")} kg`);
+    }
+    return parts.length > 0 ? parts.join(" • ") : "Chưa có dữ liệu tồn kho";
   }
 
   private normalizeText(input: string): string {

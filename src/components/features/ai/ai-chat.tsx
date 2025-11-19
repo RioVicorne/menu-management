@@ -7,14 +7,6 @@ import ChatMessage from "./chat-message";
 import ChatInput from "./chat-input";
 import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
-import {
-  getDishes,
-  getMenuItems,
-  addDishToMenu,
-  updateMenuItem,
-  deleteMenuItem,
-} from "@/lib/api";
-import type { Dish } from "@/lib/api";
 import type {
   ChatMessage as Message,
   ChatSession,
@@ -48,30 +40,6 @@ const createWelcomeMessage = (): Message => ({
   type: "text",
 });
 
-type PendingActionRecord = Record<
-  string,
-  {
-    originalMessage: string;
-    sessionId: string | null;
-    type: "add" | "remove";
-    selectedDish?: Dish;
-    dishName?: string;
-    dishNames?: string[]; // For multiple dishes (e.g., remove all)
-    targetDate?: string;
-  }
->;
-
-type PendingActionIntent = {
-  type: "add" | "remove";
-  prompt: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  confirmVariant: "primary" | "danger";
-  selectedDish?: Dish;
-  dishName?: string;
-  dishNames?: string[]; // For multiple dishes (e.g., remove all)
-};
-
 export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -84,7 +52,6 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [username, setUsername] = useState<string>("Người dùng");
   const [userEmail, setUserEmail] = useState<string>("");
-  const [pendingActions, setPendingActions] = useState<PendingActionRecord>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -358,609 +325,6 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     );
   };
 
-  // Helper function to detect additional requests in a message
-  const detectAdditionalRequests = (
-    messageText: string,
-    alreadyDetectedIntents: string[]
-  ): { count: number; types: string[] } => {
-    const normalized = messageText
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
-    const additionalTypes: string[] = [];
-
-    // Check for count menu requests
-    if (
-      !alreadyDetectedIntents.includes("count-menu") &&
-      (normalized.includes("tong cong") ||
-        normalized.includes("tổng cộng") ||
-        normalized.includes("tong so") ||
-        normalized.includes("tổng số") ||
-        normalized.includes("bao nhieu mon") ||
-        normalized.includes("bao nhiêu món") ||
-        normalized.includes("co bao nhieu") ||
-        normalized.includes("có bao nhiêu") ||
-        normalized.includes("dem") ||
-        normalized.includes("đếm"))
-    ) {
-      additionalTypes.push("count-menu");
-    }
-
-    // Check for view menu requests
-    if (
-      !alreadyDetectedIntents.includes("view-menu") &&
-      (normalized.includes("xem menu") ||
-        normalized.includes("xem thuc don") ||
-        normalized.includes("menu co gi") ||
-        normalized.includes("menu có gì"))
-    ) {
-      additionalTypes.push("view-menu");
-    }
-
-    return {
-      count: additionalTypes.length,
-      types: additionalTypes,
-    };
-  };
-
-  const parseDateFromMessage = (messageText: string): string => {
-    const normalized = messageText
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Check for "ngày mai" or "mai"
-    if (
-      normalized.includes("ngay mai") ||
-      normalized.includes(" mai ") ||
-      normalized.includes("mai")
-    ) {
-      return tomorrow.toISOString().split("T")[0];
-    }
-
-    // Check for "hôm nay" or "hnay" or "menu" (when user says "menu" without date, assume today)
-    if (
-      normalized.includes("hom nay") ||
-      normalized.includes("hnay") ||
-      normalized.includes("menu") ||
-      normalized.includes("thuc don")
-    ) {
-      return today.toISOString().split("T")[0];
-    }
-
-    // Default to today if not specified (most users want to add to today's menu)
-    return today.toISOString().split("T")[0];
-  };
-
-  const detectPendingActionIntent = async (
-    messageText: string
-  ): Promise<PendingActionIntent | null> => {
-    const normalized = messageText
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim();
-
-    if (!normalized) return null;
-
-    // Kiểm tra xem đây có phải là câu hỏi về trạng thái không (đã thêm chưa, đã xóa chưa, etc.)
-    // Nếu là câu hỏi về trạng thái, không nên trigger pending intent, để AI tự nhiên trả lời với context
-    const statusQuestionPatterns = [
-      "da them",
-      "da xoa",
-      "da sua",
-      "da cap nhat",
-      "them chua",
-      "xoa chua",
-      "sua chua",
-      "cap nhat chua",
-      "co them",
-      "co xoa",
-      "co sua",
-      "them roi",
-      "xoa roi",
-      "sua roi",
-      "da them chua",
-      "da xoa chua",
-      "da sua chua",
-      "them chua do",
-      "xoa chua do",
-      "sua chua do",
-    ];
-
-    const isStatusQuestion = statusQuestionPatterns.some((pattern) =>
-      normalized.includes(pattern)
-    );
-
-    // Nếu là câu hỏi về trạng thái, không trigger pending intent, để AI trả lời tự nhiên với context
-    if (isStatusQuestion) {
-      return null;
-    }
-
-    const addKeywords = ["them", "add"];
-    const removeKeywords = ["xoa", "remove", "delete", "bo", "loai"];
-    const randomKeywords = ["ngau nhien", "random"];
-
-    const hasAdd = addKeywords.some((keyword) => normalized.includes(keyword));
-    const hasRemove = removeKeywords.some((keyword) =>
-      normalized.includes(keyword)
-    );
-
-    if (!hasAdd && !hasRemove) {
-      return null;
-    }
-
-    const isRandom = randomKeywords.some((keyword) =>
-      normalized.includes(keyword)
-    );
-
-    // Helper function to extract dish name from message
-    const extractDishName = (msg: string): string | null => {
-      // Try to extract dish name from patterns like "thêm món [dish name]"
-      // This function extracts the dish name from various Vietnamese patterns
-
-      // Remove extra whitespace and normalize
-      const cleanMsg = msg.trim().replace(/\s+/g, " ");
-
-      // Patterns to match (in order of specificity):
-      // 1. "thêm món [dish] vào thực đơn [date]" - most specific
-      // 2. "thêm món [dish] vào menu [date]"
-      // 3. "thêm món [dish] vào ngày mai/hôm nay"
-      // 4. "thêm món [dish] vào"
-      // 5. "thêm món [dish]" - fallback
-
-      // Pattern 1: "thêm món X vào thực đơn"
-      let match = cleanMsg.match(/thêm\s+món\s+(.+?)\s+vào\s+thực\s+đơn/i);
-      if (match && match[1]) {
-        const dishName = match[1].trim();
-        if (dishName.length > 0 && !dishName.match(/^(ngày|hôm|mai|nay)/i)) {
-          logger.info("Extracted dish name (pattern 1):", { dishName });
-          return dishName;
-        }
-      }
-
-      // Pattern 2: "thêm món X vào menu"
-      match = cleanMsg.match(/thêm\s+món\s+(.+?)\s+vào\s+menu/i);
-      if (match && match[1]) {
-        const dishName = match[1].trim();
-        if (dishName.length > 0) {
-          logger.info("Extracted dish name (pattern 2):", { dishName });
-          return dishName;
-        }
-      }
-
-      // Pattern 3: "thêm món X vào ngày mai/hôm nay"
-      match = cleanMsg.match(
-        /thêm\s+món\s+(.+?)\s+vào\s+(?:ngày\s+mai|hôm\s+nay)/i
-      );
-      if (match && match[1]) {
-        const dishName = match[1].trim();
-        if (dishName.length > 0) {
-          logger.info("Extracted dish name (pattern 3):", { dishName });
-          return dishName;
-        }
-      }
-
-      // Pattern 4: "thêm món X vào" (catch-all for "vào")
-      match = cleanMsg.match(/thêm\s+món\s+(.+?)\s+vào/i);
-      if (match && match[1]) {
-        let dishName = match[1].trim();
-        // Remove common trailing words
-        dishName = dishName.replace(/\s+(thực\s+đơn|menu|ngày|hôm)$/i, "");
-        if (dishName.length > 0 && !dishName.match(/^(ngày|hôm|mai|nay)/i)) {
-          logger.info("Extracted dish name (pattern 4):", { dishName });
-          return dishName;
-        }
-      }
-
-      // Pattern 5: "thêm món X" (fallback - everything after "món" until end or "vào"/"khỏi")
-      match = cleanMsg.match(/thêm\s+món\s+([^\n]+?)(?:\s+vào|\s+khỏi|\s*$)/i);
-      if (match && match[1]) {
-        let dishName = match[1].trim();
-        // Remove common trailing words
-        dishName = dishName.replace(
-          /\s+(vào|khỏi|thực\s+đơn|menu|ngày|hôm|mai|nay)$/i,
-          ""
-        );
-        if (dishName.length > 0 && dishName.length < 100) {
-          logger.info("Extracted dish name (pattern 5):", { dishName });
-          return dishName;
-        }
-      }
-
-      // Pattern 6: "xóa món X"
-      match = cleanMsg.match(/xóa\s+món\s+([^\n]+?)(?:\s+khỏi|\s+vào|\s*$)/i);
-      if (match && match[1]) {
-        let dishName = match[1].trim();
-        dishName = dishName.replace(
-          /\s+(khỏi|vào|thực\s+đơn|menu|ngày|hôm|mai|nay)$/i,
-          ""
-        );
-        if (dishName.length > 0 && dishName.length < 100) {
-          logger.info("Extracted dish name (pattern 6):", { dishName });
-          return dishName;
-        }
-      }
-
-      logger.warn("Could not extract dish name from message:", {
-        message: cleanMsg.substring(0, 50),
-      });
-      return null;
-    };
-
-    if (hasAdd && isRandom) {
-      // For random add, fetch a random dish immediately
-      try {
-        const targetDate = parseDateFromMessage(messageText);
-        const [allDishes, existingMenu] = await Promise.all([
-          getDishes(),
-          getMenuItems(targetDate),
-        ]);
-
-        if (!allDishes || allDishes.length === 0) {
-          return {
-            type: "add",
-            prompt:
-              "Hiện chưa có món ăn nào trong cơ sở dữ liệu. Vui lòng thêm món vào hệ thống trước.",
-            confirmLabel: "Thêm",
-            cancelLabel: "Huỷ",
-            confirmVariant: "primary",
-          };
-        }
-
-        const existingDishIds = new Set(
-          (existingMenu || []).map((item) => String(item.ma_mon_an))
-        );
-
-        const availableDishes = allDishes.filter(
-          (dish) => !existingDishIds.has(String(dish.id))
-        );
-
-        if (availableDishes.length === 0) {
-          return {
-            type: "add",
-            prompt: `Tất cả các món đã có trong thực đơn. Không có món nào để thêm ngẫu nhiên.`,
-            confirmLabel: "Thêm",
-            cancelLabel: "Huỷ",
-            confirmVariant: "primary",
-          };
-        }
-
-        // Pick a random dish
-        const randomDish =
-          availableDishes[Math.floor(Math.random() * availableDishes.length)];
-
-        // Check if message has additional requests (multiple clauses)
-        const hasAdditionalRequests = detectAdditionalRequests(messageText, [
-          "add",
-          "random-add",
-        ]);
-
-        let prompt = `Mình đã chọn món **${randomDish.ten_mon_an}** để thêm vào thực đơn. Bạn xác nhận thêm món này chứ?`;
-
-        if (hasAdditionalRequests.count) {
-          if (hasAdditionalRequests.types.includes("count-menu")) {
-            prompt += ` Sau khi bạn xác nhận thêm, mình sẽ báo cho bạn biết tổng số món trong menu hôm nay nha!`;
-          }
-        }
-
-        return {
-          type: "add",
-          prompt,
-          confirmLabel: "Thêm",
-          cancelLabel: "Huỷ",
-          confirmVariant: "primary",
-          selectedDish: randomDish,
-        };
-      } catch (error) {
-        logger.error("Error fetching random dish:", error);
-        return {
-          type: "add",
-          prompt:
-            "Mình sẽ chọn một món ngẫu nhiên như bạn yêu cầu. Bạn xác nhận thêm món này chứ?",
-          confirmLabel: "Thêm",
-          cancelLabel: "Huỷ",
-          confirmVariant: "primary",
-        };
-      }
-    }
-
-    if (hasAdd) {
-      // Try to extract and find specific dish
-      const dishNameFromMsg = extractDishName(messageText);
-
-      if (dishNameFromMsg) {
-        try {
-          const allDishes = await getDishes();
-
-          if (allDishes && allDishes.length > 0) {
-            // Normalize dish name for matching
-            const normalizedDishName = dishNameFromMsg
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .trim();
-
-            // Find dish by name (fuzzy match)
-            const matchedDish = allDishes.find((dish) => {
-              const normalizedDbDishName = dish.ten_mon_an
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .toLowerCase()
-                .trim();
-
-              return (
-                normalizedDbDishName.includes(normalizedDishName) ||
-                normalizedDishName.includes(normalizedDbDishName)
-              );
-            });
-
-            if (matchedDish) {
-              return {
-                type: "add",
-                prompt: `Bạn muốn thêm món **${matchedDish.ten_mon_an}** vào thực đơn chứ?`,
-                confirmLabel: "Thêm",
-                cancelLabel: "Huỷ",
-                confirmVariant: "primary",
-                selectedDish: matchedDish,
-              };
-            }
-          }
-        } catch (error) {
-          logger.error("Error fetching dish for confirmation:", error);
-        }
-      }
-
-      // Fallback: if dish name was extracted but not found in database, still use the name
-      if (dishNameFromMsg) {
-        const targetDate = parseDateFromMessage(messageText);
-        const today = new Date().toISOString().split("T")[0];
-        const dateText = targetDate === today ? "hôm nay" : "ngày mai";
-
-        return {
-          type: "add",
-          prompt: `Bạn muốn thêm món **${dishNameFromMsg}** vào thực đơn ${dateText} chứ?`,
-          confirmLabel: "Thêm",
-          cancelLabel: "Huỷ",
-          confirmVariant: "primary",
-          dishName: dishNameFromMsg, // Store dish name even if not found in DB
-        };
-      }
-
-      // Fallback to generic prompt if dish name not extracted
-      return {
-        type: "add",
-        prompt: "Bạn muốn mình thêm món theo yêu cầu này vào thực đơn không?",
-        confirmLabel: "Thêm",
-        cancelLabel: "Huỷ",
-        confirmVariant: "primary",
-      };
-    }
-
-    if (hasRemove) {
-      try {
-        const targetDate = parseDateFromMessage(messageText);
-        const today = new Date().toISOString().split("T")[0];
-        const dateText = targetDate === today ? "hôm nay" : "ngày mai";
-        const existingMenu = await getMenuItems(targetDate);
-
-        // Check if user wants to remove ALL dishes
-        const removeAllKeywords = [
-          "toan bo",
-          "tat ca",
-          "het",
-          "all",
-          "moi mon",
-          "tong",
-          "toàn bộ",
-          "tất cả",
-          "hết",
-          "mọi món",
-        ];
-        const shouldRemoveAll = removeAllKeywords.some((keyword) =>
-          normalized.includes(keyword)
-        );
-
-        if (shouldRemoveAll) {
-          // Remove ALL dishes
-          if (!existingMenu || existingMenu.length === 0) {
-            return {
-              type: "remove",
-              prompt: `Thực đơn ${dateText} hiện không có món nào để xóa.`,
-              confirmLabel: "Xóa",
-              cancelLabel: "Huỷ",
-              confirmVariant: "danger",
-            };
-          }
-
-          const dishNames = existingMenu
-            .map((item) => item.ten_mon_an)
-            .filter((name): name is string => !!name);
-
-          if (dishNames.length === 0) {
-            return {
-              type: "remove",
-              prompt: `Thực đơn ${dateText} hiện không có món nào để xóa.`,
-              confirmLabel: "Xóa",
-              cancelLabel: "Huỷ",
-              confirmVariant: "danger",
-            };
-          }
-
-          if (dishNames.length === 1) {
-            return {
-              type: "remove",
-              prompt: `Bạn muốn xóa món **${dishNames[0]}** khỏi thực đơn ${dateText} chứ?`,
-              confirmLabel: "Xóa",
-              cancelLabel: "Huỷ",
-              confirmVariant: "danger",
-              dishName: dishNames[0],
-            };
-          }
-
-          // Show list of dishes to be removed
-          const dishList =
-            dishNames.length <= 5
-              ? dishNames.map((name) => `• **${name}**`).join("\n")
-              : `${dishNames
-                  .slice(0, 5)
-                  .map((name) => `• **${name}**`)
-                  .join("\n")}\n• ... và ${dishNames.length - 5} món khác`;
-
-          return {
-            type: "remove",
-            prompt: `Bạn muốn xóa **${dishNames.length} món** khỏi thực đơn ${dateText}:\n\n${dishList}\n\nBạn có chắc chắn không?`,
-            confirmLabel: "Xóa tất cả",
-            cancelLabel: "Huỷ",
-            confirmVariant: "danger",
-            dishNames: dishNames,
-          };
-        }
-
-        // Check for random remove
-        if (isRandom) {
-          if (!existingMenu || existingMenu.length === 0) {
-            return {
-              type: "remove",
-              prompt: `Thực đơn ${dateText} hiện không có món nào để xóa.`,
-              confirmLabel: "Xóa",
-              cancelLabel: "Huỷ",
-              confirmVariant: "danger",
-            };
-          }
-
-          // Pick a random dish to remove
-          const availableMenuItems = existingMenu.filter(
-            (item) => item.ten_mon_an
-          );
-          if (availableMenuItems.length === 0) {
-            return {
-              type: "remove",
-              prompt: `Thực đơn ${dateText} hiện không có món nào để xóa.`,
-              confirmLabel: "Xóa",
-              cancelLabel: "Huỷ",
-              confirmVariant: "danger",
-            };
-          }
-
-          const randomMenuItem =
-            availableMenuItems[
-              Math.floor(Math.random() * availableMenuItems.length)
-            ];
-
-          return {
-            type: "remove",
-            prompt: `Mình sẽ xóa món **${randomMenuItem.ten_mon_an}** (món ngẫu nhiên) khỏi thực đơn ${dateText}. Bạn có chắc chắn không?`,
-            confirmLabel: "Xóa",
-            cancelLabel: "Huỷ",
-            confirmVariant: "danger",
-            dishName: randomMenuItem.ten_mon_an,
-          };
-        }
-
-        // Try to extract and find specific dish for removal
-        const dishNameFromMsg = extractDishName(messageText);
-
-        if (dishNameFromMsg) {
-          if (existingMenu && existingMenu.length > 0) {
-            const normalizedDishName = dishNameFromMsg
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .trim();
-
-            const matchedMenuItem = existingMenu.find((item) => {
-              if (!item.ten_mon_an) return false;
-              const normalizedMenuDishName = item.ten_mon_an
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .toLowerCase()
-                .trim();
-
-              return (
-                normalizedMenuDishName.includes(normalizedDishName) ||
-                normalizedDishName.includes(normalizedMenuDishName)
-              );
-            });
-
-            if (matchedMenuItem && matchedMenuItem.ten_mon_an) {
-              return {
-                type: "remove",
-                prompt: `Bạn muốn xóa món **${matchedMenuItem.ten_mon_an}** khỏi thực đơn ${dateText} chứ?`,
-                confirmLabel: "Xóa",
-                cancelLabel: "Huỷ",
-                confirmVariant: "danger",
-                dishName: matchedMenuItem.ten_mon_an,
-              };
-            }
-          }
-
-          // Dish name extracted but not found in menu
-          return {
-            type: "remove",
-            prompt: `Không tìm thấy món **${dishNameFromMsg}** trong thực đơn ${dateText}.`,
-            confirmLabel: "Xóa",
-            cancelLabel: "Huỷ",
-            confirmVariant: "danger",
-            dishName: dishNameFromMsg,
-          };
-        }
-
-        // No dish name extracted - show current menu items
-        if (existingMenu && existingMenu.length > 0) {
-          const dishNames = existingMenu
-            .map((item) => item.ten_mon_an)
-            .filter((name): name is string => !!name);
-
-          if (dishNames.length > 0) {
-            return {
-              type: "remove",
-              prompt: `Bạn muốn xóa món nào khỏi thực đơn ${dateText}? Hiện có ${dishNames.length} món:\n\n${dishNames
-                .slice(0, 10)
-                .map((name, idx) => `${idx + 1}. **${name}**`)
-                .join(
-                  "\n"
-                )}${dishNames.length > 10 ? `\n... và ${dishNames.length - 10} món khác` : ""}`,
-              confirmLabel: "Xóa",
-              cancelLabel: "Huỷ",
-              confirmVariant: "danger",
-            };
-          }
-        }
-
-        // Fallback to generic prompt
-        return {
-          type: "remove",
-          prompt: `Thực đơn ${dateText} hiện không có món nào.`,
-          confirmLabel: "Xóa",
-          cancelLabel: "Huỷ",
-          confirmVariant: "danger",
-        };
-      } catch (error) {
-        logger.error(
-          "Error fetching menu items for removal confirmation:",
-          error
-        );
-        return {
-          type: "remove",
-          prompt: "Bạn muốn mình xóa món theo yêu cầu này khỏi thực đơn chứ?",
-          confirmLabel: "Xóa",
-          cancelLabel: "Huỷ",
-          confirmVariant: "danger",
-        };
-      }
-    }
-
-    return null;
-  };
-
   // Detect if action buttons should be shown based on user message and AI response
   const detectActionButtons = (userMessage: string, aiResponse: string) => {
     const normalizedMsg = userMessage
@@ -1056,12 +420,39 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         ? filteredMessages.slice(0, -1)
         : filteredMessages;
 
-      const conversationHistory = messagesForHistory
+      const conversationHistoryRaw = messagesForHistory
         .slice(-20) // Lấy 20 tin nhắn gần nhất
         .map((msg) => ({
           role: msg.sender === "user" ? "user" : "assistant",
           content: msg.text,
         }));
+
+      // Perplexity yêu cầu lịch sử phải bắt đầu bằng người dùng
+      const conversationHistory: {
+        role: "user" | "assistant";
+        content: string;
+      }[] = [];
+      for (const msg of conversationHistoryRaw) {
+        const content = msg.content?.trim();
+        if (!content) continue;
+        if (conversationHistory.length === 0) {
+          if (msg.role === "user") {
+            conversationHistory.push({ role: "user", content });
+          }
+          continue;
+        }
+        const last = conversationHistory[conversationHistory.length - 1];
+        if (last.role === msg.role) {
+          continue;
+        }
+        conversationHistory.push({ role: msg.role, content });
+      }
+      if (
+        conversationHistory.length > 0 &&
+        conversationHistory[conversationHistory.length - 1].role === "user"
+      ) {
+        conversationHistory.pop();
+      }
 
       const response = await fetch("/api/ai", {
         method: "POST",
@@ -1140,274 +531,30 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
     }
   };
 
-  const handleActionClick = async (messageId: string, action: string) => {
-    // Hide the action buttons for this message
+  const handleActionClick = (messageId: string, action: string) => {
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId ? { ...msg, showActions: false } : msg
       )
     );
 
-    if (action.startsWith("confirm:")) {
-      const pendingId = action.split(":")[1];
-      const pending = pendingActions[pendingId];
-      if (!pending) return;
-
-      setPendingActions((prev) => {
-        const { [pendingId]: _, ...rest } = prev;
-        return rest;
-      });
-
-      setIsTyping(true);
-
-      try {
-        const targetDate =
-          pending.targetDate || new Date().toISOString().split("T")[0];
-        const today = new Date().toISOString().split("T")[0];
-        const dateText = targetDate === today ? "hôm nay" : "ngày mai";
-
-        // Handle add action - actually add dish to database
-        if (pending.type === "add") {
-          try {
-            let dishToAdd: Dish | undefined = pending.selectedDish;
-            const dishName =
-              pending.selectedDish?.ten_mon_an || pending.dishName;
-
-            // If no selectedDish but has dishName, try to find it in database
-            if (!dishToAdd && pending.dishName) {
-              logger.info("No selectedDish, trying to find dish in database:", {
-                dishName: pending.dishName,
-              });
-              const allDishes = await getDishes();
-              if (allDishes && allDishes.length > 0) {
-                const normalizedDishName = pending.dishName
-                  .normalize("NFD")
-                  .replace(/[\u0300-\u036f]/g, "")
-                  .toLowerCase()
-                  .trim();
-
-                dishToAdd = allDishes.find((dish) => {
-                  const normalizedDbDishName = dish.ten_mon_an
-                    .normalize("NFD")
-                    .replace(/[\u0300-\u036f]/g, "")
-                    .toLowerCase()
-                    .trim();
-
-                  return (
-                    normalizedDbDishName.includes(normalizedDishName) ||
-                    normalizedDishName.includes(normalizedDbDishName)
-                  );
-                });
-              }
-            }
-
-            if (!dishToAdd) {
-              // Dish not found in database
-              logger.warn("Dish not found in database:", { dishName });
-              const errorMessage: Message = {
-                id: Date.now().toString(),
-                text: `Xin lỗi, mình không tìm thấy món **${dishName || "này"}** trong cơ sở dữ liệu. Vui lòng thêm món vào hệ thống trước khi thêm vào thực đơn.`,
-                sender: "bot",
-                timestamp: new Date(),
-                type: "text",
-              };
-              setMessages((prev) => [...prev, errorMessage]);
-              return;
-            }
-
-            logger.info("Adding dish to menu:", {
-              dishId: dishToAdd.id,
-              dishName: dishToAdd.ten_mon_an,
-              targetDate,
-            });
-
-            // Check if dish already exists in menu
-            const existingMenu = await getMenuItems(targetDate);
-            const existingMenuItem = existingMenu.find(
-              (item) => item.ma_mon_an === dishToAdd!.id
-            );
-
-            if (existingMenuItem) {
-              // Update servings if dish already exists
-              logger.info("Dish exists, updating servings:", {
-                menuItemId: existingMenuItem.id,
-                currentServings: existingMenuItem.boi_so,
-              });
-              await updateMenuItem(existingMenuItem.id, {
-                boi_so: (existingMenuItem.boi_so || 1) + 1,
-              });
-            } else {
-              // Add new dish to menu
-              logger.info("Dish does not exist, adding new dish");
-              await addDishToMenu(dishToAdd.id, targetDate, 1);
-            }
-
-            // Check if original message has additional requests (like count menu)
-            const hasAdditionalRequests = detectAdditionalRequests(
-              pending.originalMessage,
-              ["add", "random-add"]
-            );
-
-            // Handle additional request: count menu
-            if (
-              hasAdditionalRequests.count > 0 &&
-              hasAdditionalRequests.types.includes("count-menu")
-            ) {
-              // Get current menu count after adding
-              const currentMenu = await getMenuItems(targetDate);
-              const totalDishes = currentMenu.length;
-
-              const countMessage: Message = {
-                id: Date.now().toString(),
-                text: `Mình đã thêm món **${dishToAdd.ten_mon_an}** vào thực đơn ${dateText} rồi nha! Hiện tại menu ${dateText} có tổng cộng **${totalDishes} món**.`,
-                sender: "bot",
-                timestamp: new Date(),
-                type: "text",
-              };
-              setMessages((prev) => [...prev, countMessage]);
-              logger.info("Dish added and count displayed:", { totalDishes });
-            } else {
-              // No response message - just add silently
-              logger.info("Dish added successfully, no response message shown");
-            }
-          } catch (error) {
-            logger.error("Error adding dish to menu:", error);
-            // Only show error message if something goes wrong
-            const dishName =
-              pending.selectedDish?.ten_mon_an || pending.dishName || "này";
-            const errorMessage: Message = {
-              id: Date.now().toString(),
-              text: `Xin lỗi, có lỗi xảy ra khi thêm món **${dishName}** vào thực đơn. Vui lòng thử lại sau.`,
-              sender: "bot",
-              timestamp: new Date(),
-              type: "text",
-            };
-            setMessages((prev) => [...prev, errorMessage]);
-          }
-          // No session update needed since we're not adding any messages (except errors)
-        }
-        // Handle remove action - actually remove dish(es) from database
-        else if (pending.type === "remove") {
-          try {
-            const existingMenu = await getMenuItems(targetDate);
-
-            // Handle remove all dishes
-            if (pending.dishNames && pending.dishNames.length > 0) {
-              logger.info("Removing all dishes:", {
-                count: pending.dishNames.length,
-                dishNames: pending.dishNames,
-                targetDate,
-              });
-
-              // Find all menu items to remove
-              const menuItemsToRemove = existingMenu.filter((item) => {
-                if (!item.ten_mon_an) return false;
-                return pending.dishNames!.some(
-                  (name) => item.ten_mon_an === name
-                );
-              });
-
-              // Delete all dishes
-              await Promise.all(
-                menuItemsToRemove.map((item) => deleteMenuItem(item.id))
-              );
-
-              logger.info(
-                `Removed ${menuItemsToRemove.length} dishes successfully, no response message shown`
-              );
-            }
-            // Handle remove single dish
-            else if (pending.dishName) {
-              logger.info("Removing single dish:", {
-                dishName: pending.dishName,
-                targetDate,
-              });
-
-              const menuItemToRemove = existingMenu.find(
-                (item) => item.ten_mon_an === pending.dishName
-              );
-
-              if (menuItemToRemove) {
-                await deleteMenuItem(menuItemToRemove.id);
-                logger.info(
-                  "Dish removed successfully, no response message shown"
-                );
-              } else {
-                // Only show error if dish not found
-                const errorMessage: Message = {
-                  id: Date.now().toString(),
-                  text: `Không tìm thấy món **${pending.dishName}** trong thực đơn ${dateText}.`,
-                  sender: "bot",
-                  timestamp: new Date(),
-                  type: "text",
-                };
-                setMessages((prev) => [...prev, errorMessage]);
-              }
-            }
-          } catch (error) {
-            logger.error("Error removing dish(es) from menu:", error);
-            // Only show error message if something goes wrong
-            const dishName =
-              pending.dishNames?.join(", ") || pending.dishName || "món";
-            const errorMessage: Message = {
-              id: Date.now().toString(),
-              text: `Xin lỗi, có lỗi xảy ra khi xóa món khỏi thực đơn. Vui lòng thử lại sau.`,
-              sender: "bot",
-              timestamp: new Date(),
-              type: "text",
-            };
-            setMessages((prev) => [...prev, errorMessage]);
-          }
-          // No session update needed since we're not adding any messages (except errors)
-        } else {
-          // Fallback: if no specific dish selected, just do nothing silently
-          // Don't call API to avoid showing response message
-          logger.info("No specific dish selected, skipping action silently");
-        }
-      } catch (error) {
-        logger.error("Error in handleActionClick:", error);
-        const errorMessage: Message = {
-          id: Date.now().toString(),
-          text: "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.",
-          sender: "bot",
-          timestamp: new Date(),
-          type: "text",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      } finally {
-        setIsTyping(false);
-      }
-      return;
-    }
-
-    if (action.startsWith("cancel:")) {
-      const pendingId = action.split(":")[1];
-      const pending = pendingActions[pendingId];
-      setPendingActions((prev) => {
-        const { [pendingId]: _, ...rest } = prev;
-        return rest;
-      });
-      // Không hiển thị tin nhắn khi huỷ
-      return;
-    }
-
-    // Execute quick actions based on type
     if (action === "add-more") {
       handleSendMessage("thêm món ngẫu nhiên vào hôm nay");
-    } else if (action === "remove-more") {
-      handleSendMessage("xóa món ngẫu nhiên hôm nay");
+      return;
     }
-    // 'cancel' (legacy) just hides the buttons, no further action needed
+
+    if (action === "remove-more") {
+      handleSendMessage("xóa món ngẫu nhiên hôm nay");
+      return;
+    }
+
+    // Legacy cancel buttons only hide themselves
   };
 
-  const handleSendMessage = async (
-    messageText: string,
-    options?: { skipConfirmation?: boolean }
-  ) => {
+  const handleSendMessage = async (messageText: string) => {
     if (!messageText.trim() || initializing) return;
 
     try {
-      // Ensure a session exists before sending message
       let sessionId = currentSessionId;
       if (!sessionId) {
         const newSession: ChatSession = {
@@ -1417,7 +564,6 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
           messageCount: 0,
           lastMessage: "",
         };
-        // Replace existing session (each user should only have one session)
         setSessions([newSession]);
         setCurrentSessionId(newSession.id);
         sessionId = newSession.id;
@@ -1432,123 +578,8 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
         type: "text",
       };
 
-      // Add user message immediately
       setMessages((prev) => [...prev, userMessage]);
 
-      // Show typing indicator while detecting intent
-      setIsTyping(true);
-
-      let pendingIntent: PendingActionIntent | null = null;
-      try {
-        pendingIntent = options?.skipConfirmation
-          ? null
-          : await detectPendingActionIntent(messageText);
-        logger.info("Detected pending intent:", {
-          hasIntent: !!pendingIntent,
-          type: pendingIntent?.type,
-          hasSelectedDish: !!pendingIntent?.selectedDish,
-        });
-      } catch (error) {
-        logger.error("Error detecting pending intent:", error);
-        // Continue without confirmation if detection fails
-        pendingIntent = null;
-      } finally {
-        setIsTyping(false);
-      }
-
-      const newMessages: Message[] = [];
-
-      if (pendingIntent) {
-        try {
-          const pendingId = `pending-${Date.now()}`;
-          logger.info("Creating confirmation message:", {
-            pendingId,
-            prompt: pendingIntent.prompt,
-            hasSelectedDish: !!pendingIntent.selectedDish,
-          });
-
-          const confirmationMessage: Message = {
-            id: pendingId,
-            text: pendingIntent.prompt,
-            sender: "bot",
-            timestamp: new Date(),
-            type: "text",
-            actionButtons: [
-              {
-                label: pendingIntent.confirmLabel,
-                action: `confirm:${pendingId}`,
-                variant: pendingIntent.confirmVariant,
-              },
-              {
-                label: pendingIntent.cancelLabel,
-                action: `cancel:${pendingId}`,
-                variant: "secondary",
-              },
-            ],
-            showActions: true,
-          };
-          newMessages.push(confirmationMessage);
-
-          setPendingActions((prev) => ({
-            ...prev,
-            [pendingId]: {
-              originalMessage: messageText,
-              sessionId,
-              type: pendingIntent!.type,
-              selectedDish: pendingIntent!.selectedDish,
-              dishName: pendingIntent!.dishName,
-              dishNames: pendingIntent!.dishNames,
-              targetDate: parseDateFromMessage(messageText),
-            },
-          }));
-
-          // Add confirmation message if any
-          if (newMessages.length > 0) {
-            logger.info("Adding confirmation message to chat:", {
-              messageId: confirmationMessage.id,
-              text: confirmationMessage.text.substring(0, 50),
-            });
-            setMessages((prev) => [...prev, ...newMessages]);
-          }
-
-          if (sessionId) {
-            const lastMessage =
-              messageText.length > 50
-                ? `${messageText.substring(0, 50)}...`
-                : messageText;
-            const titleSuggestion =
-              messageText.length > 30
-                ? `${messageText.substring(0, 30)}...`
-                : messageText;
-
-            setSessions((prev) =>
-              prev.map((s) =>
-                s.id === sessionId
-                  ? {
-                      ...s,
-                      messageCount: s.messageCount + newMessages.length,
-                      lastMessage,
-                      title:
-                        s.title === "Cuộc trò chuyện mới"
-                          ? titleSuggestion
-                          : s.title,
-                    }
-                  : s
-              )
-            );
-          }
-          logger.info("Pending intent processed, returning without API call");
-          return;
-        } catch (error) {
-          logger.error("Error processing pending intent:", error);
-          // Fall through to call API if there's an error processing intent
-        }
-      } else {
-        logger.info("No pending intent detected, will call API");
-      }
-
-      // If no pending intent or error occurred, call API directly
-      setIsTyping(true);
       await callChatAPI(messageText, sessionId, {
         messageCountDelta: 2,
         updateLastMessage: true,
@@ -1556,8 +587,6 @@ export default function AIChat({ onFeatureSelect, context }: AIChatProps) {
       });
     } catch (error) {
       logger.error("Error in handleSendMessage:", error);
-      setIsTyping(false);
-      // Show error message to user
       const errorMessage: Message = {
         id: Date.now().toString(),
         text: "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại.",

@@ -101,7 +101,11 @@ export async function getDishes(): Promise<Dish[]> {
   // Parse tags from JSON string if they exist
   const dishes = (data || []).map((dish: any) => ({
     ...dish,
-    tags: dish.tags ? (typeof dish.tags === 'string' ? JSON.parse(dish.tags) : dish.tags) : undefined,
+    tags: dish.tags
+      ? typeof dish.tags === "string"
+        ? JSON.parse(dish.tags)
+        : dish.tags
+      : undefined,
   }));
 
   return dishes;
@@ -130,7 +134,11 @@ export async function getDishById(id: string): Promise<Dish | null> {
   // Parse tags from JSON string if they exist
   const dish = {
     ...data,
-    tags: data.tags ? (typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags) : undefined,
+    tags: data.tags
+      ? typeof data.tags === "string"
+        ? JSON.parse(data.tags)
+        : data.tags
+      : undefined,
   };
 
   return dish as Dish;
@@ -144,7 +152,9 @@ export async function getAllIngredients(): Promise<Ingredient[]> {
   try {
     const { data, error } = await supabase
       .from("nguyen_lieu")
-      .select("id, ten_nguyen_lieu, ton_kho_khoi_luong, ton_kho_so_luong, nguon_nhap, created_at")
+      .select(
+        "id, ten_nguyen_lieu, ton_kho_khoi_luong, ton_kho_so_luong, nguon_nhap, created_at"
+      )
       .order("ten_nguyen_lieu");
     if (error) {
       logger.error("Error fetching ingredients:", error);
@@ -157,13 +167,158 @@ export async function getAllIngredients(): Promise<Ingredient[]> {
   }
 }
 
+export interface IngredientUpsertInput {
+  ten_nguyen_lieu: string;
+  ton_kho_so_luong?: number | null;
+  ton_kho_khoi_luong?: number | null;
+  nguon_nhap?: string | null;
+}
+
+export async function createIngredient(
+  input: IngredientUpsertInput
+): Promise<Ingredient> {
+  const name = input.ten_nguyen_lieu?.trim();
+  if (!name) {
+    throw new Error("Tên nguyên liệu không được để trống");
+  }
+
+  if (!supabase) {
+    return {
+      id: Date.now().toString(),
+      ten_nguyen_lieu: name,
+      ton_kho_so_luong: input.ton_kho_so_luong ?? 0,
+      ton_kho_khoi_luong: input.ton_kho_khoi_luong ?? 0,
+      nguon_nhap: input.nguon_nhap ?? "",
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  const payload = {
+    ten_nguyen_lieu: name,
+    ton_kho_so_luong:
+      input.ton_kho_so_luong != null ? Number(input.ton_kho_so_luong) : null,
+    ton_kho_khoi_luong:
+      input.ton_kho_khoi_luong != null
+        ? Number(input.ton_kho_khoi_luong)
+        : null,
+    nguon_nhap: input.nguon_nhap ?? null,
+  };
+
+  const { data, error } = await supabase
+    .from("nguyen_lieu")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error) {
+    logger.error("Error creating ingredient:", error);
+    throw error;
+  }
+
+  return data as Ingredient;
+}
+
+export async function updateIngredient(
+  id: string,
+  updates: Partial<IngredientUpsertInput>
+): Promise<Ingredient> {
+  if (!id) {
+    throw new Error("Thiếu ID nguyên liệu");
+  }
+
+  if (!supabase) {
+    const existing = (await getAllIngredients()).find((ing) => ing.id === id);
+    return {
+      id,
+      ten_nguyen_lieu:
+        updates.ten_nguyen_lieu ?? existing?.ten_nguyen_lieu ?? "Nguyên liệu",
+      ton_kho_so_luong:
+        updates.ton_kho_so_luong ??
+        (existing?.ton_kho_so_luong != null
+          ? Number(existing.ton_kho_so_luong)
+          : 0),
+      ton_kho_khoi_luong:
+        updates.ton_kho_khoi_luong ??
+        (existing?.ton_kho_khoi_luong != null
+          ? Number(existing.ton_kho_khoi_luong)
+          : 0),
+      nguon_nhap: updates.nguon_nhap ?? existing?.nguon_nhap,
+      created_at: existing?.created_at ?? new Date().toISOString(),
+    };
+  }
+
+  const payload: Record<string, unknown> = {};
+  if (typeof updates.ten_nguyen_lieu === "string") {
+    const name = updates.ten_nguyen_lieu.trim();
+    if (name.length > 0) {
+      payload.ten_nguyen_lieu = name;
+    }
+  }
+  if (updates.ton_kho_so_luong !== undefined) {
+    payload.ton_kho_so_luong =
+      updates.ton_kho_so_luong != null
+        ? Number(updates.ton_kho_so_luong)
+        : null;
+  }
+  if (updates.ton_kho_khoi_luong !== undefined) {
+    payload.ton_kho_khoi_luong =
+      updates.ton_kho_khoi_luong != null
+        ? Number(updates.ton_kho_khoi_luong)
+        : null;
+  }
+  if (updates.nguon_nhap !== undefined) {
+    payload.nguon_nhap = updates.nguon_nhap ?? null;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    const existing = await supabase
+      .from("nguyen_lieu")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (existing.error || !existing.data) {
+      throw existing.error || new Error("Không tìm thấy nguyên liệu");
+    }
+    return existing.data as Ingredient;
+  }
+
+  const { data, error } = await supabase
+    .from("nguyen_lieu")
+    .update(payload)
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    logger.error("Error updating ingredient:", error);
+    throw error;
+  }
+
+  return data as Ingredient;
+}
+
+export async function deleteIngredient(id: string): Promise<void> {
+  if (!supabase) {
+    return;
+  }
+
+  const { error } = await supabase.from("nguyen_lieu").delete().eq("id", id);
+  if (error) {
+    logger.error("Error deleting ingredient:", error);
+    throw error;
+  }
+}
+
 // Get recipe components for a dish, joined with ingredient names
 export interface DishRecipeItem extends RecipeComponent {
   ten_nguyen_lieu?: string;
 }
 
 // Simple in-memory cache for recipes to avoid duplicate queries
-const recipeCache = new Map<string, { data: DishRecipeItem[]; timestamp: number }>();
+const recipeCache = new Map<
+  string,
+  { data: DishRecipeItem[]; timestamp: number }
+>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Clear cache entry if expired
@@ -180,7 +335,9 @@ function setCachedRecipe(dishId: string, data: DishRecipeItem[]) {
 }
 
 // Batch get recipes for multiple dishes - optimized version
-export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<string, DishRecipeItem[]>> {
+export async function getRecipesForDishesBatch(
+  dishIds: string[]
+): Promise<Map<string, DishRecipeItem[]>> {
   if (!supabase || dishIds.length === 0) {
     return new Map();
   }
@@ -208,10 +365,10 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
     cong_thuc_nau: unknown;
   };
 
-  const { data: monAnRows } = await supabase
+  const { data: monAnRows } = (await supabase
     .from("mon_an")
     .select("id, cong_thuc_nau")
-    .in("id", uncachedIds) as { data: RawMonAnRow[] | null };
+    .in("id", uncachedIds)) as { data: RawMonAnRow[] | null };
 
   // Batch fetch thanh_phan for dishes without cong_thuc_nau
   type RawThanhPhanRow = {
@@ -225,21 +382,24 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
     created_at: string | null;
   };
 
-  const { data: thanhPhanRows } = await supabase
+  const { data: thanhPhanRows } = (await supabase
     .from("thanh_phan")
-    .select("id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, luong_calo, created_at")
-    .in("ma_mon_an", uncachedIds) as { data: RawThanhPhanRow[] | null };
+    .select(
+      "id, ma_mon_an, ma_nguyen_lieu, so_nguoi_an, khoi_luong_nguyen_lieu, so_luong_nguyen_lieu, luong_calo, created_at"
+    )
+    .in("ma_mon_an", uncachedIds)) as { data: RawThanhPhanRow[] | null };
 
   // Collect all ingredient IDs needed
   const ingredientIds = new Set<string>();
-  
+
   // From cong_thuc_nau
   (monAnRows || []).forEach((row) => {
     if (row.cong_thuc_nau) {
       try {
-        const parsed = typeof row.cong_thuc_nau === "string" 
-          ? JSON.parse(row.cong_thuc_nau) 
-          : row.cong_thuc_nau;
+        const parsed =
+          typeof row.cong_thuc_nau === "string"
+            ? JSON.parse(row.cong_thuc_nau)
+            : row.cong_thuc_nau;
         if (Array.isArray(parsed)) {
           parsed.forEach((it: { ma_nguyen_lieu?: string }) => {
             if (it.ma_nguyen_lieu) ingredientIds.add(String(it.ma_nguyen_lieu));
@@ -263,14 +423,14 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
       .from("nguyen_lieu")
       .select("id, ten_nguyen_lieu")
       .in("id", Array.from(ingredientIds));
-    
+
     (ingRows || []).forEach((r: Record<string, unknown>) => {
       idToName[String(r.id)] = String(r.ten_nguyen_lieu);
     });
   }
 
   // Process each dish
-  const monAnMap = new Map((monAnRows || []).map(r => [String(r.id), r]));
+  const monAnMap = new Map((monAnRows || []).map((r) => [String(r.id), r]));
   const thanhPhanByDish = new Map<string, RawThanhPhanRow[]>();
   (thanhPhanRows || []).forEach((row) => {
     const dishId = String(row.ma_mon_an);
@@ -287,18 +447,25 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
     // Try cong_thuc_nau first
     if (monAnRow?.cong_thuc_nau) {
       try {
-        const parsed = typeof monAnRow.cong_thuc_nau === "string"
-          ? JSON.parse(monAnRow.cong_thuc_nau)
-          : monAnRow.cong_thuc_nau;
-        
+        const parsed =
+          typeof monAnRow.cong_thuc_nau === "string"
+            ? JSON.parse(monAnRow.cong_thuc_nau)
+            : monAnRow.cong_thuc_nau;
+
         if (Array.isArray(parsed) && parsed.length > 0) {
           items = parsed.map((it: any, idx: number) => ({
             id: String(idx + 1),
             ma_mon_an: dishId,
             ma_nguyen_lieu: String(it.ma_nguyen_lieu || ""),
             so_nguoi_an: Number(it.so_nguoi_an || 1),
-            khoi_luong_nguyen_lieu: it.khoi_luong_nguyen_lieu != null ? Number(it.khoi_luong_nguyen_lieu) : undefined,
-            so_luong_nguyen_lieu: it.so_luong_nguyen_lieu != null ? Number(it.so_luong_nguyen_lieu) : undefined,
+            khoi_luong_nguyen_lieu:
+              it.khoi_luong_nguyen_lieu != null
+                ? Number(it.khoi_luong_nguyen_lieu)
+                : undefined,
+            so_luong_nguyen_lieu:
+              it.so_luong_nguyen_lieu != null
+                ? Number(it.so_luong_nguyen_lieu)
+                : undefined,
             created_at: new Date().toISOString(),
             luong_calo: 0,
             ten_nguyen_lieu: idToName[String(it.ma_nguyen_lieu || "")],
@@ -315,9 +482,17 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
         ma_mon_an: String(row.ma_mon_an ?? ""),
         ma_nguyen_lieu: String(row.ma_nguyen_lieu ?? ""),
         so_nguoi_an: Number(row.so_nguoi_an ?? 0),
-        khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu != null ? Number(row.khoi_luong_nguyen_lieu) : undefined,
-        so_luong_nguyen_lieu: row.so_luong_nguyen_lieu != null ? Number(row.so_luong_nguyen_lieu) : undefined,
-        created_at: row.created_at ? String(row.created_at) : new Date().toISOString(),
+        khoi_luong_nguyen_lieu:
+          row.khoi_luong_nguyen_lieu != null
+            ? Number(row.khoi_luong_nguyen_lieu)
+            : undefined,
+        so_luong_nguyen_lieu:
+          row.so_luong_nguyen_lieu != null
+            ? Number(row.so_luong_nguyen_lieu)
+            : undefined,
+        created_at: row.created_at
+          ? String(row.created_at)
+          : new Date().toISOString(),
         luong_calo: row.luong_calo != null ? Number(row.luong_calo) : 0,
         ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu ?? "")],
       }));
@@ -330,7 +505,9 @@ export async function getRecipesForDishesBatch(dishIds: string[]): Promise<Map<s
   return result;
 }
 
-export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]> {
+export async function getRecipeForDish(
+  dishId: string
+): Promise<DishRecipeItem[]> {
   if (!supabase) {
     return [];
   }
@@ -359,9 +536,10 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
     if (!monAnErr && monAnRow && monAnRow.cong_thuc_nau) {
       let parsed: unknown[] = [];
       try {
-        parsed = typeof monAnRow.cong_thuc_nau === "string"
-          ? JSON.parse(monAnRow.cong_thuc_nau)
-          : monAnRow.cong_thuc_nau;
+        parsed =
+          typeof monAnRow.cong_thuc_nau === "string"
+            ? JSON.parse(monAnRow.cong_thuc_nau)
+            : monAnRow.cong_thuc_nau;
       } catch {
         logger.warn("cong_thuc_nau is not valid JSON; showing empty recipe");
         parsed = [];
@@ -385,22 +563,29 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
         }
 
         const items: DishRecipeItem[] = parsed.map((it, idx) => {
-          const item = it as { 
-            ma_nguyen_lieu?: string; 
-            so_nguoi_an?: number; 
-            khoi_luong_nguyen_lieu?: number; 
-            so_luong_nguyen_lieu?: number; 
+          const item = it as {
+            ma_nguyen_lieu?: string;
+            so_nguoi_an?: number;
+            khoi_luong_nguyen_lieu?: number;
+            so_luong_nguyen_lieu?: number;
           };
           return {
             id: String(idx + 1),
             ma_mon_an: dishId,
             ma_nguyen_lieu: String(item.ma_nguyen_lieu || ""),
             so_nguoi_an: Number(item.so_nguoi_an || 1),
-            khoi_luong_nguyen_lieu: item.khoi_luong_nguyen_lieu != null ? Number(item.khoi_luong_nguyen_lieu) : undefined,
-            so_luong_nguyen_lieu: item.so_luong_nguyen_lieu != null ? Number(item.so_luong_nguyen_lieu) : undefined,
+            khoi_luong_nguyen_lieu:
+              item.khoi_luong_nguyen_lieu != null
+                ? Number(item.khoi_luong_nguyen_lieu)
+                : undefined,
+            so_luong_nguyen_lieu:
+              item.so_luong_nguyen_lieu != null
+                ? Number(item.so_luong_nguyen_lieu)
+                : undefined,
             created_at: new Date().toISOString(),
             luong_calo: 0,
-            ten_nguyen_lieu: idToName[String(item.ma_nguyen_lieu || "")] || undefined,
+            ten_nguyen_lieu:
+              idToName[String(item.ma_nguyen_lieu || "")] || undefined,
           };
         });
         return items;
@@ -423,7 +608,9 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
     throw compsErr;
   }
 
-  const ids = (comps || []).map((r: Record<string, unknown>) => r.ma_nguyen_lieu).filter(Boolean);
+  const ids = (comps || [])
+    .map((r: Record<string, unknown>) => r.ma_nguyen_lieu)
+    .filter(Boolean);
   const idToName: Record<string, string> = {};
   if (ids.length > 0) {
     const { data: ingRows, error: ingErr } = await supabase
@@ -437,17 +624,25 @@ export async function getRecipeForDish(dishId: string): Promise<DishRecipeItem[]
     }
   }
 
-  const items: DishRecipeItem[] = (comps || []).map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    ma_mon_an: String(row.ma_mon_an),
-    ma_nguyen_lieu: String(row.ma_nguyen_lieu),
-    so_nguoi_an: Number(row.so_nguoi_an),
-    khoi_luong_nguyen_lieu: row.khoi_luong_nguyen_lieu != null ? Number(row.khoi_luong_nguyen_lieu) : undefined,
-    so_luong_nguyen_lieu: row.so_luong_nguyen_lieu != null ? Number(row.so_luong_nguyen_lieu) : undefined,
-    created_at: String(row.created_at),
-    luong_calo: row.luong_calo != null ? Number(row.luong_calo) : 0,
-    ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
-  }));
+  const items: DishRecipeItem[] = (comps || []).map(
+    (row: Record<string, unknown>) => ({
+      id: String(row.id),
+      ma_mon_an: String(row.ma_mon_an),
+      ma_nguyen_lieu: String(row.ma_nguyen_lieu),
+      so_nguoi_an: Number(row.so_nguoi_an),
+      khoi_luong_nguyen_lieu:
+        row.khoi_luong_nguyen_lieu != null
+          ? Number(row.khoi_luong_nguyen_lieu)
+          : undefined,
+      so_luong_nguyen_lieu:
+        row.so_luong_nguyen_lieu != null
+          ? Number(row.so_luong_nguyen_lieu)
+          : undefined,
+      created_at: String(row.created_at),
+      luong_calo: row.luong_calo != null ? Number(row.luong_calo) : 0,
+      ten_nguyen_lieu: idToName[String(row.ma_nguyen_lieu)],
+    })
+  );
 
   // Cache the result
   setCachedRecipe(dishId, items);
@@ -492,7 +687,10 @@ export async function consumeIngredientsForDishesBatch(
   if (dishes.length === 0) return;
 
   // Collect all ingredient changes first
-  const ingredientChanges = new Map<string, { weight: number; quantity: number }>();
+  const ingredientChanges = new Map<
+    string,
+    { weight: number; quantity: number }
+  >();
 
   for (const { dishId, servings } of dishes) {
     const recipe = await getRecipeForDish(dishId);
@@ -500,7 +698,10 @@ export async function consumeIngredientsForDishesBatch(
 
     for (const item of recipe) {
       const ingredientId = item.ma_nguyen_lieu;
-      const current = ingredientChanges.get(ingredientId) || { weight: 0, quantity: 0 };
+      const current = ingredientChanges.get(ingredientId) || {
+        weight: 0,
+        quantity: 0,
+      };
 
       if (item.khoi_luong_nguyen_lieu && item.khoi_luong_nguyen_lieu > 0) {
         current.weight += item.khoi_luong_nguyen_lieu * servings;
@@ -514,31 +715,41 @@ export async function consumeIngredientsForDishesBatch(
 
   // Apply all changes in parallel
   await Promise.all(
-    Array.from(ingredientChanges.entries()).map(async ([ingredientId, changes]) => {
-      const promises = [];
-      
-      if (changes.weight > 0) {
-        promises.push(
-          fetch(`/api/ingredients/${ingredientId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ op: "decrease", mode: "weight", amount: changes.weight }),
-          })
-        );
-      }
-      
-      if (changes.quantity > 0) {
-        promises.push(
-          fetch(`/api/ingredients/${ingredientId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ op: "decrease", mode: "quantity", amount: changes.quantity }),
-          })
-        );
-      }
+    Array.from(ingredientChanges.entries()).map(
+      async ([ingredientId, changes]) => {
+        const promises = [];
 
-      await Promise.all(promises);
-    })
+        if (changes.weight > 0) {
+          promises.push(
+            fetch(`/api/ingredients/${ingredientId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                op: "decrease",
+                mode: "weight",
+                amount: changes.weight,
+              }),
+            })
+          );
+        }
+
+        if (changes.quantity > 0) {
+          promises.push(
+            fetch(`/api/ingredients/${ingredientId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                op: "decrease",
+                mode: "quantity",
+                amount: changes.quantity,
+              }),
+            })
+          );
+        }
+
+        await Promise.all(promises);
+      }
+    )
   );
 }
 
@@ -559,7 +770,7 @@ export async function getMenuItems(date: string): Promise<MenuItem[]> {
     if (error) {
       logger.warn(
         "Error fetching menu items (running in mock mode):",
-        error.message,
+        error.message
       );
       // Return empty array instead of throwing error in mock mode
       return [];
@@ -589,7 +800,7 @@ export async function addDishToMenu(
   dishId: string,
   date: string,
   servings: number,
-  notes?: string,
+  notes?: string
 ): Promise<MenuItem> {
   if (!supabase) {
     // Get dish details to include name in mock mode
@@ -630,7 +841,7 @@ export async function addDishToMenu(
 // Add multiple dishes to menu for a specific date in one request
 export async function addMenuItemsBatch(
   date: string,
-  items: Array<{ dishId: string; servings: number; notes?: string }>,
+  items: Array<{ dishId: string; servings: number; notes?: string }>
 ): Promise<MenuItem[]> {
   if (!supabase) {
     const dishes = await getDishes();
@@ -673,7 +884,7 @@ export async function addMenuItemsBatch(
 // Update a menu item
 export async function updateMenuItem(
   id: string,
-  updates: Partial<Pick<MenuItem, "boi_so" | "ghi_chu">>,
+  updates: Partial<Pick<MenuItem, "boi_so" | "ghi_chu">>
 ): Promise<MenuItem> {
   if (!supabase) {
     // Return mock data when Supabase is not configured
@@ -718,6 +929,31 @@ export async function deleteMenuItem(id: string): Promise<void> {
   }
 }
 
+// Delete all menu items for a specific date
+export async function deleteMenuItemsByDate(date: string): Promise<number> {
+  if (!date) {
+    throw new Error("Thiếu ngày cần xóa thực đơn");
+  }
+
+  if (!supabase) {
+    // Nothing to delete in mock mode, but signal zero removals
+    return 0;
+  }
+
+  const { data, error } = await supabase
+    .from("thuc_don")
+    .delete()
+    .eq("ngay", date)
+    .select("id");
+
+  if (error) {
+    logger.error("Error deleting menu items by date:", error);
+    throw error;
+  }
+
+  return Array.isArray(data) ? data.length : 0;
+}
+
 // Delete a dish from mon_an
 export async function deleteDish(id: string): Promise<void> {
   if (!supabase) {
@@ -734,7 +970,7 @@ export async function deleteDish(id: string): Promise<void> {
 
 // Create a new dish
 export async function createDish(
-  ten_mon_an: string, 
+  ten_mon_an: string,
   cong_thuc?: Array<Record<string, unknown>>,
   image_url?: string,
   tags?: string[]
@@ -756,7 +992,8 @@ export async function createDish(
 
   const payload: Record<string, unknown> = {
     ten_mon_an,
-    cong_thuc_nau: cong_thuc && cong_thuc.length > 0 ? JSON.stringify(cong_thuc) : null,
+    cong_thuc_nau:
+      cong_thuc && cong_thuc.length > 0 ? JSON.stringify(cong_thuc) : null,
     image_url: image_url || null,
     tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
   };
@@ -769,7 +1006,9 @@ export async function createDish(
 
   if (error) {
     logger.error("Error creating dish:", error);
-    const message = (error as Error)?.message || (typeof error === 'string' ? error : 'Unknown database error');
+    const message =
+      (error as Error)?.message ||
+      (typeof error === "string" ? error : "Unknown database error");
     throw new Error(message);
   }
 
@@ -779,12 +1018,12 @@ export async function createDish(
 // Update an existing dish
 export async function updateDish(
   id: string,
-  updates: Partial<{ 
-    ten_mon_an: string; 
+  updates: Partial<{
+    ten_mon_an: string;
     cong_thuc_nau: Array<Record<string, unknown>> | null;
     image_url: string | null;
     tags: string[] | null;
-  }>,
+  }>
 ): Promise<Dish> {
   if (!id) throw new Error("Thiếu id món ăn");
 
@@ -801,7 +1040,8 @@ export async function updateDish(
   }
 
   const payload: Record<string, unknown> = {};
-  if (typeof updates.ten_mon_an === "string") payload.ten_mon_an = updates.ten_mon_an;
+  if (typeof updates.ten_mon_an === "string")
+    payload.ten_mon_an = updates.ten_mon_an;
   if (updates.cong_thuc_nau !== undefined) {
     payload.cong_thuc_nau = Array.isArray(updates.cong_thuc_nau)
       ? JSON.stringify(updates.cong_thuc_nau)
@@ -811,9 +1051,10 @@ export async function updateDish(
     payload.image_url = updates.image_url;
   }
   if (updates.tags !== undefined) {
-    payload.tags = Array.isArray(updates.tags) && updates.tags.length > 0
-      ? JSON.stringify(updates.tags)
-      : null;
+    payload.tags =
+      Array.isArray(updates.tags) && updates.tags.length > 0
+        ? JSON.stringify(updates.tags)
+        : null;
   }
 
   // Check if there are any fields to update
@@ -835,12 +1076,16 @@ export async function updateDish(
 
   if (checkError) {
     logger.error("Error checking if dish exists:", id, checkError);
-    throw new Error(`Lỗi khi kiểm tra món ăn: ${checkError.message || 'Unknown error'}`);
+    throw new Error(
+      `Lỗi khi kiểm tra món ăn: ${checkError.message || "Unknown error"}`
+    );
   }
 
   if (!existingDish) {
     logger.error("Dish not found for update:", id);
-    throw new Error(`Không tìm thấy món ăn để cập nhật. Món ăn có thể đã bị xóa hoặc không tồn tại.`);
+    throw new Error(
+      `Không tìm thấy món ăn để cập nhật. Món ăn có thể đã bị xóa hoặc không tồn tại.`
+    );
   }
 
   const { data, error } = await supabase
@@ -852,7 +1097,9 @@ export async function updateDish(
 
   if (error) {
     logger.error("Error updating dish:", error, { dishId: id, payload });
-    const message = (error as Error)?.message || (typeof error === 'string' ? error : 'Unknown database error');
+    const message =
+      (error as Error)?.message ||
+      (typeof error === "string" ? error : "Unknown database error");
     throw new Error(`Lỗi khi cập nhật món ăn: ${message}`);
   }
 
@@ -865,7 +1112,11 @@ export async function updateDish(
   // Parse tags from JSON string if they exist
   const dish = {
     ...data,
-    tags: data.tags ? (typeof data.tags === 'string' ? JSON.parse(data.tags) : data.tags) : undefined,
+    tags: data.tags
+      ? typeof data.tags === "string"
+        ? JSON.parse(data.tags)
+        : data.tags
+      : undefined,
   };
 
   return dish as Dish;
@@ -875,7 +1126,7 @@ export async function updateDish(
 export async function updateDishImageAndTags(
   dishId: string,
   image_url: string | null,
-  tags: string[] | null,
+  tags: string[] | null
 ): Promise<Dish> {
   return updateDish(dishId, { image_url, tags });
 }
@@ -883,7 +1134,7 @@ export async function updateDishImageAndTags(
 // Update dish ingredients (store in cong_thuc_nau as JSON of { ma_nguyen_lieu })
 export async function updateDishIngredients(
   dishId: string,
-  ingredientIds: string[],
+  ingredientIds: string[]
 ): Promise<void> {
   if (!supabase) return;
   const recipe = ingredientIds.map((id) => ({ ma_nguyen_lieu: id }));
@@ -899,7 +1150,9 @@ export async function updateDishIngredients(
 }
 
 // Get ingredients for a specific date
-export async function getIngredientsForDate(date: string): Promise<Record<string, unknown>[]> {
+export async function getIngredientsForDate(
+  date: string
+): Promise<Record<string, unknown>[]> {
   if (!supabase) {
     // Return mock data when Supabase is not configured
     return [];
@@ -916,7 +1169,7 @@ export async function getIngredientsForDate(date: string): Promise<Record<string
           *
         )
       )
-    `,
+    `
     )
     .eq("ngay", date);
 
@@ -931,7 +1184,7 @@ export async function getIngredientsForDate(date: string): Promise<Record<string
 // Get menu data for calendar (count of dishes per date)
 export async function getCalendarData(
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<Record<string, unknown>[]> {
   if (!supabase) {
     // Return mock data when Supabase is not configured
@@ -948,7 +1201,7 @@ export async function getCalendarData(
     if (error) {
       logger.warn(
         "Error fetching calendar data (running in mock mode):",
-        error.message,
+        error.message
       );
       // Return empty array instead of throwing error in mock mode
       return [];
@@ -962,7 +1215,7 @@ export async function getCalendarData(
           acc[date] = (acc[date] || 0) + 1;
           return acc;
         },
-        {} as Record<string, number>,
+        {} as Record<string, number>
       ) || {};
 
     return Object.entries(dateCounts).map(([date, count]) => ({
